@@ -364,25 +364,33 @@ export default function CreateDonation() {
                                 <div className="mb-6">
                                     <label className="block text-sm font-semibold text-gray-700 mb-3">Delivery Method</label>
                                     <div className="space-y-3">
-                                        {DELIVERY_METHODS.map((method) => {
-                                            const Icon = method.icon;
-                                            return (
-                                                <div
-                                                    key={method.value}
-                                                    onClick={() => setFormData({ ...formData, delivery_method: method.value })}
-                                                    className={`p-4 rounded-xl border-2 cursor-pointer transition-all duration-200 flex items-center space-x-4 ${formData.delivery_method === method.value
-                                                        ? 'border-green-600 bg-green-50'
-                                                        : 'border-gray-200 hover:border-gray-300'
-                                                        }`}
-                                                >
-                                                    <Icon className={`w-6 h-6 ${formData.delivery_method === method.value ? 'text-green-600' : 'text-gray-400'}`} />
-                                                    <div>
-                                                        <div className="font-semibold text-gray-900">{method.label}</div>
-                                                        <div className="text-xs text-gray-500">{method.desc}</div>
+                                        {DELIVERY_METHODS
+                                            .filter((method) => {
+                                                // Hide NGO_PICKUP if no NGO selected or NGO doesn't offer pickup
+                                                if (method.value === 'NGO_PICKUP') {
+                                                    return selectedNGO?.has_pickup_capability === true;
+                                                }
+                                                return true;
+                                            })
+                                            .map((method) => {
+                                                const Icon = method.icon;
+                                                return (
+                                                    <div
+                                                        key={method.value}
+                                                        onClick={() => setFormData({ ...formData, delivery_method: method.value })}
+                                                        className={`p-4 rounded-xl border-2 cursor-pointer transition-all duration-200 flex items-center space-x-4 ${formData.delivery_method === method.value
+                                                            ? 'border-green-600 bg-green-50'
+                                                            : 'border-gray-200 hover:border-gray-300'
+                                                            }`}
+                                                    >
+                                                        <Icon className={`w-6 h-6 ${formData.delivery_method === method.value ? 'text-green-600' : 'text-gray-400'}`} />
+                                                        <div>
+                                                            <div className="font-semibold text-gray-900">{method.label}</div>
+                                                            <div className="text-xs text-gray-500">{method.desc}</div>
+                                                        </div>
                                                     </div>
-                                                </div>
-                                            );
-                                        })}
+                                                );
+                                            })}
                                     </div>
                                 </div>
 

@@ -1,6 +1,6 @@
 import { useState, useEffect } from 'react';
 import { useNavigate, Link } from 'react-router-dom';
-import { Package, Leaf, LogOut, Loader2, MessageCircle, Check, X, ChevronDown, ChevronUp, Inbox, CheckCircle, ListChecks, BarChart3 } from 'lucide-react';
+import { Package, Leaf, LogOut, Loader2, MessageCircle, Check, X, ChevronDown, ChevronUp, Inbox, CheckCircle, ListChecks, BarChart3, Truck } from 'lucide-react';
 import { useAuth } from '../context/AuthContext';
 import api from '../services/api';
 
@@ -20,6 +20,8 @@ export default function AcceptorDashboard() {
     const [rejectingId, setRejectingId] = useState(null);
     const [unreadMap, setUnreadMap] = useState({});
     const [expandedMetric, setExpandedMetric] = useState(null);
+    const [offersPickup, setOffersPickup] = useState(false);
+    const [togglingPickup, setTogglingPickup] = useState(false);
 
     const fetchData = async () => {
         try {
@@ -38,11 +40,27 @@ export default function AcceptorDashboard() {
 
     useEffect(() => {
         fetchData();
+        // Fetch pickup capability
+        api.getAcceptorProfile(token).then(profile => {
+            setOffersPickup(profile.has_pickup_capability || false);
+        }).catch(() => { });
         const interval = setInterval(async () => {
             try { setUnreadMap(await api.getPerDonationUnread(token).catch(() => ({}))); } catch { }
         }, 15000);
         return () => clearInterval(interval);
     }, [token]);
+
+    const handleTogglePickup = async () => {
+        setTogglingPickup(true);
+        try {
+            const updated = await api.updateAcceptorProfile(token, { has_pickup_capability: !offersPickup });
+            setOffersPickup(updated.has_pickup_capability);
+        } catch (err) {
+            console.error('Failed to toggle pickup:', err);
+        } finally {
+            setTogglingPickup(false);
+        }
+    };
 
     const handleAccept = async (e, id) => {
         e.stopPropagation();
@@ -192,6 +210,32 @@ export default function AcceptorDashboard() {
             <div className="max-w-6xl mx-auto px-6 py-8">
                 <h1 className="text-2xl font-bold text-gray-900 mb-6">NGO Dashboard</h1>
 
+                {/* Pickup Capability Toggle */}
+                <div className="bg-white rounded-2xl shadow-sm border border-gray-100 p-5 mb-6 flex items-center justify-between">
+                    <div className="flex items-center space-x-3">
+                        <div className="p-2 rounded-xl bg-gradient-to-r from-indigo-500 to-purple-600">
+                            <Truck className="w-5 h-5 text-white" />
+                        </div>
+                        <div>
+                            <div className="font-semibold text-gray-900">Pickup Service</div>
+                            <div className="text-xs text-gray-500">Allow donors to request pickup from your organization</div>
+                        </div>
+                    </div>
+                    <label className="relative inline-flex items-center cursor-pointer">
+                        <input
+                            type="checkbox"
+                            checked={offersPickup}
+                            onChange={handleTogglePickup}
+                            disabled={togglingPickup}
+                            className="sr-only peer"
+                        />
+                        <div className={`w-11 h-6 bg-gray-200 peer-focus:ring-2 peer-focus:ring-indigo-300 rounded-full peer peer-checked:after:translate-x-full peer-checked:bg-indigo-600 after:content-[''] after:absolute after:top-[2px] after:left-[2px] after:bg-white after:rounded-full after:h-5 after:w-5 after:transition-all ${togglingPickup ? 'opacity-50' : ''}`}></div>
+                        <span className={`ml-3 text-sm font-medium ${offersPickup ? 'text-indigo-700' : 'text-gray-400'}`}>
+                            {offersPickup ? 'Active' : 'Inactive'}
+                        </span>
+                    </label>
+                </div>
+
                 {/* Metrics */}
                 <div className="grid grid-cols-2 md:grid-cols-4 gap-4 mb-8">
                     {metrics.map((metric) => {
@@ -247,3 +291,4 @@ export default function AcceptorDashboard() {
         </div>
     );
 }
+

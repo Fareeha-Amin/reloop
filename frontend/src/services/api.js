@@ -143,6 +143,36 @@ const api = {
         }
     },
 
+    // Acceptor Profile
+    getAcceptorProfile: async (token) => {
+        try {
+            const response = await fetch(`${API_BASE_URL}/users/acceptor-profile/`, {
+                headers: { 'Authorization': `Bearer ${token}` },
+            });
+            return await handleResponse(response);
+        } catch (error) {
+            console.error('Get acceptor profile error:', error);
+            throw error;
+        }
+    },
+
+    updateAcceptorProfile: async (token, data) => {
+        try {
+            const response = await fetch(`${API_BASE_URL}/users/acceptor-profile/`, {
+                method: 'PATCH',
+                headers: {
+                    'Authorization': `Bearer ${token}`,
+                    'Content-Type': 'application/json',
+                },
+                body: JSON.stringify(data),
+            });
+            return await handleResponse(response);
+        } catch (error) {
+            console.error('Update acceptor profile error:', error);
+            throw error;
+        }
+    },
+
     // Acceptors
     getNearbyAcceptors: async (token, lat, lon, category = '', maxDistance = 50) => {
         try {
