@@ -1,6 +1,6 @@
 import { useState, useEffect } from 'react';
 import { useParams, useNavigate, Link } from 'react-router-dom';
-import { ArrowLeft, Package, MapPin, Calendar, Clock, Truck, MessageCircle, Edit3, Trash2, Loader2, AlertTriangle, Star, Zap } from 'lucide-react';
+import { ArrowLeft, Package, MapPin, Calendar, Clock, Truck, MessageCircle, Edit3, Trash2, Loader2, AlertTriangle, Star, Zap, CheckCircle, Circle, ChevronRight } from 'lucide-react';
 import { useAuth } from '../context/AuthContext';
 import api from '../services/api';
 
@@ -17,6 +17,18 @@ const STATUS_COLORS = {
     WASTE_COLLECTED: 'bg-orange-100 text-orange-700',
 };
 
+// Ordered lifecycle stages for the progress tracker
+const LIFECYCLE_STAGES = [
+    { key: 'MATCHED', label: 'Matched' },
+    { key: 'ACCEPTED', label: 'Accepted' },
+    { key: 'PICKUP_SCHEDULED', label: 'Pickup Scheduled' },
+    { key: 'IN_TRANSIT', label: 'In Transit' },
+    { key: 'DELIVERED', label: 'Delivered' },
+    { key: 'COMPLETED', label: 'Completed' },
+];
+
+const STAGE_ORDER = ['CREATED', 'MATCHED', 'ACCEPTED', 'PICKUP_SCHEDULED', 'IN_TRANSIT', 'DELIVERED', 'COMPLETED'];
+
 export default function DonationDetail() {
     const { id } = useParams();
     const navigate = useNavigate();
@@ -24,10 +36,12 @@ export default function DonationDetail() {
     const [donation, setDonation] = useState(null);
     const [loading, setLoading] = useState(true);
     const [deleting, setDeleting] = useState(false);
+    const [updatingStatus, setUpdatingStatus] = useState(false);
     const [error, setError] = useState('');
 
     const isEditable = donation && ['CREATED', 'MATCHED'].includes(donation.status);
     const isDonor = user?.role === 'DONOR';
+    const isAcceptor = user?.role === 'ACCEPTOR';
 
     useEffect(() => {
         const fetchDonation = async () => {
@@ -55,6 +69,42 @@ export default function DonationDetail() {
         }
     };
 
+    const handleStatusUpdate = async (newStatus) => {
+        setUpdatingStatus(true);
+        try {
+            const data = await api.updateDonationStatus(token, donation.id, newStatus);
+            setDonation(data);
+        } catch (err) {
+            setError(err.message || 'Failed to update status.');
+        } finally {
+            setUpdatingStatus(false);
+        }
+    };
+
+    // Determine what the next action is based on current status and role
+    const getNextAction = () => {
+        if (!donation || ['COMPLETED', 'REJECTED', 'CANCELLED', 'WASTE_COLLECTED'].includes(donation.status)) return null;
+
+        const statusActions = {
+            ACCEPTED: isAcceptor
+                ? { label: 'Schedule Pickup', status: 'PICKUP_SCHEDULED', color: 'bg-indigo-600 hover:bg-indigo-700' }
+                : null,
+            PICKUP_SCHEDULED: isDonor
+                ? { label: 'Mark In Transit', status: 'IN_TRANSIT', color: 'bg-yellow-600 hover:bg-yellow-700' }
+                : null,
+            IN_TRANSIT: isAcceptor
+                ? { label: 'Mark Delivered', status: 'DELIVERED', color: 'bg-emerald-600 hover:bg-emerald-700' }
+                : null,
+            DELIVERED: isAcceptor
+                ? { label: 'Mark Completed', status: 'COMPLETED', color: 'bg-green-600 hover:bg-green-700' }
+                : null,
+        };
+
+        return statusActions[donation.status] || null;
+    };
+
+    const currentStageIndex = donation ? STAGE_ORDER.indexOf(donation.status) : -1;
+
     if (loading) {
         return (
             <div className="min-h-screen bg-gray-50 flex items-center justify-center">
@@ -78,6 +128,7 @@ export default function DonationDetail() {
     const donor = donation.donor || {};
     const acceptor = donation.acceptor || null;
     const aiSuggested = donation.ai_suggested_acceptor || null;
+    const nextAction = getNextAction();
 
     return (
         <div className="min-h-screen bg-gray-50" style={{ fontFamily: "'Inter', sans-serif" }}>
@@ -132,6 +183,72 @@ export default function DonationDetail() {
                         </span>
                     </div>
                 </div>
+
+                {/* Status Progress Tracker */}
+                {!['REJECTED', 'CANCELLED', 'WASTE_COLLECTED', 'CREATED'].includes(donation.status) && (
+                    <div className="bg-white rounded-2xl shadow-sm border border-gray-100 p-6">
+                        <h2 className="text-lg font-bold text-gray-900 mb-5">Donation Progress</h2>
+                        <div className="flex items-center justify-between">
+                            {LIFECYCLE_STAGES.map((stage, i) => {
+                                const stageIdx = STAGE_ORDER.indexOf(stage.key);
+                                const isCurrent = donation.status === stage.key;
+                                const isCompleted = currentStageIndex > stageIdx;
+                                const isPending = currentStageIndex < stageIdx;
+
+                                return (
+                                    <div key={stage.key} className="flex items-center flex-1 last:flex-none">
+                                        <div className="flex flex-col items-center">
+                                            <div className={`w-9 h-9 rounded-full flex items-center justify-center transition-all duration-300 ${isCompleted ? 'bg-green-600 text-white' :
+                                                    isCurrent ? 'bg-blue-600 text-white ring-4 ring-blue-100' :
+                                                        'bg-gray-200 text-gray-400'
+                                                }`}>
+                                                {isCompleted ? (
+                                                    <CheckCircle className="w-5 h-5" />
+                                                ) : (
+                                                    <span className="text-xs font-bold">{i + 1}</span>
+                                                )}
+                                            </div>
+                                            <span className={`text-xs mt-2 font-medium text-center w-20 ${isCurrent ? 'text-blue-700' : isCompleted ? 'text-green-700' : 'text-gray-400'
+                                                }`}>
+                                                {stage.label}
+                                            </span>
+                                        </div>
+                                        {i < LIFECYCLE_STAGES.length - 1 && (
+                                            <div className={`flex-1 h-1 mx-1 rounded-full transition-all duration-300 ${isCompleted ? 'bg-green-400' : 'bg-gray-200'
+                                                }`} />
+                                        )}
+                                    </div>
+                                );
+                            })}
+                        </div>
+
+                        {/* Next Action Button */}
+                        {nextAction && (
+                            <div className="mt-6 pt-4 border-t border-gray-100">
+                                <button
+                                    onClick={() => handleStatusUpdate(nextAction.status)}
+                                    disabled={updatingStatus}
+                                    className={`w-full flex items-center justify-center space-x-2 px-6 py-3 text-white rounded-xl font-semibold transition-all duration-200 ${nextAction.color} disabled:opacity-50`}
+                                >
+                                    {updatingStatus ? (
+                                        <><Loader2 className="w-5 h-5 animate-spin" /><span>Updating...</span></>
+                                    ) : (
+                                        <><ChevronRight className="w-5 h-5" /><span>{nextAction.label}</span></>
+                                    )}
+                                </button>
+                            </div>
+                        )}
+
+                        {donation.status === 'COMPLETED' && (
+                            <div className="mt-6 pt-4 border-t border-gray-100 text-center">
+                                <div className="inline-flex items-center space-x-2 px-4 py-2 bg-green-50 text-green-700 rounded-xl">
+                                    <CheckCircle className="w-5 h-5" />
+                                    <span className="font-semibold">Donation Completed Successfully!</span>
+                                </div>
+                            </div>
+                        )}
+                    </div>
+                )}
 
                 {/* Details Grid */}
                 <div className="grid grid-cols-1 md:grid-cols-2 gap-6">
@@ -269,3 +386,4 @@ export default function DonationDetail() {
         </div>
     );
 }
+

@@ -96,6 +96,36 @@ const api = {
         }
     },
 
+    rejectDonation: async (token, id) => {
+        try {
+            const response = await fetch(`${API_BASE_URL}/donations/${id}/reject/`, {
+                method: 'POST',
+                headers: { 'Authorization': `Bearer ${token}` },
+            });
+            return await handleResponse(response);
+        } catch (error) {
+            console.error('Reject donation error:', error);
+            throw error;
+        }
+    },
+
+    updateDonationStatus: async (token, id, status) => {
+        try {
+            const response = await fetch(`${API_BASE_URL}/donations/${id}/status/`, {
+                method: 'PATCH',
+                headers: {
+                    'Authorization': `Bearer ${token}`,
+                    'Content-Type': 'application/json',
+                },
+                body: JSON.stringify({ status }),
+            });
+            return await handleResponse(response);
+        } catch (error) {
+            console.error('Update donation status error:', error);
+            throw error;
+        }
+    },
+
     // AI - NGO Suggestions
     getSuggestedNGOs: async (token, category, lat, lon) => {
         try {

@@ -84,7 +84,8 @@ export default function DonorDashboard() {
         value: donations.filter(d => new Date(d.created_at).getMonth() === i).length,
     }));
     const completedCount = donations.filter(d => ['COMPLETED', 'DELIVERED'].includes(d.status)).length;
-    const completionPct = totalDonations > 0 ? Math.round((completedCount / totalDonations) * 100) : 0;
+    const activeDonations = donations.filter(d => !['REJECTED', 'CANCELLED'].includes(d.status)).length;
+    const completionPct = activeDonations > 0 ? Math.round((completedCount / activeDonations) * 100) : 0;
 
     const metrics = [
         {
@@ -103,7 +104,7 @@ export default function DonorDashboard() {
         },
         {
             key: 'impact', label: 'Completion Rate', value: `${completionPct}%`, icon: Award, color: 'from-purple-500 to-indigo-600',
-            detail: (<div><div className="w-full bg-gray-200 rounded-full h-2.5"><div className="bg-purple-600 h-2.5 rounded-full transition-all" style={{ width: `${completionPct}%` }} /></div><p className="text-xs text-gray-500 mt-2">{completedCount} of {totalDonations} completed</p></div>)
+            detail: (<div><div className="w-full bg-gray-200 rounded-full h-2.5"><div className="bg-purple-600 h-2.5 rounded-full transition-all" style={{ width: `${completionPct}%` }} /></div><p className="text-xs text-gray-500 mt-2">{completedCount} of {activeDonations} active donations completed</p></div>)
         },
     ];
 
