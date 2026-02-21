@@ -1,8 +1,15 @@
 import { useState, useEffect } from 'react';
 import { useNavigate, Link } from 'react-router-dom';
-import { Leaf, Package, CheckCircle, Clock, LogOut, MessageCircle, Loader2 } from 'lucide-react';
+import { Package, Leaf, LogOut, Loader2, MessageCircle, Check, X, ChevronDown, ChevronUp, Inbox, CheckCircle, ListChecks, BarChart3 } from 'lucide-react';
 import { useAuth } from '../context/AuthContext';
 import api from '../services/api';
+
+const STATUS_COLORS = {
+    CREATED: 'bg-gray-100 text-gray-700', MATCHED: 'bg-blue-100 text-blue-700', ACCEPTED: 'bg-green-100 text-green-700',
+    PICKUP_SCHEDULED: 'bg-indigo-100 text-indigo-700', IN_TRANSIT: 'bg-yellow-100 text-yellow-800',
+    DELIVERED: 'bg-emerald-100 text-emerald-700', COMPLETED: 'bg-green-200 text-green-800',
+    REJECTED: 'bg-red-100 text-red-700', WASTE_COLLECTED: 'bg-orange-100 text-orange-700',
+};
 
 export default function AcceptorDashboard() {
     const { user, token, logout } = useAuth();
@@ -10,216 +17,232 @@ export default function AcceptorDashboard() {
     const [donations, setDonations] = useState([]);
     const [loading, setLoading] = useState(true);
     const [acceptingId, setAcceptingId] = useState(null);
-    const [unreadCount, setUnreadCount] = useState(0);
+    const [rejectingId, setRejectingId] = useState(null);
+    const [unreadMap, setUnreadMap] = useState({});
+    const [expandedMetric, setExpandedMetric] = useState(null);
 
-    useEffect(() => {
-        loadDonations();
-    }, []);
-
-    const loadDonations = async () => {
+    const fetchData = async () => {
         try {
-            const [data, unread] = await Promise.all([
+            const [donData, unreadData] = await Promise.all([
                 api.getDonations(token),
-                api.getUnreadCount(token).catch(() => ({ unread_count: 0 })),
+                api.getPerDonationUnread(token).catch(() => ({})),
             ]);
-            const donationsList = Array.isArray(data) ? data : (data?.results || []);
-            setDonations(donationsList);
-            setUnreadCount(unread.unread_count || 0);
+            setDonations(Array.isArray(donData) ? donData : (donData?.results || []));
+            setUnreadMap(unreadData || {});
         } catch (err) {
-            console.error('Error:', err);
-            setDonations([]);
+            console.error('Dashboard error:', err);
         } finally {
             setLoading(false);
         }
     };
 
-    const handleAccept = async (id) => {
+    useEffect(() => {
+        fetchData();
+        const interval = setInterval(async () => {
+            try { setUnreadMap(await api.getPerDonationUnread(token).catch(() => ({}))); } catch { }
+        }, 15000);
+        return () => clearInterval(interval);
+    }, [token]);
+
+    const handleAccept = async (e, id) => {
+        e.stopPropagation();
         setAcceptingId(id);
         try {
             await api.acceptDonation(token, id);
-            await loadDonations();
+            await fetchData();
         } catch (err) {
-            console.error('Error accepting:', err);
+            alert(err.message || 'Failed to accept.');
         } finally {
             setAcceptingId(null);
         }
     };
 
-    const handleLogout = () => {
-        logout();
-        navigate('/');
+    const handleReject = async (e, id) => {
+        e.stopPropagation();
+        if (!window.confirm('Reject this donation?')) return;
+        setRejectingId(id);
+        try {
+            await api.rejectDonation(token, id);
+            await fetchData();
+        } catch (err) {
+            alert(err.message || 'Failed to reject.');
+        } finally {
+            setRejectingId(null);
+        }
     };
 
     const pendingDonations = donations.filter(d => d.status === 'CREATED' || d.status === 'MATCHED');
     const acceptedDonations = donations.filter(d => ['ACCEPTED', 'PICKUP_SCHEDULED', 'IN_TRANSIT', 'DELIVERED', 'COMPLETED'].includes(d.status));
 
-    const statusColors = {
-        CREATED: 'bg-blue-100 text-blue-700',
-        MATCHED: 'bg-purple-100 text-purple-700',
-        ACCEPTED: 'bg-green-100 text-green-700',
-        PICKUP_SCHEDULED: 'bg-yellow-100 text-yellow-700',
-        IN_TRANSIT: 'bg-orange-100 text-orange-700',
-        DELIVERED: 'bg-teal-100 text-teal-700',
-        COMPLETED: 'bg-emerald-100 text-emerald-700',
-    };
+    // Metrics
+    const totalReceived = acceptedDonations.length;
+    const activeRequests = pendingDonations.length;
+    const completedCount = donations.filter(d => d.status === 'COMPLETED').length;
+    const catStats = {};
+    acceptedDonations.forEach(d => { catStats[d.category] = (catStats[d.category] || 0) + 1; });
+    const monthNames = ['Jan', 'Feb', 'Mar', 'Apr', 'May', 'Jun', 'Jul', 'Aug', 'Sep', 'Oct', 'Nov', 'Dec'];
+    const monthlyData = monthNames.map((label, i) => ({
+        label,
+        value: acceptedDonations.filter(d => new Date(d.created_at).getMonth() === i).length,
+    }));
+    const totalItems = acceptedDonations.reduce((sum, d) => sum + d.quantity, 0);
+    const impactKg = acceptedDonations.reduce((sum, d) => {
+        const w = { CLOTHES: 0.5, TOYS: 0.3, BOOKS: 0.8 };
+        return sum + d.quantity * (w[d.category] || 0.5);
+    }, 0);
+
+    const metrics = [
+        {
+            key: 'received', label: 'Donations Received', value: totalReceived, icon: CheckCircle, color: 'from-green-500 to-emerald-600',
+            detail: (<div className="space-y-2">{Object.entries(catStats).map(([cat, count]) => (
+                <div key={cat} className="flex justify-between text-sm"><span className="text-gray-600">{cat}</span><span className="font-semibold">{count}</span></div>
+            ))}{Object.keys(catStats).length === 0 && <p className="text-sm text-gray-400">No donations yet</p>}</div>)
+        },
+        {
+            key: 'active', label: 'Active Requests', value: activeRequests, icon: Inbox, color: 'from-blue-500 to-blue-600',
+            detail: (<div className="space-y-2">{pendingDonations.slice(0, 3).map(d => (
+                <div key={d.id} className="flex justify-between text-sm"><span className="text-gray-600">{d.category}</span><span className="font-semibold">{d.quantity} items</span></div>
+            ))}</div>)
+        },
+        {
+            key: 'items', label: 'Total Items Received', value: totalItems, icon: Package, color: 'from-purple-500 to-indigo-600',
+            detail: (<div className="flex items-end space-x-1 h-16">{monthlyData.map((d, i) => {
+                const max = Math.max(...monthlyData.map(m => m.value), 1);
+                return (<div key={i} className="flex-1 flex flex-col items-center">
+                    <div className="w-full rounded-t-sm bg-purple-500" style={{ height: `${(d.value / max) * 100}%`, minHeight: '2px' }} />
+                    <span className="text-[9px] text-gray-400 mt-1">{d.label}</span>
+                </div>);
+            })}</div>)
+        },
+        {
+            key: 'impact', label: 'Impact Generated', value: `${impactKg.toFixed(1)} kg`, icon: BarChart3, color: 'from-teal-500 to-cyan-600',
+            detail: (<div className="text-sm text-gray-600"><p>≈ {(impactKg * 2.5 / 21.7).toFixed(1)} trees equivalent saved</p><p className="mt-1">{completedCount} donations completed</p></div>)
+        },
+    ];
 
     if (loading) {
-        return (
-            <div className="min-h-screen flex items-center justify-center bg-gray-50">
-                <Loader2 className="w-10 h-10 text-green-600 animate-spin" />
-            </div>
-        );
+        return (<div className="min-h-screen bg-gray-50 flex items-center justify-center"><Loader2 className="w-8 h-8 text-green-600 animate-spin" /></div>);
     }
 
-    return (
-        <div className="min-h-screen bg-gradient-to-br from-gray-50 to-emerald-50" style={{ fontFamily: "'Inter', sans-serif" }}>
-            {/* Navbar */}
-            <nav className="bg-white/80 backdrop-blur-lg shadow-sm sticky top-0 z-50">
-                <div className="container mx-auto px-6 py-4 flex items-center justify-between">
-                    <div className="flex items-center space-x-2">
-                        <div className="bg-gradient-to-r from-green-600 to-emerald-600 p-1.5 rounded-lg">
-                            <Leaf className="w-5 h-5 text-white" />
+    const DonationCard = ({ donation, showActions }) => {
+        const unread = unreadMap[donation.id] || 0;
+        return (
+            <div onClick={() => navigate(`/donation/${donation.id}`)}
+                className="p-5 hover:bg-gray-50 cursor-pointer transition group">
+                <div className="flex items-center justify-between">
+                    <div className="flex-1">
+                        <div className="flex items-center space-x-2 mb-1">
+                            <span className="font-bold text-gray-900">{donation.category}</span>
+                            <span className="text-gray-400">·</span>
+                            <span className="text-sm text-gray-500">{donation.quantity} items</span>
+                            {donation.is_priority && <span className="px-2 py-0.5 bg-orange-100 text-orange-700 text-xs font-bold rounded-full">⚡ Priority</span>}
+                            <span className={`px-2 py-0.5 rounded-full text-xs font-semibold ${STATUS_COLORS[donation.status] || ''}`}>
+                                {donation.status?.replace(/_/g, ' ')}
+                            </span>
                         </div>
-                        <span className="text-lg font-bold bg-gradient-to-r from-green-700 to-emerald-600 bg-clip-text text-transparent">ReLoop</span>
-                        <span className="text-xs bg-emerald-100 text-emerald-700 px-2 py-1 rounded-full font-medium">NGO</span>
+                        <p className="text-sm text-gray-500">{donation.pickup_address?.substring(0, 60)}...</p>
+                        <p className="text-xs text-gray-400 mt-1">by {donation.donor_name}</p>
+                    </div>
+                    <div className="flex items-center space-x-2">
+                        {unread > 0 && (
+                            <Link to={`/chat/${donation.id}`} onClick={e => e.stopPropagation()} className="relative p-2 hover:bg-green-50 rounded-lg transition">
+                                <MessageCircle className="w-5 h-5 text-green-600" />
+                                <span className="absolute -top-1 -right-1 w-5 h-5 bg-red-500 text-white text-[10px] font-bold rounded-full flex items-center justify-center">{unread}</span>
+                            </Link>
+                        )}
+                        {showActions && (
+                            <>
+                                <button onClick={(e) => handleAccept(e, donation.id)} disabled={acceptingId === donation.id}
+                                    className="px-3 py-1.5 bg-green-600 text-white rounded-lg text-sm font-semibold hover:bg-green-700 transition flex items-center space-x-1">
+                                    {acceptingId === donation.id ? <Loader2 className="w-4 h-4 animate-spin" /> : <Check className="w-4 h-4" />}
+                                    <span>Accept</span>
+                                </button>
+                                <button onClick={(e) => handleReject(e, donation.id)} disabled={rejectingId === donation.id}
+                                    className="px-3 py-1.5 bg-red-50 text-red-600 rounded-lg text-sm font-semibold hover:bg-red-100 transition flex items-center space-x-1">
+                                    {rejectingId === donation.id ? <Loader2 className="w-4 h-4 animate-spin" /> : <X className="w-4 h-4" />}
+                                    <span>Reject</span>
+                                </button>
+                            </>
+                        )}
+                    </div>
+                </div>
+            </div>
+        );
+    };
+
+    return (
+        <div className="min-h-screen bg-gray-50" style={{ fontFamily: "'Inter', sans-serif" }}>
+            {/* Navbar */}
+            <nav className="bg-white/80 backdrop-blur-lg border-b border-gray-200 sticky top-0 z-20">
+                <div className="max-w-6xl mx-auto px-6 py-3 flex items-center justify-between">
+                    <div className="flex items-center space-x-2">
+                        <div className="bg-gradient-to-r from-green-600 to-emerald-600 p-1.5 rounded-lg"><Leaf className="w-5 h-5 text-white" /></div>
+                        <span className="text-xl font-bold bg-gradient-to-r from-green-700 to-emerald-600 bg-clip-text text-transparent">ReLoop</span>
                     </div>
                     <div className="flex items-center space-x-4">
-                        <span className="text-sm text-gray-500">{user?.username}</span>
-                        {unreadCount > 0 && (
-                            <span className="px-2 py-1 bg-red-500 text-white text-xs font-bold rounded-full">{unreadCount}</span>
-                        )}
-                        <button onClick={handleLogout} className="text-gray-400 hover:text-red-500 transition">
-                            <LogOut className="w-5 h-5" />
-                        </button>
+                        <span className="text-sm text-gray-600">{user?.acceptor_profile?.organization_name || user?.username}</span>
+                        <Link to="/acceptor/needs" className="flex items-center space-x-1 px-3 py-2 bg-blue-50 text-blue-700 rounded-lg hover:bg-blue-100 transition text-sm font-medium">
+                            <ListChecks className="w-4 h-4" /><span>Needs List</span>
+                        </Link>
+                        <button onClick={logout} className="flex items-center space-x-1 text-gray-500 hover:text-gray-700 text-sm"><LogOut className="w-4 h-4" /><span>Logout</span></button>
                     </div>
                 </div>
             </nav>
 
-            <div className="container mx-auto px-6 py-8">
-                <div className="mb-8">
-                    <h1 className="text-2xl font-bold text-gray-900">NGO Dashboard</h1>
-                    <p className="text-gray-500 text-sm">Accept and manage incoming donations</p>
-                </div>
+            <div className="max-w-6xl mx-auto px-6 py-8">
+                <h1 className="text-2xl font-bold text-gray-900 mb-6">NGO Dashboard</h1>
 
-                {/* Stats */}
-                <div className="grid grid-cols-3 gap-4 mb-8">
-                    <div className="bg-white rounded-2xl shadow-sm border border-gray-100 p-5">
-                        <div className="flex items-center space-x-3 mb-2">
-                            <div className="p-2 rounded-xl bg-blue-100">
-                                <Clock className="w-5 h-5 text-blue-600" />
+                {/* Metrics */}
+                <div className="grid grid-cols-2 md:grid-cols-4 gap-4 mb-8">
+                    {metrics.map((metric) => {
+                        const Icon = metric.icon;
+                        const isExpanded = expandedMetric === metric.key;
+                        return (
+                            <div key={metric.key}>
+                                <div onClick={() => setExpandedMetric(isExpanded ? null : metric.key)}
+                                    className="bg-white rounded-2xl shadow-sm border border-gray-100 p-5 cursor-pointer hover:shadow-md transition-all duration-200 group">
+                                    <div className="flex items-center justify-between mb-3">
+                                        <div className={`p-2 rounded-xl bg-gradient-to-r ${metric.color}`}><Icon className="w-5 h-5 text-white" /></div>
+                                        <div className="text-gray-300 group-hover:text-gray-400 transition">{isExpanded ? <ChevronUp className="w-4 h-4" /> : <ChevronDown className="w-4 h-4" />}</div>
+                                    </div>
+                                    <div className="text-2xl font-bold text-gray-900">{metric.value}</div>
+                                    <div className="text-xs text-gray-500 mt-1">{metric.label}</div>
+                                </div>
+                                {isExpanded && (<div className="bg-white rounded-xl shadow-sm border border-gray-100 p-4 mt-2 animate-fadeIn">{metric.detail}</div>)}
                             </div>
-                        </div>
-                        <div className="text-2xl font-bold text-gray-900">{pendingDonations.length}</div>
-                        <div className="text-xs text-gray-500">Pending</div>
-                    </div>
-                    <div className="bg-white rounded-2xl shadow-sm border border-gray-100 p-5">
-                        <div className="flex items-center space-x-3 mb-2">
-                            <div className="p-2 rounded-xl bg-green-100">
-                                <CheckCircle className="w-5 h-5 text-green-600" />
-                            </div>
-                        </div>
-                        <div className="text-2xl font-bold text-gray-900">{acceptedDonations.length}</div>
-                        <div className="text-xs text-gray-500">Accepted</div>
-                    </div>
-                    <div className="bg-white rounded-2xl shadow-sm border border-gray-100 p-5">
-                        <div className="flex items-center space-x-3 mb-2">
-                            <div className="p-2 rounded-xl bg-purple-100">
-                                <Package className="w-5 h-5 text-purple-600" />
-                            </div>
-                        </div>
-                        <div className="text-2xl font-bold text-gray-900">{donations.length}</div>
-                        <div className="text-xs text-gray-500">Total Items</div>
-                    </div>
+                        );
+                    })}
                 </div>
 
                 {/* Pending Donations */}
                 <div className="bg-white rounded-2xl shadow-sm border border-gray-100 mb-6">
-                    <div className="p-6 border-b border-gray-100">
-                        <h2 className="text-lg font-bold text-gray-900 flex items-center space-x-2">
-                            <Clock className="w-5 h-5 text-blue-600" />
-                            <span>Available Donations</span>
-                            {pendingDonations.length > 0 && (
-                                <span className="px-2 py-0.5 bg-blue-100 text-blue-700 text-xs font-bold rounded-full">{pendingDonations.length}</span>
-                            )}
-                        </h2>
+                    <div className="p-5 border-b border-gray-100 flex items-center justify-between">
+                        <h2 className="text-lg font-bold text-gray-900">Pending Requests</h2>
+                        <span className="px-2 py-0.5 bg-blue-100 text-blue-700 text-xs font-bold rounded-full">{pendingDonations.length}</span>
                     </div>
                     {pendingDonations.length === 0 ? (
-                        <div className="p-12 text-center text-gray-400">
-                            <p>No pending donations at the moment</p>
-                        </div>
+                        <div className="p-8 text-center text-gray-400"><Inbox className="w-8 h-8 mx-auto mb-2 opacity-50" /><p>No pending requests</p></div>
                     ) : (
-                        <div className="divide-y divide-gray-50">
-                            {pendingDonations.map((donation) => (
-                                <div key={donation.id} className="p-5 hover:bg-gray-50 transition">
-                                    <div className="flex items-center justify-between">
-                                        <div className="flex-1">
-                                            <div className="flex items-center space-x-3 mb-1">
-                                                <span className="text-lg">
-                                                    {donation.category === 'CLOTHES' ? '👕' : donation.category === 'TOYS' ? '🧸' : '📚'}
-                                                </span>
-                                                <h3 className="font-semibold text-gray-900">{donation.category} × {donation.quantity}</h3>
-                                                {donation.is_priority && (
-                                                    <span className="px-2 py-0.5 bg-orange-100 text-orange-700 text-xs font-bold rounded-full">⚡ Priority</span>
-                                                )}
-                                            </div>
-                                            <p className="text-sm text-gray-500">{donation.description || 'No description'}</p>
-                                            <p className="text-xs text-gray-400 mt-1">by {donation.donor_name} • {donation.pickup_address}</p>
-                                        </div>
-                                        <button
-                                            onClick={() => handleAccept(donation.id)}
-                                            disabled={acceptingId === donation.id}
-                                            className="px-4 py-2 bg-green-600 text-white rounded-xl text-sm font-semibold hover:bg-green-700 transition disabled:opacity-50 flex items-center space-x-2"
-                                        >
-                                            {acceptingId === donation.id ? (
-                                                <Loader2 className="w-4 h-4 animate-spin" />
-                                            ) : (
-                                                <span>Accept</span>
-                                            )}
-                                        </button>
-                                    </div>
-                                </div>
-                            ))}
+                        <div className="divide-y divide-gray-100">
+                            {pendingDonations.map(d => <DonationCard key={d.id} donation={d} showActions={true} />)}
                         </div>
                     )}
                 </div>
 
                 {/* Accepted Donations */}
-                {acceptedDonations.length > 0 && (
-                    <div className="bg-white rounded-2xl shadow-sm border border-gray-100">
-                        <div className="p-6 border-b border-gray-100">
-                            <h2 className="text-lg font-bold text-gray-900 flex items-center space-x-2">
-                                <CheckCircle className="w-5 h-5 text-green-600" />
-                                <span>Accepted Donations</span>
-                            </h2>
-                        </div>
-                        <div className="divide-y divide-gray-50">
-                            {acceptedDonations.map((donation) => (
-                                <div key={donation.id} className="p-5 hover:bg-gray-50 transition">
-                                    <div className="flex items-center justify-between">
-                                        <div className="flex-1">
-                                            <div className="flex items-center space-x-3 mb-1">
-                                                <span className="text-lg">
-                                                    {donation.category === 'CLOTHES' ? '👕' : donation.category === 'TOYS' ? '🧸' : '📚'}
-                                                </span>
-                                                <h3 className="font-semibold text-gray-900">{donation.category} × {donation.quantity}</h3>
-                                                <span className={`px-2 py-0.5 rounded-full text-xs font-medium ${statusColors[donation.status] || 'bg-gray-100 text-gray-600'}`}>
-                                                    {donation.status?.replace(/_/g, ' ')}
-                                                </span>
-                                            </div>
-                                            <p className="text-sm text-gray-500">by {donation.donor_name}</p>
-                                        </div>
-                                        <Link
-                                            to={`/chat/${donation.id}`}
-                                            className="p-2 text-gray-400 hover:text-green-600 hover:bg-green-50 rounded-lg transition"
-                                        >
-                                            <MessageCircle className="w-5 h-5" />
-                                        </Link>
-                                    </div>
-                                </div>
-                            ))}
-                        </div>
+                <div className="bg-white rounded-2xl shadow-sm border border-gray-100">
+                    <div className="p-5 border-b border-gray-100 flex items-center justify-between">
+                        <h2 className="text-lg font-bold text-gray-900">Accepted Donations</h2>
+                        <span className="px-2 py-0.5 bg-green-100 text-green-700 text-xs font-bold rounded-full">{acceptedDonations.length}</span>
                     </div>
-                )}
+                    {acceptedDonations.length === 0 ? (
+                        <div className="p-8 text-center text-gray-400"><CheckCircle className="w-8 h-8 mx-auto mb-2 opacity-50" /><p>No accepted donations yet</p></div>
+                    ) : (
+                        <div className="divide-y divide-gray-100">
+                            {acceptedDonations.map(d => <DonationCard key={d.id} donation={d} showActions={false} />)}
+                        </div>
+                    )}
+                </div>
             </div>
         </div>
     );

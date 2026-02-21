@@ -67,6 +67,10 @@ def get_matching_score(donation, acceptor_profile):
     if acceptor_profile.average_rating > 0:
         score += int(acceptor_profile.average_rating * 2)
     
+    # Apply priority multiplier
+    if hasattr(donation, 'is_priority') and donation.is_priority:
+        score = int(score * 1.3)
+
     return min(score, 100)
 
 

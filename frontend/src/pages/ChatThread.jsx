@@ -22,7 +22,7 @@ export default function ChatThread() {
     const loadMessages = async () => {
         try {
             const data = await api.getMessages(token, donationId);
-            setMessages(Array.isArray(data) ? data : []);
+            setMessages(Array.isArray(data) ? data : (data?.results || []));
         } catch (err) {
             console.error('Failed to load messages:', err);
         } finally {
@@ -107,8 +107,8 @@ export default function ChatThread() {
                                 )}
                                 <div className={`flex ${isOwn ? 'justify-end' : 'justify-start'}`}>
                                     <div className={`max-w-xs lg:max-w-md px-4 py-2.5 rounded-2xl ${isOwn
-                                            ? 'bg-green-600 text-white rounded-br-md'
-                                            : 'bg-white shadow-sm border border-gray-100 text-gray-900 rounded-bl-md'
+                                        ? 'bg-green-600 text-white rounded-br-md'
+                                        : 'bg-white shadow-sm border border-gray-100 text-gray-900 rounded-bl-md'
                                         }`}>
                                         {!isOwn && (
                                             <p className="text-xs font-semibold text-green-600 mb-1">

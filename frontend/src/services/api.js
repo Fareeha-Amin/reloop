@@ -5,9 +5,19 @@ const handleResponse = async (response) => {
     const data = await response.json().catch(() => ({}));
 
     if (!response.ok) {
-        const error = new Error(data.detail || data.error || 'Request failed');
+        const message = data.detail || data.error || data.message || 'Request failed';
+        const error = new Error(message);
+        // Django returns field-level errors under 'errors' key
         if (data.errors) {
             error.fieldErrors = data.errors;
+        }
+        // Also handle DRF's default format where field names are top-level keys
+        if (!data.errors && !data.detail && !data.error && typeof data === 'object') {
+            const fieldKeys = Object.keys(data).filter(k => Array.isArray(data[k]));
+            if (fieldKeys.length > 0) {
+                error.fieldErrors = {};
+                fieldKeys.forEach(k => { error.fieldErrors[k] = data[k]; });
+            }
         }
         throw error;
     }
@@ -213,6 +223,175 @@ const api = {
         } catch (error) {
             console.error('Complete payment error:', error);
             throw error;
+        }
+    },
+
+    getPayments: async (token) => {
+        try {
+            const response = await fetch(`${API_BASE_URL}/payments/`, {
+                headers: { 'Authorization': `Bearer ${token}` },
+            });
+            return await handleResponse(response);
+        } catch (error) {
+            console.error('Get payments error:', error);
+            throw error;
+        }
+    },
+
+    // Donation CRUD
+    getDonation: async (token, id) => {
+        try {
+            const response = await fetch(`${API_BASE_URL}/donations/${id}/`, {
+                headers: { 'Authorization': `Bearer ${token}` },
+            });
+            return await handleResponse(response);
+        } catch (error) {
+            console.error('Get donation error:', error);
+            throw error;
+        }
+    },
+
+    updateDonation: async (token, id, data) => {
+        try {
+            const response = await fetch(`${API_BASE_URL}/donations/${id}/`, {
+                method: 'PATCH',
+                headers: {
+                    'Authorization': `Bearer ${token}`,
+                    'Content-Type': 'application/json',
+                },
+                body: JSON.stringify(data),
+            });
+            return await handleResponse(response);
+        } catch (error) {
+            console.error('Update donation error:', error);
+            throw error;
+        }
+    },
+
+    deleteDonation: async (token, id) => {
+        try {
+            const response = await fetch(`${API_BASE_URL}/donations/${id}/`, {
+                method: 'DELETE',
+                headers: { 'Authorization': `Bearer ${token}` },
+            });
+            if (response.status === 204) return {};
+            return await handleResponse(response);
+        } catch (error) {
+            console.error('Delete donation error:', error);
+            throw error;
+        }
+    },
+
+    rejectDonation: async (token, id) => {
+        try {
+            const response = await fetch(`${API_BASE_URL}/donations/${id}/reject/`, {
+                method: 'POST',
+                headers: { 'Authorization': `Bearer ${token}` },
+            });
+            return await handleResponse(response);
+        } catch (error) {
+            console.error('Reject donation error:', error);
+            throw error;
+        }
+    },
+
+    triggerFallback: async (token, donationId) => {
+        try {
+            const response = await fetch(`${API_BASE_URL}/donations/${donationId}/fallback/`, {
+                method: 'POST',
+                headers: { 'Authorization': `Bearer ${token}` },
+            });
+            return await handleResponse(response);
+        } catch (error) {
+            console.error('Trigger fallback error:', error);
+            throw error;
+        }
+    },
+
+    // Per-donation unread counts
+    getPerDonationUnread: async (token) => {
+        try {
+            const response = await fetch(`${API_BASE_URL}/messaging/unread/per-donation/`, {
+                headers: { 'Authorization': `Bearer ${token}` },
+            });
+            return await handleResponse(response);
+        } catch (error) {
+            console.error('Get per-donation unread error:', error);
+            throw error;
+        }
+    },
+
+    // Needs List CRUD
+    getNeeds: async (token) => {
+        try {
+            const response = await fetch(`${API_BASE_URL}/acceptors/needs/`, {
+                headers: { 'Authorization': `Bearer ${token}` },
+            });
+            return await handleResponse(response);
+        } catch (error) {
+            console.error('Get needs error:', error);
+            throw error;
+        }
+    },
+
+    createNeed: async (token, data) => {
+        try {
+            const response = await fetch(`${API_BASE_URL}/acceptors/needs/`, {
+                method: 'POST',
+                headers: {
+                    'Authorization': `Bearer ${token}`,
+                    'Content-Type': 'application/json',
+                },
+                body: JSON.stringify(data),
+            });
+            return await handleResponse(response);
+        } catch (error) {
+            console.error('Create need error:', error);
+            throw error;
+        }
+    },
+
+    updateNeed: async (token, id, data) => {
+        try {
+            const response = await fetch(`${API_BASE_URL}/acceptors/needs/${id}/`, {
+                method: 'PATCH',
+                headers: {
+                    'Authorization': `Bearer ${token}`,
+                    'Content-Type': 'application/json',
+                },
+                body: JSON.stringify(data),
+            });
+            return await handleResponse(response);
+        } catch (error) {
+            console.error('Update need error:', error);
+            throw error;
+        }
+    },
+
+    deleteNeed: async (token, id) => {
+        try {
+            const response = await fetch(`${API_BASE_URL}/acceptors/needs/${id}/`, {
+                method: 'DELETE',
+                headers: { 'Authorization': `Bearer ${token}` },
+            });
+            if (response.status === 204) return {};
+            return await handleResponse(response);
+        } catch (error) {
+            console.error('Delete need error:', error);
+            throw error;
+        }
+    },
+
+    // Nearby acceptors for map
+    getWasteCollectors: async (token) => {
+        try {
+            const response = await fetch(`${API_BASE_URL}/donations/waste-collectors/`, {
+                headers: { 'Authorization': `Bearer ${token}` },
+            });
+            return await handleResponse(response);
+        } catch (error) {
+            console.error('Get waste collectors error:', error);
+            return [];
         }
     },
 };

@@ -63,6 +63,12 @@ export default function Register() {
             // Parse field-level errors from server
             if (err.fieldErrors) {
                 setErrors(err.fieldErrors);
+                // Build a readable summary of field errors for the banner
+                const messages = Object.entries(err.fieldErrors).map(([field, msgs]) => {
+                    const msg = Array.isArray(msgs) ? msgs[0] : msgs;
+                    return `${field}: ${msg}`;
+                });
+                setGeneralError(messages.join(' | ') || err.message || 'Validation failed.');
             } else {
                 setGeneralError(err.message || 'Registration failed. Please try again.');
             }
@@ -107,8 +113,8 @@ export default function Register() {
                                 type="button"
                                 onClick={() => handleChange('role', 'DONOR')}
                                 className={`p-4 rounded-xl border-2 transition-all duration-200 ${formData.role === 'DONOR'
-                                        ? 'border-green-600 bg-green-50 shadow-sm'
-                                        : 'border-gray-200 hover:border-gray-300'
+                                    ? 'border-green-600 bg-green-50 shadow-sm'
+                                    : 'border-gray-200 hover:border-gray-300'
                                     }`}
                             >
                                 <div className="font-semibold text-gray-900">🤝 Donor</div>
@@ -118,8 +124,8 @@ export default function Register() {
                                 type="button"
                                 onClick={() => handleChange('role', 'ACCEPTOR')}
                                 className={`p-4 rounded-xl border-2 transition-all duration-200 ${formData.role === 'ACCEPTOR'
-                                        ? 'border-green-600 bg-green-50 shadow-sm'
-                                        : 'border-gray-200 hover:border-gray-300'
+                                    ? 'border-green-600 bg-green-50 shadow-sm'
+                                    : 'border-gray-200 hover:border-gray-300'
                                     }`}
                             >
                                 <div className="font-semibold text-gray-900">🏢 NGO/Institution</div>

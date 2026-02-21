@@ -48,3 +48,24 @@ def unread_count(request):
     ).exclude(sender=request.user).count()
 
     return Response({'unread_count': count})
+
+
+@api_view(['GET'])
+@permission_classes([permissions.IsAuthenticated])
+def per_donation_unread(request):
+    """Get unread message counts grouped by donation for current user."""
+    from django.db.models import Count
+
+    user_donations = Donation.objects.filter(
+        Q(donor=request.user) | Q(acceptor=request.user) | Q(ai_suggested_acceptor=request.user)
+    )
+
+    counts = (
+        Message.objects.filter(donation__in=user_donations, is_read=False)
+        .exclude(sender=request.user)
+        .values('donation_id')
+        .annotate(count=Count('id'))
+    )
+
+    result = {item['donation_id']: item['count'] for item in counts}
+    return Response(result)

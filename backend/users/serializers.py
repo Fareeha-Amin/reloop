@@ -11,8 +11,8 @@ class UserRegistrationSerializer(serializers.ModelSerializer):
     
     # Optional profile fields passed alongside user creation
     address = serializers.CharField(write_only=True, required=False, default='')
-    organization_name = serializers.CharField(write_only=True, required=False, default='')
-    contact_person = serializers.CharField(write_only=True, required=False, default='')
+    organization_name = serializers.CharField(write_only=True, required=False, default='', allow_blank=True)
+    contact_person = serializers.CharField(write_only=True, required=False, default='', allow_blank=True)
     
     class Meta:
         model = User
@@ -46,6 +46,10 @@ class UserRegistrationSerializer(serializers.ModelSerializer):
         address = validated_data.pop('address', '')
         organization_name = validated_data.pop('organization_name', '')
         contact_person = validated_data.pop('contact_person', '')
+        
+        # Strip empty phone_number to avoid regex validation failure
+        if not validated_data.get('phone_number'):
+            validated_data.pop('phone_number', None)
         
         user = User.objects.create_user(**validated_data)
         

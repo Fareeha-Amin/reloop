@@ -1,6 +1,6 @@
 import { useState, useEffect } from 'react';
 import { useNavigate } from 'react-router-dom';
-import { Leaf, Upload, ArrowLeft, MapPin, Star, Zap, Clock, Truck, Package, Loader2 } from 'lucide-react';
+import { Leaf, Upload, ArrowLeft, MapPin, Star, Zap, Clock, Truck, Package, Loader2, Calendar } from 'lucide-react';
 import { useAuth } from '../context/AuthContext';
 import api from '../services/api';
 
@@ -54,7 +54,7 @@ export default function CreateDonation() {
         setLoadingNGOs(true);
         try {
             const data = await api.getSuggestedNGOs(token, formData.category);
-            setSuggestedNGOs(Array.isArray(data) ? data : []);
+            setSuggestedNGOs(Array.isArray(data) ? data : (data?.results || []));
         } catch (err) {
             console.error('Failed to fetch NGO suggestions:', err);
         } finally {
@@ -80,7 +80,7 @@ export default function CreateDonation() {
                 }
             });
             if (selectedNGO) {
-                formDataObj.append('ai_suggested_acceptor', selectedNGO.id);
+                formDataObj.append('selected_acceptor', selectedNGO.id);
             }
             images.forEach((image) => {
                 formDataObj.append('uploaded_images', image);
@@ -160,8 +160,8 @@ export default function CreateDonation() {
                                                 type="button"
                                                 onClick={() => setFormData({ ...formData, category: cat.value })}
                                                 className={`p-4 rounded-xl border-2 transition-all duration-200 ${formData.category === cat.value
-                                                        ? 'border-green-600 bg-green-50 shadow-sm'
-                                                        : 'border-gray-200 hover:border-gray-300'
+                                                    ? 'border-green-600 bg-green-50 shadow-sm'
+                                                    : 'border-gray-200 hover:border-gray-300'
                                                     }`}
                                             >
                                                 <div className="text-2xl mb-1">{cat.emoji}</div>
@@ -288,8 +288,8 @@ export default function CreateDonation() {
                                                 key={ngo.id}
                                                 onClick={() => setSelectedNGO(selectedNGO?.id === ngo.id ? null : ngo)}
                                                 className={`p-4 rounded-xl border-2 cursor-pointer transition-all duration-200 ${selectedNGO?.id === ngo.id
-                                                        ? 'border-green-600 bg-green-50 shadow-md'
-                                                        : 'border-gray-200 hover:border-gray-300 hover:shadow-sm'
+                                                    ? 'border-green-600 bg-green-50 shadow-md'
+                                                    : 'border-gray-200 hover:border-gray-300 hover:shadow-sm'
                                                     }`}
                                             >
                                                 <div className="flex items-start justify-between">
@@ -316,9 +316,9 @@ export default function CreateDonation() {
                                                             )}
                                                             {ngo.urgency && (
                                                                 <span className={`px-2 py-0.5 rounded-full text-xs font-medium ${ngo.urgency === 'CRITICAL' ? 'bg-red-100 text-red-700' :
-                                                                        ngo.urgency === 'HIGH' ? 'bg-orange-100 text-orange-700' :
-                                                                            ngo.urgency === 'MEDIUM' ? 'bg-yellow-100 text-yellow-700' :
-                                                                                'bg-gray-100 text-gray-600'
+                                                                    ngo.urgency === 'HIGH' ? 'bg-orange-100 text-orange-700' :
+                                                                        ngo.urgency === 'MEDIUM' ? 'bg-yellow-100 text-yellow-700' :
+                                                                            'bg-gray-100 text-gray-600'
                                                                     }`}>
                                                                     {ngo.urgency} Urgency
                                                                 </span>
@@ -371,8 +371,8 @@ export default function CreateDonation() {
                                                     key={method.value}
                                                     onClick={() => setFormData({ ...formData, delivery_method: method.value })}
                                                     className={`p-4 rounded-xl border-2 cursor-pointer transition-all duration-200 flex items-center space-x-4 ${formData.delivery_method === method.value
-                                                            ? 'border-green-600 bg-green-50'
-                                                            : 'border-gray-200 hover:border-gray-300'
+                                                        ? 'border-green-600 bg-green-50'
+                                                        : 'border-gray-200 hover:border-gray-300'
                                                         }`}
                                                 >
                                                     <Icon className={`w-6 h-6 ${formData.delivery_method === method.value ? 'text-green-600' : 'text-gray-400'}`} />
@@ -397,8 +397,8 @@ export default function CreateDonation() {
                                                     type="button"
                                                     onClick={() => setFormData({ ...formData, logistics_provider_choice: provider })}
                                                     className={`p-3 rounded-lg border-2 text-sm font-semibold transition ${formData.logistics_provider_choice === provider
-                                                            ? 'border-blue-600 bg-blue-100 text-blue-800'
-                                                            : 'border-gray-200 bg-white text-gray-600 hover:border-gray-300'
+                                                        ? 'border-blue-600 bg-blue-100 text-blue-800'
+                                                        : 'border-gray-200 bg-white text-gray-600 hover:border-gray-300'
                                                         }`}
                                                 >
                                                     {provider}
@@ -439,6 +439,47 @@ export default function CreateDonation() {
                                         <p className="text-xs text-gray-500">{selectedNGO.address}</p>
                                     </div>
                                 )}
+                            </div>
+
+                            {/* Deadline & Pickup Window */}
+                            <div className="bg-white rounded-2xl shadow-sm border border-gray-100 p-6">
+                                <h3 className="text-lg font-bold text-gray-900 mb-4 flex items-center space-x-2">
+                                    <Calendar className="w-5 h-5 text-purple-600" />
+                                    <span>Schedule</span>
+                                </h3>
+                                <div className="space-y-4">
+                                    <div>
+                                        <label className="block text-sm font-semibold text-gray-700 mb-2">Donation Deadline</label>
+                                        <input
+                                            type="date"
+                                            className="input-field"
+                                            value={formData.donation_deadline || ''}
+                                            onChange={(e) => setFormData({ ...formData, donation_deadline: e.target.value })}
+                                            min={new Date().toISOString().split('T')[0]}
+                                        />
+                                        <p className="text-xs text-gray-400 mt-1">If no NGO accepts by this date, waste fallback will be triggered</p>
+                                    </div>
+                                    <div className="grid grid-cols-2 gap-4">
+                                        <div>
+                                            <label className="block text-sm font-semibold text-gray-700 mb-2">Preferred Pickup Start</label>
+                                            <input
+                                                type="datetime-local"
+                                                className="input-field"
+                                                value={formData.preferred_pickup_start || ''}
+                                                onChange={(e) => setFormData({ ...formData, preferred_pickup_start: e.target.value })}
+                                            />
+                                        </div>
+                                        <div>
+                                            <label className="block text-sm font-semibold text-gray-700 mb-2">Preferred Pickup End</label>
+                                            <input
+                                                type="datetime-local"
+                                                className="input-field"
+                                                value={formData.preferred_pickup_end || ''}
+                                                onChange={(e) => setFormData({ ...formData, preferred_pickup_end: e.target.value })}
+                                            />
+                                        </div>
+                                    </div>
+                                </div>
                             </div>
 
                             <div className="flex space-x-4">
