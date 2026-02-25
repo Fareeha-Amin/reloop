@@ -139,8 +139,8 @@ def reject_donation(request, donation_id):
     except Donation.DoesNotExist:
         return Response({'error': 'Donation not found'}, status=status.HTTP_404_NOT_FOUND)
     
-    if donation.ai_suggested_acceptor != request.user:
-        return Response({'error': 'You cannot reject this donation'}, status=status.HTTP_403_FORBIDDEN)
+    if donation.status not in ['CREATED', 'MATCHED']:
+        return Response({'error': 'Donation cannot be rejected in its current status'}, status=status.HTTP_400_BAD_REQUEST)
     
     donation.status = 'REJECTED'
     donation.save()
