@@ -173,6 +173,24 @@ const api = {
         }
     },
 
+    // Donor Actions (re-match, upgrade priority, waste redirect)
+    submitDonorAction: async (token, donationId, action) => {
+        try {
+            const response = await fetch(`${API_BASE_URL}/donations/${donationId}/donor-action/`, {
+                method: 'POST',
+                headers: {
+                    'Authorization': `Bearer ${token}`,
+                    'Content-Type': 'application/json',
+                },
+                body: JSON.stringify({ action }),
+            });
+            return await handleResponse(response);
+        } catch (error) {
+            console.error('Donor action error:', error);
+            throw error;
+        }
+    },
+
     // Acceptors
     getNearbyAcceptors: async (token, lat, lon, category = '', maxDistance = 50) => {
         try {

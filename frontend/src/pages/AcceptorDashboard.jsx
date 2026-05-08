@@ -8,7 +8,9 @@ const STATUS_COLORS = {
     CREATED: 'bg-gray-100 text-gray-700', MATCHED: 'bg-blue-100 text-blue-700', ACCEPTED: 'bg-green-100 text-green-700',
     PICKUP_SCHEDULED: 'bg-indigo-100 text-indigo-700', IN_TRANSIT: 'bg-yellow-100 text-yellow-800',
     DELIVERED: 'bg-emerald-100 text-emerald-700', COMPLETED: 'bg-green-200 text-green-800',
-    REJECTED: 'bg-red-100 text-red-700', WASTE_COLLECTED: 'bg-orange-100 text-orange-700',
+    REJECTED: 'bg-red-100 text-red-700', CANCELLED: 'bg-gray-200 text-gray-600',
+    RE_MATCHING: 'bg-amber-100 text-amber-700', ESCALATED: 'bg-orange-100 text-orange-700',
+    WASTE_REDIRECTED: 'bg-purple-100 text-purple-700', WASTE_COLLECTED: 'bg-purple-200 text-purple-800',
 };
 
 export default function AcceptorDashboard() {

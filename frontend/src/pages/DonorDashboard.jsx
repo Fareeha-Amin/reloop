@@ -83,7 +83,7 @@ export default function DonorDashboard() {
         label,
         value: donations.filter(d => new Date(d.created_at).getMonth() === i).length,
     }));
-    const completedCount = donations.filter(d => ['COMPLETED', 'DELIVERED'].includes(d.status)).length;
+    const completedCount = donations.filter(d => ['COMPLETED', 'DELIVERED', 'WASTE_REDIRECTED', 'WASTE_COLLECTED'].includes(d.status)).length;
     const activeDonations = donations.filter(d => !['REJECTED', 'CANCELLED'].includes(d.status)).length;
     const completionPct = activeDonations > 0 ? Math.round((completedCount / activeDonations) * 100) : 0;
 
@@ -112,7 +112,14 @@ export default function DonorDashboard() {
         CREATED: 'bg-gray-100 text-gray-700', MATCHED: 'bg-blue-100 text-blue-700', ACCEPTED: 'bg-green-100 text-green-700',
         PICKUP_SCHEDULED: 'bg-indigo-100 text-indigo-700', IN_TRANSIT: 'bg-yellow-100 text-yellow-800',
         DELIVERED: 'bg-emerald-100 text-emerald-700', COMPLETED: 'bg-green-200 text-green-800',
-        REJECTED: 'bg-red-100 text-red-700', CANCELLED: 'bg-gray-200 text-gray-600', WASTE_COLLECTED: 'bg-orange-100 text-orange-700',
+        REJECTED: 'bg-red-100 text-red-700', CANCELLED: 'bg-gray-200 text-gray-600',
+        RE_MATCHING: 'bg-amber-100 text-amber-700', ESCALATED: 'bg-orange-100 text-orange-700',
+        WASTE_REDIRECTED: 'bg-purple-100 text-purple-700', WASTE_COLLECTED: 'bg-purple-200 text-purple-800',
+    };
+
+    const STATUS_LABELS = {
+        RE_MATCHING: '🔄 Re-Matching', ESCALATED: '⚠️ Escalated',
+        WASTE_REDIRECTED: '♻️ Recycling', WASTE_COLLECTED: '✅ Recycled',
     };
 
     if (loading) {
@@ -180,12 +187,14 @@ export default function DonorDashboard() {
                     ) : (
                         <div className="divide-y divide-gray-100">
                             {donations.map(donation => {
-                                const isEditable = ['CREATED', 'MATCHED'].includes(donation.status);
+                                const isEditable = ['CREATED', 'MATCHED', 'RE_MATCHING', 'ESCALATED'].includes(donation.status);
                                 const unread = unreadMap[donation.id] || 0;
+                                const statusLabel = STATUS_LABELS[donation.status] || donation.status?.replace(/_/g, ' ');
+                                const needsAttention = ['RE_MATCHING', 'ESCALATED'].includes(donation.status);
                                 return (
                                     <div key={donation.id}
                                         onClick={() => navigate(`/donation/${donation.id}`)}
-                                        className="p-5 hover:bg-gray-50 cursor-pointer transition group">
+                                        className={`p-5 hover:bg-gray-50 cursor-pointer transition group ${needsAttention ? 'border-l-4 border-l-amber-400' : ''}`}>
                                         <div className="flex items-center justify-between">
                                             <div className="flex-1">
                                                 <div className="flex items-center space-x-2 mb-1">
@@ -194,11 +203,14 @@ export default function DonorDashboard() {
                                                     <span className="text-sm text-gray-500">{donation.quantity} items</span>
                                                     {donation.is_priority && <span className="px-2 py-0.5 bg-orange-100 text-orange-700 text-xs font-bold rounded-full">⚡ Priority</span>}
                                                     <span className={`px-2 py-0.5 rounded-full text-xs font-semibold ${STATUS_COLORS[donation.status] || ''}`}>
-                                                        {donation.status?.replace(/_/g, ' ')}
+                                                        {statusLabel}
                                                     </span>
                                                 </div>
                                                 <p className="text-sm text-gray-500">{donation.pickup_address?.substring(0, 60)}...</p>
-                                                {donation.acceptor_name && <p className="text-xs text-green-600 mt-1">→ {donation.acceptor_name}</p>}
+                                                {(donation.acceptor_name || donation.ai_suggested_acceptor_name) && <p className="text-xs text-green-600 mt-1">→ {donation.acceptor_name || donation.ai_suggested_acceptor_name}</p>}
+                                                {needsAttention && donation.last_rejected_by_name && (
+                                                    <p className="text-xs text-amber-600 mt-1">⚠ Declined by {donation.last_rejected_by_name} — click to take action</p>
+                                                )}
                                             </div>
                                             <div className="flex items-center space-x-2">
                                                 {unread > 0 && (

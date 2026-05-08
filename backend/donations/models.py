@@ -20,6 +20,8 @@ class Donation(models.Model):
     STATUS_CHOICES = [
         ('CREATED', 'Created'),
         ('MATCHED', 'Matched'),
+        ('RE_MATCHING', 'Re-Matching'),
+        ('ESCALATED', 'Escalated'),
         ('ACCEPTED', 'Accepted'),
         ('PICKUP_SCHEDULED', 'Pickup Scheduled'),
         ('IN_TRANSIT', 'In Transit'),
@@ -27,8 +29,11 @@ class Donation(models.Model):
         ('COMPLETED', 'Completed'),
         ('REJECTED', 'Rejected'),
         ('CANCELLED', 'Cancelled'),
-        ('WASTE_COLLECTED', 'Waste Collected'),
+        ('WASTE_REDIRECTED', 'Redirected to Recycling'),
+        ('WASTE_COLLECTED', 'Waste Processed'),
     ]
+
+    MAX_REJECTIONS = 3  # Configurable max rejection attempts
 
     DELIVERY_METHOD_CHOICES = [
         ('PLATFORM_LOGISTICS', 'Platform Logistics'),
@@ -86,6 +91,17 @@ class Donation(models.Model):
         related_name='ai_suggested_donations'
     )
     matching_score = models.DecimalField(max_digits=5, decimal_places=2, null=True, blank=True)
+
+    # Rejection tracking
+    rejection_count = models.IntegerField(default=0)
+    last_rejected_by = models.ForeignKey(
+        settings.AUTH_USER_MODEL,
+        on_delete=models.SET_NULL,
+        null=True,
+        blank=True,
+        related_name='rejected_donations'
+    )
+    excluded_acceptors = models.JSONField(default=list, blank=True)
     
     created_at = models.DateTimeField(auto_now_add=True)
     updated_at = models.DateTimeField(auto_now=True)

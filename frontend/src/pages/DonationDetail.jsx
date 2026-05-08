@@ -1,12 +1,14 @@
 import { useState, useEffect } from 'react';
 import { useParams, useNavigate, Link } from 'react-router-dom';
-import { ArrowLeft, Package, MapPin, Calendar, Clock, Truck, MessageCircle, Edit3, Trash2, Loader2, AlertTriangle, Star, Zap, CheckCircle, Circle, ChevronRight } from 'lucide-react';
+import { ArrowLeft, Package, MapPin, Calendar, Clock, Truck, MessageCircle, Edit3, Trash2, Loader2, AlertTriangle, Star, Zap, CheckCircle, Circle, ChevronRight, RefreshCw, ArrowUpCircle, Recycle, XCircle } from 'lucide-react';
 import { useAuth } from '../context/AuthContext';
 import api from '../services/api';
 
 const STATUS_COLORS = {
     CREATED: 'bg-gray-100 text-gray-700',
     MATCHED: 'bg-blue-100 text-blue-700',
+    RE_MATCHING: 'bg-amber-100 text-amber-700',
+    ESCALATED: 'bg-orange-100 text-orange-700',
     ACCEPTED: 'bg-green-100 text-green-700',
     PICKUP_SCHEDULED: 'bg-indigo-100 text-indigo-700',
     IN_TRANSIT: 'bg-yellow-100 text-yellow-800',
@@ -14,7 +16,15 @@ const STATUS_COLORS = {
     COMPLETED: 'bg-green-200 text-green-800',
     REJECTED: 'bg-red-100 text-red-700',
     CANCELLED: 'bg-gray-200 text-gray-600',
-    WASTE_COLLECTED: 'bg-orange-100 text-orange-700',
+    WASTE_REDIRECTED: 'bg-purple-100 text-purple-700',
+    WASTE_COLLECTED: 'bg-purple-200 text-purple-800',
+};
+
+const STATUS_LABELS = {
+    RE_MATCHING: '🔄 Re-Matching',
+    ESCALATED: '⚠️ Escalated',
+    WASTE_REDIRECTED: '♻️ Redirected to Recycling',
+    WASTE_COLLECTED: '✅ Recycled',
 };
 
 // Ordered lifecycle stages for the progress tracker
@@ -38,8 +48,10 @@ export default function DonationDetail() {
     const [deleting, setDeleting] = useState(false);
     const [updatingStatus, setUpdatingStatus] = useState(false);
     const [error, setError] = useState('');
+    const [actionLoading, setActionLoading] = useState('');
+    const [actionMessage, setActionMessage] = useState(null); // { text, type: 'success'|'error' }
 
-    const isEditable = donation && ['CREATED', 'MATCHED'].includes(donation.status);
+    const isEditable = donation && ['CREATED', 'MATCHED', 'RE_MATCHING', 'ESCALATED'].includes(donation.status);
     const isDonor = user?.role === 'DONOR';
     const isAcceptor = user?.role === 'ACCEPTOR';
 
@@ -81,9 +93,26 @@ export default function DonationDetail() {
         }
     };
 
+    const handleDonorAction = async (action) => {
+        setActionLoading(action);
+        setActionMessage(null);
+        try {
+            const data = await api.submitDonorAction(token, donation.id, action);
+            setDonation(data);
+            if (data.message) {
+                setActionMessage({ text: data.message, type: 'success' });
+            }
+        } catch (err) {
+            const msg = err.message || 'Action failed.';
+            setActionMessage({ text: msg, type: 'error' });
+        } finally {
+            setActionLoading('');
+        }
+    };
+
     // Determine what the next action is based on current status and role
     const getNextAction = () => {
-        if (!donation || ['COMPLETED', 'REJECTED', 'CANCELLED', 'WASTE_COLLECTED'].includes(donation.status)) return null;
+        if (!donation || ['COMPLETED', 'REJECTED', 'CANCELLED', 'WASTE_COLLECTED', 'WASTE_REDIRECTED', 'RE_MATCHING', 'ESCALATED'].includes(donation.status)) return null;
 
         const statusActions = {
             ACCEPTED: isAcceptor
@@ -129,6 +158,7 @@ export default function DonationDetail() {
     const acceptor = donation.acceptor || null;
     const aiSuggested = donation.ai_suggested_acceptor || null;
     const nextAction = getNextAction();
+    const statusLabel = STATUS_LABELS[donation.status] || donation.status?.replace(/_/g, ' ');
 
     return (
         <div className="min-h-screen bg-gray-50" style={{ fontFamily: "'Inter', sans-serif" }}>
@@ -179,13 +209,104 @@ export default function DonationDetail() {
                             <p className="text-gray-500 text-sm">Donation #{donation.id} · Created {new Date(donation.created_at).toLocaleDateString()}</p>
                         </div>
                         <span className={`px-3 py-1 rounded-full text-sm font-semibold ${STATUS_COLORS[donation.status] || 'bg-gray-100 text-gray-600'}`}>
-                            {donation.status?.replace(/_/g, ' ')}
+                            {statusLabel}
                         </span>
                     </div>
                 </div>
 
+                {/* ===== REJECTION INFO PANEL ===== */}
+                {['RE_MATCHING', 'ESCALATED'].includes(donation.status) && (
+                    <div className={`rounded-2xl shadow-sm border p-6 ${donation.status === 'ESCALATED' ? 'bg-orange-50 border-orange-200' : 'bg-amber-50 border-amber-200'}`}>
+                        <div className="flex items-start space-x-3">
+                            <div className={`p-2 rounded-xl ${donation.status === 'ESCALATED' ? 'bg-orange-100' : 'bg-amber-100'}`}>
+                                <AlertTriangle className={`w-5 h-5 ${donation.status === 'ESCALATED' ? 'text-orange-600' : 'text-amber-600'}`} />
+                            </div>
+                            <div className="flex-1">
+                                <h3 className="font-bold text-gray-900 mb-1">
+                                    {donation.status === 'RE_MATCHING' ? 'Finding a New Match' : 'Donation Escalated'}
+                                </h3>
+                                <p className="text-sm text-gray-600 mb-2">
+                                    {donation.last_rejected_by_name
+                                        ? `Declined by ${donation.last_rejected_by_name}.`
+                                        : 'This donation was declined.'}
+                                    {' '}
+                                    {donation.rejection_count > 0 && `(${donation.rejection_count} rejection${donation.rejection_count > 1 ? 's' : ''} so far)`}
+                                </p>
+                                {donation.status === 'RE_MATCHING' && (
+                                    <p className="text-sm text-amber-700 font-medium">
+                                        🔄 Our AI is searching for the next best NGO match...
+                                    </p>
+                                )}
+                                {donation.status === 'ESCALATED' && (
+                                    <p className="text-sm text-orange-700 font-medium">
+                                        ⚠️ No more NGOs available for automatic matching. Choose an action below.
+                                    </p>
+                                )}
+                            </div>
+                        </div>
+
+                        {/* Donor Action Buttons */}
+                        {isDonor && (
+                            <div className="mt-5 pt-4 border-t border-amber-200/50">
+                                {actionMessage && (
+                                    <div className={`mb-3 px-4 py-2.5 rounded-xl text-sm font-medium ${actionMessage.type === 'success'
+                                        ? 'bg-green-50 text-green-700 border border-green-200'
+                                        : 'bg-red-50 text-red-700 border border-red-200'
+                                        }`}>
+                                        {actionMessage.text}
+                                    </div>
+                                )}
+                                <p className="text-xs font-semibold text-gray-500 uppercase tracking-wider mb-3">Your Options</p>
+                                <div className="grid grid-cols-1 sm:grid-cols-3 gap-3">
+                                    <button
+                                        onClick={() => handleDonorAction('re_match')}
+                                        disabled={!!actionLoading}
+                                        className="flex items-center space-x-2 px-4 py-3 bg-white border-2 border-blue-200 rounded-xl hover:bg-blue-50 hover:border-blue-400 transition-all text-sm font-medium text-blue-700 disabled:opacity-50"
+                                    >
+                                        {actionLoading === 're_match' ? <Loader2 className="w-4 h-4 animate-spin" /> : <RefreshCw className="w-4 h-4" />}
+                                        <span>Re-Match</span>
+                                    </button>
+                                    <button
+                                        onClick={() => handleDonorAction('upgrade_priority')}
+                                        disabled={!!actionLoading || donation.is_priority}
+                                        className="flex items-center space-x-2 px-4 py-3 bg-white border-2 border-orange-200 rounded-xl hover:bg-orange-50 hover:border-orange-400 transition-all text-sm font-medium text-orange-700 disabled:opacity-50"
+                                    >
+                                        {actionLoading === 'upgrade_priority' ? <Loader2 className="w-4 h-4 animate-spin" /> : <ArrowUpCircle className="w-4 h-4" />}
+                                        <span>{donation.is_priority ? 'Already Priority' : 'Upgrade Priority'}</span>
+                                    </button>
+                                    <button
+                                        onClick={() => handleDonorAction('waste_redirect')}
+                                        disabled={!!actionLoading}
+                                        className="flex items-center space-x-2 px-4 py-3 bg-white border-2 border-purple-200 rounded-xl hover:bg-purple-50 hover:border-purple-400 transition-all text-sm font-medium text-purple-700 disabled:opacity-50"
+                                    >
+                                        {actionLoading === 'waste_redirect' ? <Loader2 className="w-4 h-4 animate-spin" /> : <Recycle className="w-4 h-4" />}
+                                        <span>Redirect to Recycling</span>
+                                    </button>
+                                </div>
+                            </div>
+                        )}
+                    </div>
+                )}
+
+                {/* ===== WASTE REDIRECTED INFO ===== */}
+                {donation.status === 'WASTE_REDIRECTED' && (
+                    <div className="bg-purple-50 rounded-2xl shadow-sm border border-purple-200 p-6">
+                        <div className="flex items-start space-x-3">
+                            <div className="p-2 bg-purple-100 rounded-xl">
+                                <Recycle className="w-5 h-5 text-purple-600" />
+                            </div>
+                            <div>
+                                <h3 className="font-bold text-gray-900 mb-1">Redirected to Recycling Partner</h3>
+                                <p className="text-sm text-gray-600">
+                                    This donation has been matched with a recycling/scrap partner. Any applicable compensation has been credited to your wallet.
+                                </p>
+                            </div>
+                        </div>
+                    </div>
+                )}
+
                 {/* Status Progress Tracker */}
-                {!['REJECTED', 'CANCELLED', 'WASTE_COLLECTED', 'CREATED'].includes(donation.status) && (
+                {!['REJECTED', 'CANCELLED', 'WASTE_COLLECTED', 'WASTE_REDIRECTED', 'CREATED', 'RE_MATCHING', 'ESCALATED'].includes(donation.status) && (
                     <div className="bg-white rounded-2xl shadow-sm border border-gray-100 p-6">
                         <h2 className="text-lg font-bold text-gray-900 mb-5">Donation Progress</h2>
                         <div className="flex items-center justify-between">
@@ -199,8 +320,8 @@ export default function DonationDetail() {
                                     <div key={stage.key} className="flex items-center flex-1 last:flex-none">
                                         <div className="flex flex-col items-center">
                                             <div className={`w-9 h-9 rounded-full flex items-center justify-center transition-all duration-300 ${isCompleted ? 'bg-green-600 text-white' :
-                                                    isCurrent ? 'bg-blue-600 text-white ring-4 ring-blue-100' :
-                                                        'bg-gray-200 text-gray-400'
+                                                isCurrent ? 'bg-blue-600 text-white ring-4 ring-blue-100' :
+                                                    'bg-gray-200 text-gray-400'
                                                 }`}>
                                                 {isCompleted ? (
                                                     <CheckCircle className="w-5 h-5" />
@@ -330,6 +451,28 @@ export default function DonationDetail() {
                     </div>
                 </div>
 
+                {/* Rejection History (if any rejections) */}
+                {donation.rejection_count > 0 && (
+                    <div className="bg-white rounded-2xl shadow-sm border border-gray-100 p-6">
+                        <h2 className="text-lg font-bold text-gray-900 mb-4 flex items-center space-x-2">
+                            <XCircle className="w-5 h-5 text-red-500" />
+                            <span>Rejection History</span>
+                        </h2>
+                        <div className="space-y-2">
+                            <div className="flex justify-between">
+                                <span className="text-gray-500">Total Rejections</span>
+                                <span className="font-semibold text-red-600">{donation.rejection_count}</span>
+                            </div>
+                            {donation.last_rejected_by_name && (
+                                <div className="flex justify-between">
+                                    <span className="text-gray-500">Last Rejected By</span>
+                                    <span className="font-semibold">{donation.last_rejected_by_name}</span>
+                                </div>
+                            )}
+                        </div>
+                    </div>
+                )}
+
                 {/* NGO Info */}
                 {(acceptor || aiSuggested) && (
                     <div className="bg-white rounded-2xl shadow-sm border border-gray-100 p-6">
@@ -346,10 +489,16 @@ export default function DonationDetail() {
                                 </div>
                             )}
                             {aiSuggested && (
-                                <div className="p-4 bg-blue-50 rounded-xl border border-blue-200">
-                                    <div className="text-xs font-semibold text-blue-600 mb-1">AI Suggested</div>
+                                <div className={`p-4 rounded-xl border ${!acceptor
+                                        ? 'bg-green-50 border-green-200'
+                                        : 'bg-blue-50 border-blue-200'
+                                    }`}>
+                                    <div className={`text-xs font-semibold mb-1 ${!acceptor ? 'text-green-600' : 'text-blue-600'
+                                        }`}>
+                                        {!acceptor ? 'Matched NGO' : 'AI Suggested'}
+                                    </div>
                                     <div className="font-bold text-gray-900">{aiSuggested.acceptor_profile?.organization_name || aiSuggested.username}</div>
-                                    {donation.matching_score && <div className="text-sm text-blue-600 font-semibold">{donation.matching_score}% match</div>}
+                                    {donation.matching_score && <div className={`text-sm font-semibold ${!acceptor ? 'text-green-600' : 'text-blue-600'}`}>{donation.matching_score}% match</div>}
                                 </div>
                             )}
                         </div>

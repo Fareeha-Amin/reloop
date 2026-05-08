@@ -6,6 +6,7 @@ from .views import (
     reject_donation,
     update_donation_status,
     trigger_fallback,
+    donor_action,
 )
 
 urlpatterns = [
@@ -15,4 +16,6 @@ urlpatterns = [
     path('<int:donation_id>/reject/', reject_donation, name='reject-donation'),
     path('<int:donation_id>/status/', update_donation_status, name='update-donation-status'),
     path('<int:donation_id>/fallback/', trigger_fallback, name='trigger-fallback'),
+    path('<int:donation_id>/donor-action/', donor_action, name='donor-action'),
 ]
+

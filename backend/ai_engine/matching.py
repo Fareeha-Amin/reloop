@@ -71,18 +71,30 @@ def get_matching_score(donation, acceptor_profile):
     if hasattr(donation, 'is_priority') and donation.is_priority:
         score = int(score * 1.3)
 
+    # Apply rejection boost — rejected donations get higher scores to
+    # increase visibility and urgency with each subsequent match attempt.
+    # +15% per rejection, capped at 1.45x (3 rejections)
+    if hasattr(donation, 'rejection_count') and donation.rejection_count > 0:
+        boost = 1 + 0.15 * min(donation.rejection_count, 3)
+        score = int(score * boost)
+
     return min(score, 100)
 
 
-def find_best_matches(donation, limit=5):
+def find_best_matches(donation, limit=5, exclude_user_ids=None):
     """
     Find the best matching acceptors for a donation.
     Returns a list of (acceptor_profile, score) tuples sorted by score.
+    Optionally excludes specific user IDs (e.g. NGOs that already rejected).
     """
     # Get all verified acceptors
     verified_acceptors = AcceptorProfile.objects.filter(
         verification_status='VERIFIED'
     ).select_related('user')
+
+    # Exclude previously-rejecting NGOs
+    if exclude_user_ids:
+        verified_acceptors = verified_acceptors.exclude(user_id__in=exclude_user_ids)
     
     matches = []
     
@@ -96,12 +108,13 @@ def find_best_matches(donation, limit=5):
     return matches[:limit]
 
 
-def get_ai_suggestion(donation):
+def get_ai_suggestion(donation, exclude_user_ids=None):
     """
     Get the top AI-suggested acceptor for a donation.
     Returns (acceptor_user, score) or (None, 0) if no matches.
+    Optionally excludes specific user IDs.
     """
-    matches = find_best_matches(donation, limit=1)
+    matches = find_best_matches(donation, limit=1, exclude_user_ids=exclude_user_ids)
     
     if matches:
         acceptor_profile, score = matches[0]

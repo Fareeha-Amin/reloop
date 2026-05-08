@@ -8,20 +8,23 @@ from donations.models import Donation, WasteCollector
 from ai_engine.matching import calculate_distance
 
 
-def check_and_trigger_fallback(donation):
+def check_and_trigger_fallback(donation, force=False):
     """Check if a donation should fall back to waste collection.
-    Called when: all NGOs reject, or deadline expires.
+    Called when: all NGOs reject, deadline expires, or donor requests.
+    Set force=True to bypass status/deadline checks (for donor-initiated redirect).
     Returns dict with fallback info or None if not triggered."""
 
-    if donation.status in ('COMPLETED', 'DELIVERED', 'WASTE_COLLECTED', 'CANCELLED'):
+    if donation.status in ('COMPLETED', 'DELIVERED', 'WASTE_REDIRECTED', 'WASTE_COLLECTED', 'CANCELLED'):
         return None
 
-    # Check if deadline has passed
-    deadline_passed = donation.donation_deadline and timezone.now() > donation.donation_deadline
-    all_rejected = donation.status == 'REJECTED'
+    if not force:
+        # Check if deadline has passed
+        deadline_passed = donation.donation_deadline and timezone.now() > donation.donation_deadline
+        is_escalated = donation.status == 'ESCALATED'
+        all_rejected = donation.status == 'REJECTED'
 
-    if not (deadline_passed or all_rejected):
-        return None
+        if not (deadline_passed or is_escalated or all_rejected):
+            return None
 
     # Find nearest active waste collector
     collectors = WasteCollector.objects.filter(status='ACTIVE')
@@ -60,7 +63,7 @@ def check_and_trigger_fallback(donation):
     platform_fee = total_value * float(best_collector.platform_fee_pct) / 100
 
     # Update donation status
-    donation.status = 'WASTE_COLLECTED'
+    donation.status = 'WASTE_REDIRECTED'
     donation.save()
 
     # Credit donor wallet

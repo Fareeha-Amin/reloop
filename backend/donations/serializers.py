@@ -34,6 +34,7 @@ class DonationSerializer(serializers.ModelSerializer):
     donor_name = serializers.CharField(source='donor.username', read_only=True)
     acceptor_name = serializers.CharField(source='acceptor.acceptor_profile.organization_name', read_only=True, allow_null=True)
     ai_suggested_acceptor_name = serializers.CharField(source='ai_suggested_acceptor.acceptor_profile.organization_name', read_only=True, allow_null=True)
+    last_rejected_by_name = serializers.SerializerMethodField()
     
     class Meta:
         model = Donation
@@ -45,11 +46,20 @@ class DonationSerializer(serializers.ModelSerializer):
             'delivery_method', 'logistics_provider_choice',
             'donation_deadline', 'is_priority', 'suggested_pickup_time',
             'status', 'matching_score',
+            'rejection_count', 'last_rejected_by', 'last_rejected_by_name', 'excluded_acceptors',
             'created_at', 'updated_at',
             'images', 'uploaded_images', 'selected_acceptor',
             'donor_name', 'acceptor_name', 'ai_suggested_acceptor_name',
         ]
-        read_only_fields = ['id', 'donor', 'acceptor', 'ai_suggested_acceptor', 'matching_score', 'status', 'pickup_latitude', 'pickup_longitude', 'created_at', 'updated_at']
+        read_only_fields = ['id', 'donor', 'acceptor', 'ai_suggested_acceptor', 'matching_score', 'status', 'pickup_latitude', 'pickup_longitude', 'rejection_count', 'last_rejected_by', 'excluded_acceptors', 'created_at', 'updated_at']
+
+    def get_last_rejected_by_name(self, obj):
+        if obj.last_rejected_by:
+            try:
+                return obj.last_rejected_by.acceptor_profile.organization_name
+            except Exception:
+                return obj.last_rejected_by.username
+        return None
     
     def validate_is_priority(self, value):
         """Handle is_priority coming as string from FormData."""
