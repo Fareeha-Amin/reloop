@@ -10,6 +10,8 @@ import CreateDonation from './pages/CreateDonation';
 import ChatThread from './pages/ChatThread';
 import DonationDetail from './pages/DonationDetail';
 import NeedsList from './pages/NeedsList';
+import DonorProfile from './pages/DonorProfile';
+import AcceptorProfile from './pages/AcceptorProfile';
 
 // Admin redirect to Django admin panel
 function AdminRedirect() {
@@ -58,6 +60,14 @@ function AppRoutes() {
           </ProtectedRoute>
         }
       />
+      <Route
+        path="/donor/profile"
+        element={
+          <ProtectedRoute allowedRoles={['DONOR']}>
+            <DonorProfile />
+          </ProtectedRoute>
+        }
+      />
 
       {/* Acceptor Routes */}
       <Route
@@ -65,6 +75,14 @@ function AppRoutes() {
         element={
           <ProtectedRoute allowedRoles={['ACCEPTOR']}>
             <AcceptorDashboard />
+          </ProtectedRoute>
+        }
+      />
+      <Route
+        path="/acceptor/profile"
+        element={
+          <ProtectedRoute allowedRoles={['ACCEPTOR']}>
+            <AcceptorProfile />
           </ProtectedRoute>
         }
       />

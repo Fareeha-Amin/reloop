@@ -1,6 +1,6 @@
 import { useState, useEffect } from 'react';
 import { useNavigate, Link } from 'react-router-dom';
-import { Package, Recycle, Leaf, Award, LogOut, Plus, Loader2, MessageCircle, ChevronDown, ChevronUp, Trash2, Edit3, Wallet } from 'lucide-react';
+import { Package, Recycle, Leaf, Award, LogOut, Plus, Loader2, MessageCircle, ChevronDown, ChevronUp, Trash2, Edit3, Wallet, UserCircle } from 'lucide-react';
 import { useAuth } from '../context/AuthContext';
 import api from '../services/api';
 
@@ -143,6 +143,9 @@ export default function DonorDashboard() {
                             </div>
                         )}
                         <span className="text-sm text-gray-600">Hi, {user?.first_name || user?.username}</span>
+                        <Link to="/donor/profile" className="flex items-center space-x-1 px-3 py-2 bg-gray-50 text-gray-700 rounded-lg hover:bg-gray-100 transition text-sm font-medium">
+                            <UserCircle className="w-4 h-4" /><span>Profile</span>
+                        </Link>
                         <Link to="/donor/donate" className="btn-primary text-sm py-2 px-4 flex items-center space-x-1"><Plus className="w-4 h-4" /><span>New Donation</span></Link>
                         <button onClick={logout} className="flex items-center space-x-1 text-gray-500 hover:text-gray-700 text-sm"><LogOut className="w-4 h-4" /><span>Logout</span></button>
                     </div>

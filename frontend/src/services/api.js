@@ -143,6 +143,66 @@ const api = {
         }
     },
 
+    // User Profile (base user fields: first_name, last_name, email, phone_number)
+    getUserProfile: async (token) => {
+        try {
+            const response = await fetch(`${API_BASE_URL}/users/profile/`, {
+                headers: { 'Authorization': `Bearer ${token}` },
+            });
+            return await handleResponse(response);
+        } catch (error) {
+            console.error('Get user profile error:', error);
+            throw error;
+        }
+    },
+
+    updateUserProfile: async (token, data) => {
+        try {
+            const response = await fetch(`${API_BASE_URL}/users/profile/`, {
+                method: 'PATCH',
+                headers: {
+                    'Authorization': `Bearer ${token}`,
+                    'Content-Type': 'application/json',
+                },
+                body: JSON.stringify(data),
+            });
+            return await handleResponse(response);
+        } catch (error) {
+            console.error('Update user profile error:', error);
+            throw error;
+        }
+    },
+
+    // Donor Profile
+    getDonorProfile: async (token) => {
+        try {
+            const response = await fetch(`${API_BASE_URL}/users/donor-profile/`, {
+                headers: { 'Authorization': `Bearer ${token}` },
+            });
+            return await handleResponse(response);
+        } catch (error) {
+            console.error('Get donor profile error:', error);
+            throw error;
+        }
+    },
+
+    updateDonorProfile: async (token, data) => {
+        try {
+            const response = await fetch(`${API_BASE_URL}/users/donor-profile/`, {
+                method: 'PATCH',
+                headers: {
+                    'Authorization': `Bearer ${token}`,
+                    'Content-Type': 'application/json',
+                },
+                body: JSON.stringify(data),
+            });
+            return await handleResponse(response);
+        } catch (error) {
+            console.error('Update donor profile error:', error);
+            throw error;
+        }
+    },
+
     // Acceptor Profile
     getAcceptorProfile: async (token) => {
         try {

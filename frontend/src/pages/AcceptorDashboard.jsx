@@ -1,6 +1,6 @@
 import { useState, useEffect } from 'react';
 import { useNavigate, Link } from 'react-router-dom';
-import { Package, Leaf, LogOut, Loader2, MessageCircle, Check, X, ChevronDown, ChevronUp, Inbox, CheckCircle, ListChecks, BarChart3, Truck } from 'lucide-react';
+import { Package, Leaf, LogOut, Loader2, MessageCircle, Check, X, ChevronDown, ChevronUp, Inbox, CheckCircle, ListChecks, BarChart3, Truck, UserCircle } from 'lucide-react';
 import { useAuth } from '../context/AuthContext';
 import api from '../services/api';
 
@@ -201,6 +201,9 @@ export default function AcceptorDashboard() {
                     </div>
                     <div className="flex items-center space-x-4">
                         <span className="text-sm text-gray-600">{user?.acceptor_profile?.organization_name || user?.username}</span>
+                        <Link to="/acceptor/profile" className="flex items-center space-x-1 px-3 py-2 bg-gray-50 text-gray-700 rounded-lg hover:bg-gray-100 transition text-sm font-medium">
+                            <UserCircle className="w-4 h-4" /><span>Profile</span>
+                        </Link>
                         <Link to="/acceptor/needs" className="flex items-center space-x-1 px-3 py-2 bg-blue-50 text-blue-700 rounded-lg hover:bg-blue-100 transition text-sm font-medium">
                             <ListChecks className="w-4 h-4" /><span>Needs List</span>
                         </Link>
