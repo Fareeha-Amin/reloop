@@ -32,8 +32,10 @@ corner. Say so before building it.
 
 ## Non-negotiables
 
-1. **Every donation reaches a defined end state.** Exactly two terminal states —
-   `COMPLETED` (reuse) and `RECYCLED` (recovery). No state can be entered but not left.
+1. **Every donation reaches a defined end state.** Terminal states have no outgoing
+   transitions. Outcome states are `COMPLETED` (reuse) and `RECYCLED` (recovery).
+   `CANCELLED` is terminal but is a donor withdrawal, not an outcome. Every donation the
+   donor does not withdraw ends in reuse or recovery. No state can be entered but not left.
 2. **The lifecycle is an explicit transition table**, not conditionals scattered across
    route handlers. A test asserts every non-terminal state has ≥1 outgoing edge and both
    terminal states have none.
@@ -62,10 +64,10 @@ corner. Say so before building it.
 `.env.example` gains a variable **the moment code reads it, never before.** A speculative
 env file goes stale within a week and then lies about what the project needs.
 
-| Variable | Added in | Purpose |
-|---|---|---|
-| `DATABASE_URL` | Phase 0 | Postgres connection string |
-| `SECRET_KEY` | Phase 0 | JWT signing |
+| Variable       | Added in | Purpose                    |
+| -------------- | -------- | -------------------------- |
+| `DATABASE_URL` | Phase 0  | Postgres connection string |
+| `SECRET_KEY`   | Phase 0  | JWT signing                |
 
 ---
 
@@ -74,13 +76,25 @@ env file goes stale within a week and then lies about what the project needs.
 <!-- Fill in as they are established. -->
 
 ```
+# all commands run from backend/ with the venv active (.venv\Scripts\Activate.ps1)
+
+# install dependencies
+pip install -r requirements.txt
+
 # run the API
+(Phase 1)
 
 # run tests
+pytest
+
+# check the database answers (SELECT 1 against DATABASE_URL)
+python -m app.db_check
 
 # create a migration
+(Phase 1)
 
 # apply migrations
+(Phase 1)
 ```
 
 ---
@@ -90,23 +104,28 @@ env file goes stale within a week and then lies about what the project needs.
 Append as they are made. Reopen any of these with a better argument — but the reason
 exists.
 
-| Decision | Reason |
-|---|---|
-| FastAPI + PostgreSQL, not Django + MySQL | An earlier Django prototype exists; it is not being extended and is not a reference implementation |
-| **No Docker Compose yet** | Postgres runs natively or on a managed tier. Add a compose file when a second machine or a deploy makes it worth it. **Never let code assume a container** — every connection detail comes from `.env` |
-| **No Celery or Redis until Phase 2** | The only early scheduled job is the deadline sweep; a plain function with an admin trigger is testable and has fewer moving parts |
-| Ranking weights assigned, not learned, at launch | No accept/reject history exists to learn from |
-| Rejection boost behind a config flag | So its effect can be measured against the plain score, not assumed |
-| Donor-mediated escalation after N rejections | Keeps a human in the loop where automation is least trustworthy |
-| Payments and logistics simulated | The abstractions are real; the backends are mocked and labelled as such in the UI *and* the API response |
-| Impact stored **per donation**, not only aggregated | A future CSR or carbon module needs per-item records; aggregates can be recomputed, per-item records cannot |
-| Backend before frontend | A polished UI over a broken state machine is harder to debug than the reverse |
+| Decision                                                                             | Reason                                                                                                                                                                                                 |
+| ------------------------------------------------------------------------------------ | ------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------ |
+| FastAPI + PostgreSQL, not Django + MySQL                                             | An earlier Django prototype exists; it is not being extended and is not a reference implementation                                                                                                     |
+| **No Docker Compose yet**                                                            | Postgres runs natively or on a managed tier. Add a compose file when a second machine or a deploy makes it worth it. **Never let code assume a container** — every connection detail comes from `.env` |
+| **No Celery or Redis until Phase 2**                                                 | The only early scheduled job is the deadline sweep; a plain function with an admin trigger is testable and has fewer moving parts                                                                      |
+| Ranking weights assigned, not learned, at launch                                     | No accept/reject history exists to learn from                                                                                                                                                          |
+| Rejection boost behind a config flag                                                 | So its effect can be measured against the plain score, not assumed                                                                                                                                     |
+| Donor-mediated escalation after N rejections                                         | Keeps a human in the loop where automation is least trustworthy                                                                                                                                        |
+| Payments and logistics simulated                                                     | The abstractions are real; the backends are mocked and labelled as such in the UI _and_ the API response                                                                                               |
+| Impact stored **per donation**, not only aggregated                                  | A future CSR or carbon module needs per-item records; aggregates can be recomputed, per-item records cannot                                                                                            |
+| Backend before frontend                                                              | A polished UI over a broken state machine is harder to debug than the reverse                                                                                                                          |
+| Python 3.12, Node 22 LTS pinned in README                                            | 3.12 is what's installed and satisfies the 3.11+ floor; Node isn't used until Phase 3                                                                                                                  |
+| psycopg 3 via SQLAlchemy (`postgresql+psycopg://`)                                   | The Phase 0 `SELECT 1` uses the same engine and driver the app will use, so it tests the real connection path                                                                                          |
+| `backend/app/config.py` is the only place env vars are read                          | One source of truth for config (non-negotiable 4 and 9); `.env` lives at repo root                                                                                                                     |
+| `requirements.txt` pins direct deps only, added in the phase that first imports them | Same rule as `.env.example`: no speculative dependencies                                                                                                                                               |
+| Thrift store / `SOLD` dropped from planned modules                                   | Out of scope for now; PROMPT.md and the context doc still mention it and should be read as superseded on this point                                                                                    |
 
 ---
 
 ## Future modules — do not build, but do not block
 
-`SOLD` as a **third terminal state** (thrift/resale), on-demand **instant pickup**
+On-demand **instant pickup**
 (fast geo-queries, websockets, dispatch separate from matching), volunteer network,
 food category, CSR reporting, condition verification, multilingual, native apps.
 

@@ -1,0 +1,5 @@
+# Direct dependencies only, pinned. Each is added in the phase that first imports it.
+SQLAlchemy==2.1.5
+psycopg[binary]==3.3.6
+pydantic-settings==2.16.0
+pytest==9.1.1
