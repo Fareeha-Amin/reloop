@@ -17,6 +17,9 @@ htmlcov/
 *.sqlite3
 *.db
 
+# Local image storage (Phase 1; replaced by object storage later)
+backend/uploads/
+
 # Node / frontend build output
 node_modules/
 dist/

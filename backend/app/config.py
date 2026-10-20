@@ -2,6 +2,9 @@
 
 Values come from the process environment, falling back to the repo-root `.env`.
 Nothing here assumes a container or a particular host.
+
+Only environment-specific values belong here (connection strings, secrets). Domain
+vocabularies and tunables live in `app.constants`.
 """
 
 from functools import lru_cache
@@ -17,6 +20,10 @@ class Settings(BaseSettings):
 
     database_url: str
     secret_key: str
+    # Separate database for pytest. Tests that need a database are skipped (with the
+    # reason shown) when this is unset, and refuse to run if it names DATABASE_URL's
+    # database, because the test setup drops every table in it.
+    test_database_url: str | None = None
 
 
 @lru_cache

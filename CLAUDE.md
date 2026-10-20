@@ -68,6 +68,7 @@ env file goes stale within a week and then lies about what the project needs.
 | -------------- | -------- | -------------------------- |
 | `DATABASE_URL` | Phase 0  | Postgres connection string |
 | `SECRET_KEY`   | Phase 0  | JWT signing                |
+| `TEST_DATABASE_URL` | Phase 1 | Separate pytest database. **Every table in it is dropped** at the start of a run; the tests refuse to start if it names the `DATABASE_URL` database. Unset → DB tests skipped (shown in the summary) |
 
 ---
 
@@ -81,20 +82,26 @@ env file goes stale within a week and then lies about what the project needs.
 # install dependencies
 pip install -r requirements.txt
 
-# run the API
-(Phase 1)
+# run the API (docs at http://127.0.0.1:8000/docs)
+uvicorn app.main:app --reload
 
-# run tests
+# run tests (DB tests need TEST_DATABASE_URL; skipped otherwise)
 pytest
 
 # check the database answers (SELECT 1 against DATABASE_URL)
 python -m app.db_check
 
-# create a migration
-(Phase 1)
+# create a migration (review it: StrEnumType renders as sa.String(length=32))
+alembic revision --autogenerate -m "describe the change"
 
 # apply migrations
-(Phase 1)
+alembic upgrade head
+
+# create an admin (password is prompted; admins cannot self-register)
+python -m app.cli create-admin --email admin@example.org --name "Platform Admin"
+
+# create the test database (once, as a Postgres superuser; the reloop role lacks CREATEDB)
+psql -U postgres -c "CREATE DATABASE reloop_test OWNER reloop;"
 ```
 
 ---
@@ -120,6 +127,34 @@ exists.
 | `backend/app/config.py` is the only place env vars are read                          | One source of truth for config (non-negotiable 4 and 9); `.env` lives at repo root                                                                                                                     |
 | `requirements.txt` pins direct deps only, added in the phase that first imports them | Same rule as `.env.example`: no speculative dependencies                                                                                                                                               |
 | Thrift store / `SOLD` dropped from planned modules                                   | Out of scope for now; PROMPT.md and the context doc still mention it and should be read as superseded on this point                                                                                    |
+| Phase 1 creates only User, OrganizationProfile, CurrentNeed, Donation, DonationImage | Tables arrive with the code that uses them; Match, StatusEvent, Wallet, Payment etc. wait until lifecycle and matching semantics are designed (Phase 2+) |
+| Synchronous SQLAlchemy 2.x sessions, not async | Simpler to reason about and test; nothing in Phase 1 is I/O-bound enough to need async |
+| Vocabularies (role, category, condition, urgency, status, verification status) are VARCHAR(32), validated in code against `app/constants.py`; no native Postgres ENUMs | ENUM types make adding a value a migration chore. Validation happens at the API edge (Pydantic) and the model edge (`app.db.StrEnumType`) |
+| No DB CHECK constraints repeating vocabulary values | A CHECK would be a second copy of the values (non-negotiable 4). Trade-off accepted: writes from outside the app are not validated. Numeric/range CHECKs (quantity ≥ 1, lat/lng range, window order) *are* in the DB, since they repeat no constant |
+| `app/constants.py` is the one module for vocabularies and tunables; `app/config.py` only for env-specific values | A test (`tests/unit/test_constants.py`) fails if any vocabulary value appears as a string literal elsewhere in `app/`, or a constant is re-declared |
+| Lifecycle is a pure module (`app/domain/lifecycle.py`): table keyed by (state, action) → state, with declared `TERMINAL_STATES`, `OUTCOME_STATES`, `EDITABLE_STATES`. Phase 1 has only LISTED --CANCEL--> CANCELLED | Actions (not target states) are what callers and a future StatusEvent record. Tests check the table against the declared sets, so they keep holding as states are added |
+| CANCELLED is terminal but not an outcome; Phase 1 loop gap pinned by a strict xfail | "Every non-terminal state can reach an outcome" cannot hold until Phase 2 adds COMPLETED/RECYCLED. `strict=True` makes the test fail the run once it passes, forcing removal of the marker |
+| Donations are never hard-deleted; editable only while LISTED (`lifecycle.EDITABLE_STATES`) | Withdrawal is a state, not a deletion. Route handlers ask the lifecycle module; they never compare statuses |
+| `DonationOut` carries `editable` and `allowed_actions` from the lifecycle module | Clients render buttons from the API instead of re-implementing status rules (non-negotiable 12) |
+| Geocoding behind a `Geocoder` interface; only implementation is `PassthroughGeocoder`, a labelled **stub**. Endpoints take lat/lng, range-validated. No maps API key | A real geocoder slots in without touching callers. Because the stub cannot look addresses up, an address change must come with new coordinates (else the pin would silently go stale) |
+| Phase 1: a donation is readable only by its donor and admins; no acceptor-facing donation endpoints | Address privacy (non-negotiable 10) before matching exists. Admin access to the precise address is **not logged** in Phase 1; logged release comes with acceptance in Phase 2 |
+| Donors have no home-address field; pickup location belongs to each donation | Stores less sensitive data |
+| Images stored behind an `ImageStorage` interface (`LocalImageStorage` under `backend/uploads/`, git-ignored), random non-guessable keys, served only via an authorised endpoint | Object storage replaces it later without touching callers |
+| Every uploaded image is decoded and re-encoded from raw pixels with Pillow (JPEG/PNG/WebP only, ≤ 5 MB, ≤ 6 per donation, all-or-nothing per request) | Proves it is an image regardless of claimed type, and strips EXIF — phone photos carry GPS that would leak the donor's location |
+| Pillow's `DecompressionBombWarning` is a **rejection**, not a warning; `Image.MAX_IMAGE_PIXELS` aligned to `IMAGE_MAX_PIXELS` | The warning is escalated to an error, and an explicit pixel-count check rejects independently of warning filters (which are process-global and can be reset) |
+| No verification-document uploads; an admin sets verification status via `PATCH /admin/organisations/{id}/verification`, recording who and when | Documents are reviewed off-platform for now; README lists uploads as deferred |
+| Quantity, storage capacity and need quantity are all **counts of items**; no capacity decrement logic | One unit everywhere; mass is estimated from counts later and labelled as an estimate |
+| One login per organisation (`user_id` unique on `organization_profiles`) | Acceptor registration creates the user and the organisation together; an org with several staff logins is a later, deliberate change |
+| Organisations start PENDING; only an admin can change verification status. Name and registration ID are fixed after registration | A verified organisation cannot turn into a different one by editing its profile |
+| Needs are deactivated, never deleted; at most one **active** need per (organisation, category), enforced by a partial unique index; a need's category must be one the org accepts | Need history feeds demand forecasting (Phase 5); one active need per category keeps the Phase 2 need-match factor unambiguous |
+| Unverified organisations may maintain their needs list | Verification gates matching, not list upkeep |
+| Admins cannot self-register; `python -m app.cli create-admin` (password prompted, never on the command line) | No privilege escalation through a public endpoint |
+| JWT access (30 min) + refresh (7 days), stateless, **no revocation**; refresh issues a new access token only (refresh not extended). Tokens carry only user id + type; role read from DB per request | Works unchanged for a future mobile client. Limitation stated in README |
+| Passwords hashed with Argon2 via pwdlib, not passlib; unknown-email logins spend the same hashing time | passlib is unmaintained; equal timing avoids revealing which emails are registered |
+| UUID primary keys | IDs cannot be guessed or enumerated |
+| Not-yours → 404 (same as missing); wrong role → 403; no/invalid token → 401 | Existence of another donor's donation is not revealed |
+| Tests use a separate DB (`TEST_DATABASE_URL`); session start drops all tables and runs `alembic upgrade head`; each test runs in a rolled-back transaction (`join_transaction_mode="create_savepoint"`) | Tests exercise the real migrations; `tests/test_migrations.py` also checks upgrade-from-empty, downgrade/upgrade and models-vs-migrations diff |
+| Test client uses `httpx2`, not `httpx` | Starlette 1.x deprecates `httpx` for `starlette.testclient` |
 
 ---
 

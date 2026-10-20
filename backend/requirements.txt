@@ -1,5 +1,18 @@
 # Direct dependencies only, pinned. Each is added in the phase that first imports it.
+
+# Phase 0
 SQLAlchemy==2.1.5
 psycopg[binary]==3.3.6
 pydantic-settings==2.16.0
 pytest==9.1.1
+
+# Phase 1
+fastapi==0.149.0
+uvicorn==0.54.0
+alembic==1.20.0
+PyJWT==2.15.1
+pwdlib[argon2]==0.3.1
+python-multipart==0.0.32
+email-validator==2.3.0
+pillow==13.0.0
+httpx2==2.15.1  # test client only (starlette.testclient prefers httpx2 over httpx)
