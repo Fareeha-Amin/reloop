@@ -1,26 +1,32 @@
 """The transition table is the product's central claim. These tests are written against
-the declared sets, not against today's specific states, so they keep holding as Phase 2
-adds states."""
+the declared sets, not against specific states, so they keep holding as states are added."""
 
 from collections import deque
 
 import pytest
 
-from app.constants import DonationAction, DonationStatus
-from app.domain import lifecycle
+from app.constants import Actor, DonationAction, DonationStatus
+from app.domain import lifecycle, policy
 from app.domain.lifecycle import (
+    ACTORS,
     EDITABLE_STATES,
+    HELD_STATES,
     INITIAL_STATE,
     OUTCOME_STATES,
     TERMINAL_STATES,
+    TRANSIENT_STATES,
     TRANSITIONS,
+    ActorNotAllowed,
     InvalidTransition,
     allowed_actions,
+    check_actor,
     is_editable,
     next_state,
+    requires_reason,
     successors,
 )
 
+S, A = DonationStatus, DonationAction
 ALL_STATES = frozenset(DonationStatus)
 NON_TERMINAL = ALL_STATES - TERMINAL_STATES
 
@@ -35,11 +41,33 @@ def reachable_from(start: DonationStatus) -> set[DonationStatus]:
     return seen
 
 
+# --- Shape of the table -----------------------------------------------------------------------
+
+
 def test_table_only_uses_known_states_and_actions():
     for (state, action), target in TRANSITIONS.items():
         assert state in ALL_STATES
         assert target in ALL_STATES
         assert action in frozenset(DonationAction)
+
+
+def test_every_action_is_used():
+    assert {action for _, action in TRANSITIONS} == set(DonationAction)
+
+
+def test_every_edge_declares_exactly_one_actor():
+    assert set(ACTORS) == set(TRANSITIONS)
+    assert all(actor in frozenset(Actor) for actor in ACTORS.values())
+
+
+def test_table_is_read_only():
+    with pytest.raises(TypeError):
+        lifecycle.TRANSITIONS[(S.CANCELLED, A.CANCEL)] = S.LISTED
+    with pytest.raises(TypeError):
+        lifecycle.ACTORS[(S.LISTED, A.CANCEL)] = Actor.ADMIN
+
+
+# --- Non-negotiable 1: no dead ends ------------------------------------------------------------
 
 
 @pytest.mark.parametrize("state", sorted(NON_TERMINAL))
@@ -61,45 +89,138 @@ def test_every_state_is_reachable_from_the_initial_state():
     assert reachable_from(INITIAL_STATE) == ALL_STATES
 
 
-def test_outcomes_are_terminal_and_cancelled_is_not_an_outcome():
-    assert OUTCOME_STATES <= TERMINAL_STATES
-    assert DonationStatus.CANCELLED in TERMINAL_STATES
-    assert DonationStatus.CANCELLED not in OUTCOME_STATES
+@pytest.mark.parametrize("state", sorted(NON_TERMINAL))
+def test_every_non_terminal_state_can_reach_an_outcome(state):
+    """The Phase 1 strict xfail on this test is gone: the loop is closed."""
+    assert reachable_from(state) & OUTCOME_STATES, f"{state} cannot reach reuse or recovery"
 
 
-def test_editable_states_are_not_terminal():
-    assert EDITABLE_STATES <= NON_TERMINAL
-    assert is_editable(DonationStatus.LISTED)
-    assert not is_editable(DonationStatus.CANCELLED)
+def test_outcomes_are_completed_and_recycled_and_cancelled_is_not_one():
+    assert OUTCOME_STATES == {S.COMPLETED, S.RECYCLED}
+    assert TERMINAL_STATES == OUTCOME_STATES | {S.CANCELLED}
+
+
+def test_there_is_no_expired_state_and_no_delivered_state():
+    names = {s.value for s in DonationStatus}
+    assert "EXPIRED" not in names and "DELIVERED" not in names
+
+
+def test_nothing_reaches_a_terminal_state_without_a_person():
+    """No deadline and no empty slate ends a donation: SYSTEM never moves one into a
+    terminal state. A silent donor goes to NEEDS_ADMIN instead."""
+    for (state, action), target in TRANSITIONS.items():
+        if target in TERMINAL_STATES:
+            assert ACTORS[(state, action)] != Actor.SYSTEM, (state, action)
+
+
+def test_only_donor_or_admin_consents_to_recycling():
+    into_recycling = {key for key, target in TRANSITIONS.items() if target == S.WASTE_REDIRECTED}
+    assert {ACTORS[k] for k in into_recycling} == {Actor.DONOR, Actor.ADMIN}
+    assert {state for state, _ in into_recycling} == {S.ESCALATED, S.NEEDS_ADMIN}
+
+
+# --- Waiting states and the sweeper -------------------------------------------------------------
+
+# States that wait on a person (donor, acceptor, recycler) rather than on the system.
+WAITING_STATES = NON_TERMINAL - TRANSIENT_STATES
+
+
+@pytest.mark.parametrize("state", sorted(WAITING_STATES))
+def test_every_waiting_state_has_a_sweeper_or_admin_exit(state):
+    sweeper_exit = state in policy.SWEEP_RULES
+    admin_exit = any(ACTORS[(state, a)] == Actor.ADMIN for a in allowed_actions(state))
+    assert sweeper_exit or admin_exit, f"{state} could wait forever"
+
+
+@pytest.mark.parametrize(("state", "actions"), sorted(policy.SWEEP_RULES.items()))
+def test_sweep_rules_are_system_edges_of_the_table(state, actions):
+    for action in actions:
+        assert ACTORS[(state, action)] == Actor.SYSTEM, (state, action)
+
+
+def test_the_admin_queue_is_left_only_by_admins():
+    assert allowed_actions(S.NEEDS_ADMIN) == allowed_actions(S.NEEDS_ADMIN, Actor.ADMIN)
+    assert S.NEEDS_ADMIN not in policy.SWEEP_RULES
+
+
+@pytest.mark.parametrize("state", sorted(TRANSIENT_STATES))
+def test_transient_states_are_resolved_by_the_system_alone(state):
+    assert allowed_actions(state) == allowed_actions(state, Actor.SYSTEM)
+    assert state not in policy.SWEEP_RULES  # never committed, so never swept
+
+
+# --- Actors and reasons ----------------------------------------------------------------------------
+
+
+def test_admin_actions_require_a_reason_and_no_others_do():
+    for (state, action), actor in ACTORS.items():
+        assert requires_reason(state, action) == (actor == Actor.ADMIN)
+
+
+def test_check_actor():
+    check_actor(S.MATCHED, A.ACCEPT, Actor.ACCEPTOR)
+    with pytest.raises(ActorNotAllowed):
+        check_actor(S.MATCHED, A.ACCEPT, Actor.DONOR)
+    with pytest.raises(InvalidTransition):
+        check_actor(S.LISTED, A.ACCEPT, Actor.ACCEPTOR)
+
+
+def test_cancel_is_the_donors_until_acceptance_then_only_an_admins():
+    donor_cancel = {s for (s, a), who in ACTORS.items() if a == A.CANCEL and who == Actor.DONOR}
+    assert donor_cancel == {S.LISTED, S.MATCHED, S.ESCALATED}
+    assert ACTORS[(S.NEEDS_ADMIN, A.CANCEL)] == Actor.ADMIN
+
+
+def test_handover_roles_are_fixed():
+    assert ACTORS[(S.PICKUP_SCHEDULED, A.MARK_HANDED_OVER)] == Actor.DONOR
+    assert ACTORS[(S.PICKUP_SCHEDULED, A.CONFIRM_RECEIPT)] == Actor.ACCEPTOR
+    assert ACTORS[(S.IN_TRANSIT, A.CONFIRM_RECEIPT)] == Actor.ACCEPTOR
+
+
+def test_no_withdraw_and_no_auto_offer():
+    assert "WITHDRAW" not in {a.value for a in DonationAction}
+    assert ACTORS[(S.LISTED, A.OFFER)] == Actor.DONOR
+
+
+def test_allowed_actions_per_actor():
+    assert allowed_actions(S.LISTED, Actor.DONOR) == {A.OFFER, A.CANCEL}
+    assert allowed_actions(S.LISTED, Actor.SYSTEM) == {A.ESCALATE}
+    assert allowed_actions(S.MATCHED, Actor.ACCEPTOR) == {A.ACCEPT, A.REJECT}
+    assert allowed_actions(S.CANCELLED) == frozenset()
+
+
+# --- Single edges --------------------------------------------------------------------------------
 
 
 def test_cancel_moves_listed_to_cancelled():
-    assert next_state(DonationStatus.LISTED, DonationAction.CANCEL) == DonationStatus.CANCELLED
+    assert next_state(S.LISTED, A.CANCEL) == S.CANCELLED
 
 
 def test_cancelling_twice_is_rejected():
     with pytest.raises(InvalidTransition):
-        next_state(DonationStatus.CANCELLED, DonationAction.CANCEL)
+        next_state(S.CANCELLED, A.CANCEL)
 
 
-def test_allowed_actions():
-    assert allowed_actions(DonationStatus.LISTED) == {DonationAction.CANCEL}
-    assert allowed_actions(DonationStatus.CANCELLED) == frozenset()
+def test_rejection_and_expiry_go_through_re_matching():
+    assert next_state(S.MATCHED, A.REJECT) == S.RE_MATCHING
+    assert next_state(S.MATCHED, A.EXPIRE) == S.RE_MATCHING
+    assert successors(S.RE_MATCHING) == {S.MATCHED, S.ESCALATED}
 
 
-def test_table_is_read_only():
-    with pytest.raises(TypeError):
-        lifecycle.TRANSITIONS[(DonationStatus.CANCELLED, DonationAction.CANCEL)] = DonationStatus.LISTED
+def test_only_listed_and_re_matching_escalate():
+    """The pickup window is advisory: no state escalates because it lapsed."""
+    assert {state for state, action in TRANSITIONS if action == A.ESCALATE} == {S.LISTED, S.RE_MATCHING}
 
 
-@pytest.mark.xfail(
-    strict=True,
-    reason=(
-        "Known Phase 1 gap: outcome states (COMPLETED, RECYCLED) arrive in Phase 2, so a "
-        "LISTED donation cannot yet reach reuse or recovery. strict=True: once Phase 2 "
-        "closes the loop this XPASSes and fails the run, so remove this marker then."
-    ),
-)
-@pytest.mark.parametrize("state", sorted(NON_TERMINAL))
-def test_every_non_terminal_state_can_reach_an_outcome(state):
-    assert reachable_from(state) & OUTCOME_STATES
+# --- Declared sets ---------------------------------------------------------------------------------
+
+
+def test_editable_states_are_not_terminal():
+    assert EDITABLE_STATES <= NON_TERMINAL
+    assert is_editable(S.LISTED)
+    assert not is_editable(S.CANCELLED)
+
+
+def test_held_states_follow_acceptance_and_precede_completion():
+    assert HELD_STATES == {S.ACCEPTED, S.PICKUP_SCHEDULED, S.IN_TRANSIT}
+    assert HELD_STATES <= NON_TERMINAL - TRANSIENT_STATES

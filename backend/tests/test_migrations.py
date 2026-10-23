@@ -11,7 +11,17 @@ from tests.conftest import alembic_config, drop_everything, upgrade_head
 
 from alembic import command
 
-APP_TABLES = {"users", "organization_profiles", "current_needs", "donations", "donation_images"}
+PHASE1_TABLES = {"users", "organization_profiles", "current_needs", "donations", "donation_images"}
+PHASE2_TABLES = {
+    "ranking_runs",
+    "matches",
+    "handovers",
+    "status_events",
+    "address_access_events",
+    "waste_collectors",
+    "recyclings",
+}
+APP_TABLES = PHASE1_TABLES | PHASE2_TABLES
 
 
 def _tables(engine) -> set[str]:
@@ -41,5 +51,14 @@ def test_models_match_migrations(test_engine):
     assert diff == [], f"Models and migrations differ; create a migration:\n{diff}"
 
 
-def test_only_phase1_tables_exist():
+def test_downgrade_one_step_leaves_phase1_intact(test_engine):
+    with test_engine.begin() as conn:
+        command.downgrade(alembic_config(conn), "0001")
+    assert _tables(test_engine) - {"alembic_version"} == PHASE1_TABLES
+    upgrade_head(test_engine)
+    assert APP_TABLES <= _tables(test_engine)
+
+
+def test_only_expected_tables_exist():
+    """Tables arrive with the code that uses them: no Wallet, Payment, Review yet."""
     assert set(Base.metadata.tables) == APP_TABLES

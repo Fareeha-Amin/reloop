@@ -3,7 +3,7 @@ from datetime import UTC, datetime
 
 from pydantic import AwareDatetime, ConfigDict, Field, model_validator
 
-from app.constants import Category, Condition, DonationAction, DonationStatus
+from app.constants import Category, Condition, DonationAction, DonationStatus, EscalationCause
 from app.schemas.common import (
     Address,
     InputModel,
@@ -94,6 +94,22 @@ class DonationImageOut(OutputModel):
     created_at: datetime
 
 
+class DonationSummaryOut(OutputModel):
+    """A donation without its precise address or coordinates (admin lists and queue)."""
+
+    id: uuid.UUID
+    donor_id: uuid.UUID
+    category: Category
+    quantity: int = Field(description="A count of items.")
+    condition: Condition
+    is_priority: bool
+    pickup_window_start: datetime
+    pickup_window_end: datetime
+    status: DonationStatus
+    created_at: datetime
+    updated_at: datetime
+
+
 class DonationOut(OutputModel):
     id: uuid.UUID
     donor_id: uuid.UUID
@@ -108,7 +124,10 @@ class DonationOut(OutputModel):
     pickup_window_start: datetime
     pickup_window_end: datetime
     status: DonationStatus
-    # Derived from app.domain.lifecycle, so clients never re-implement status rules.
+    # Why the system escalated it, when status is ESCALATED.
+    escalation_cause: EscalationCause | None = None
+    # Derived from the lifecycle table and the policy guards, for this viewer, so
+    # clients render buttons from the API instead of re-implementing status rules.
     editable: bool
     allowed_actions: list[DonationAction]
     images: list[DonationImageOut]
@@ -116,8 +135,14 @@ class DonationOut(OutputModel):
     updated_at: datetime
 
     @classmethod
-    def from_donation(cls, donation) -> "DonationOut":
+    def from_donation(
+        cls,
+        donation,
+        allowed_actions: frozenset[DonationAction],
+        escalation_cause: EscalationCause | None = None,
+    ) -> "DonationOut":
         data = {name: getattr(donation, name) for name in cls.model_fields if hasattr(donation, name)}
         data["editable"] = lifecycle.is_editable(donation.status)
-        data["allowed_actions"] = sorted(lifecycle.allowed_actions(donation.status))
+        data["allowed_actions"] = sorted(allowed_actions)
+        data["escalation_cause"] = escalation_cause
         return cls.model_validate(data)

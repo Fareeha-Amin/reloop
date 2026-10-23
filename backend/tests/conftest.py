@@ -5,8 +5,13 @@ TEST_DATABASE_URL: a separate database whose tables are DROPPED at the start of 
 Without it they are skipped, with the reason shown in the pytest summary.
 """
 
+import os
 from collections.abc import Iterator
 from pathlib import Path
+
+# The in-process sweeper must not run against the real database during tests. Set before
+# any settings are read; an environment variable overrides .env.
+os.environ["SWEEPER_ENABLED"] = "false"
 
 import pytest
 from alembic import command

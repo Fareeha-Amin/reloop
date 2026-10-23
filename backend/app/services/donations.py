@@ -1,17 +1,19 @@
-"""Donation CRUD and images. Status changes are delegated to app.domain.lifecycle; this
-module never compares statuses itself."""
+"""Donation CRUD and images. Status changes live in app.services.actions (donor and
+admin) and app.services.offers (acceptor); this module never compares statuses itself."""
 
 import logging
 import uuid
 from dataclasses import dataclass
+from datetime import datetime
 
 from sqlalchemy import func, select
 from sqlalchemy.orm import Session
 
-from app.constants import IMAGES_PER_DONATION_MAX, DonationAction, DonationStatus, Role
+from app.constants import IMAGES_PER_DONATION_MAX, AddressAccess, DonationStatus, Role
 from app.domain import lifecycle
 from app.models import Donation, DonationImage, User
 from app.schemas.donation import DonationCreate, DonationUpdate, validate_pickup_window
+from app.services import audit, matching, organizations
 from app.services.errors import Conflict, NotFound, Unprocessable
 from app.services.geocoding import Geocoder
 from app.services.images import ImageRejected, process_upload
@@ -57,6 +59,8 @@ def list_for_donor(db: Session, donor: User, limit: int, offset: int) -> list[Do
 def admin_list(
     db: Session, status: DonationStatus | None, limit: int, offset: int
 ) -> list[Donation]:
+    """Returned redacted (no address): reading the precise address is a logged detail
+    read, not a side effect of listing."""
     query = select(Donation)
     if status is not None:
         query = query.where(Donation.status == status)
@@ -65,13 +69,23 @@ def admin_list(
 
 
 def get_visible(db: Session, donation_id: uuid.UUID, user: User, lock: bool = False) -> Donation:
-    """Phase 1 visibility: the donor who owns it, or an admin. Anyone else gets the same
-    404 as for a donation that does not exist."""
+    """The full donation (including the precise address): the donor who owns it, or an
+    admin. Anyone else gets the same 404 as for a donation that does not exist.
+    Acceptors use the redacted views in app.services.offers instead."""
     donation = db.get(Donation, donation_id, with_for_update=lock)
     if donation is None:
         raise NotFound("Donation not found.")
     if user.role != Role.ADMIN and donation.donor_id != user.id:
         raise NotFound("Donation not found.")
+    return donation
+
+
+def read(db: Session, donation_id: uuid.UUID, user: User, now: datetime) -> Donation:
+    """get_visible, recording the access when an admin reads the precise address."""
+    donation = get_visible(db, donation_id, user)
+    if user.role == Role.ADMIN:
+        audit.record_address_access(db, donation, user, AddressAccess.ADMIN_VIEWED, now)
+        db.commit()
     return donation
 
 
@@ -118,18 +132,6 @@ def update(
 
     for field, value in changes.items():
         setattr(donation, field, value)
-    db.commit()
-    return donation
-
-
-def apply_action(
-    db: Session, donation_id: uuid.UUID, donor: User, action: DonationAction
-) -> Donation:
-    donation = _get_owned(db, donation_id, donor)
-    try:
-        donation.status = lifecycle.next_state(donation.status, action)
-    except lifecycle.InvalidTransition as exc:
-        raise Conflict(str(exc)) from exc
     db.commit()
     return donation
 
@@ -203,10 +205,22 @@ def _get_image(db: Session, donation: Donation, image_id: uuid.UUID) -> Donation
     return image
 
 
+def _image_visible_donation(db: Session, donation_id: uuid.UUID, user: User) -> Donation:
+    """Images (EXIF-stripped at upload) are visible to the donor, admins, and an
+    organisation while it has an open offer for the donation or holds it."""
+    if user.role == Role.ACCEPTOR:
+        org = organizations.get_for_user(db, user)
+        donation = db.get(Donation, donation_id)
+        if donation is None or not matching.organisation_may_see_images(db, donation_id, org.id):
+            raise NotFound("Donation not found.")
+        return donation
+    return get_visible(db, donation_id, user)
+
+
 def read_image(
     db: Session, donation_id: uuid.UUID, image_id: uuid.UUID, user: User, storage: ImageStorage
 ) -> tuple[DonationImage, bytes]:
-    donation = get_visible(db, donation_id, user)
+    donation = _image_visible_donation(db, donation_id, user)
     image = _get_image(db, donation, image_id)
     try:
         return image, storage.read(image.storage_key)

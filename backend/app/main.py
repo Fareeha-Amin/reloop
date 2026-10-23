@@ -1,19 +1,50 @@
 """FastAPI application. Run with: uvicorn app.main:app --reload (from backend/)."""
 
+import asyncio
+from contextlib import asynccontextmanager
+
 from fastapi import FastAPI, Request
 from fastapi.responses import JSONResponse
 
-from app.routers import admin, auth, donations, organizations
+from app.config import get_settings
+from app.constants import SWEEP_INTERVAL
+from app.routers import admin, auth, donations, offers, organizations
+from app.services import sweeper
 from app.services.errors import ServiceError
 from app.services.geocoding import GeocodingUnavailable
 
+
+@asynccontextmanager
+async def lifespan(app: FastAPI):
+    """Runs the deadline sweeper in-process every SWEEP_INTERVAL, unless SWEEPER_ENABLED
+    is false. Shutdown waits for a sweep in progress to finish."""
+    stop = asyncio.Event()
+    task = None
+    if get_settings().sweeper_enabled:
+        task = asyncio.create_task(
+            sweeper.run_periodically(SWEEP_INTERVAL.total_seconds(), sweeper.sweep_now, stop)
+        )
+    try:
+        yield
+    finally:
+        stop.set()
+        if task is not None:
+            await task
+
+
 app = FastAPI(
+    lifespan=lifespan,
     title="ReLoop API",
-    version="0.1.0-phase1",
+    version="0.2.0-phase2",
     description=(
-        "Phase 1 — foundation: auth with roles, donation CRUD with images, organisation "
-        "registration and needs list. **Geocoding is a stub**: coordinates are accepted "
-        "as supplied, not looked up. Matching and the full lifecycle arrive in Phase 2."
+        "Phase 2 — the core loop: explainable matching, the full donation lifecycle, "
+        "rejection handling, escalation, a recycling fallback and the deadline sweeper "
+        f"(in-process every {SWEEP_INTERVAL.total_seconds() / 60:g} minutes; POST /admin/sweep "
+        "runs it now). "
+        "**Stubs and simulations:** geocoding is a stub (coordinates are accepted as "
+        "supplied); recycling settlements are **simulated** over **estimated** mass "
+        "(per-category weights are placeholders), and an admin confirms recycling on the "
+        "recycler's behalf. No money moves."
     ),
 )
 
@@ -30,6 +61,7 @@ def handle_geocoding_unavailable(request: Request, exc: GeocodingUnavailable) ->
 
 app.include_router(auth.router)
 app.include_router(organizations.router)
+app.include_router(offers.router)
 app.include_router(donations.router)
 app.include_router(admin.router)
 

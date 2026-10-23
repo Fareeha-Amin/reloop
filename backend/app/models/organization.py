@@ -44,7 +44,8 @@ class OrganizationProfile(UUIDPrimaryKey, Timestamps, Base):
     latitude: Mapped[float] = mapped_column(Float)
     longitude: Mapped[float] = mapped_column(Float)
     pickup_capable: Mapped[bool] = mapped_column(Boolean)
-    # A count of items, not a mass or volume. Nothing decrements it yet.
+    # A count of items, not a mass or volume. Never decremented: remaining capacity is
+    # derived (storage_capacity minus items in donations it currently holds).
     storage_capacity: Mapped[int] = mapped_column(Integer)
     categories_accepted: Mapped[list[Category]] = mapped_column(ARRAY(StrEnumType(Category)))
 

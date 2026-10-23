@@ -5,8 +5,9 @@ from collections.abc import Iterator
 from datetime import datetime
 from enum import StrEnum
 from functools import lru_cache
+from typing import ClassVar
 
-from sqlalchemy import DateTime, Engine, MetaData, String, create_engine, func
+from sqlalchemy import DateTime, Engine, MetaData, String, create_engine, event, func, inspect
 from sqlalchemy.orm import DeclarativeBase, Mapped, Session, mapped_column
 from sqlalchemy.types import TypeDecorator
 
@@ -39,6 +40,46 @@ class Timestamps:
     updated_at: Mapped[datetime] = mapped_column(
         DateTime(timezone=True), server_default=func.now(), onupdate=func.now()
     )
+
+
+class AppendOnlyViolation(Exception):
+    pass
+
+
+class AppendOnly:
+    """Rows of this model are inserted once and never deleted (non-negotiable 3).
+
+    Columns named in __write_once__ may be set exactly once, from NULL: an offer's
+    response, a recycling's settlement. Filling an empty field is not overwriting it.
+    Every other column is immutable after insert.
+
+    Enforced on every ORM flush by the listeners below, deliberately not by database
+    triggers (consistent with the decision against CHECK constraints repeating rules).
+    App code issues no bulk UPDATE or DELETE, which would bypass the ORM; a test checks.
+    """
+
+    __write_once__: ClassVar[frozenset[str]] = frozenset()
+
+
+@event.listens_for(AppendOnly, "before_update", propagate=True)
+def _refuse_overwrite(mapper, connection, target) -> None:
+    state = inspect(target)
+    for attr in mapper.column_attrs:
+        history = state.attrs[attr.key].history
+        if not history.added:
+            continue
+        name = f"{type(target).__name__}.{attr.key}"
+        if attr.key not in target.__write_once__:
+            raise AppendOnlyViolation(f"{name} is immutable.")
+        # The previous value must be known and NULL. An unloaded (unknown) previous
+        # value is refused rather than assumed empty.
+        if not history.deleted or any(v is not None for v in history.deleted):
+            raise AppendOnlyViolation(f"{name} is write-once and already set (or was not loaded).")
+
+
+@event.listens_for(AppendOnly, "before_delete", propagate=True)
+def _refuse_delete(mapper, connection, target) -> None:
+    raise AppendOnlyViolation(f"{type(target).__name__} rows are never deleted.")
 
 
 class StrEnumType(TypeDecorator):

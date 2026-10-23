@@ -24,6 +24,9 @@ class Settings(BaseSettings):
     # reason shown) when this is unset, and refuse to run if it names DATABASE_URL's
     # database, because the test setup drops every table in it.
     test_database_url: str | None = None
+    # Run the deadline sweeper in-process, every SWEEP_INTERVAL (app.main lifespan).
+    # The test suite sets it false; manual runs use the CLI or POST /admin/sweep.
+    sweeper_enabled: bool = True
 
 
 @lru_cache

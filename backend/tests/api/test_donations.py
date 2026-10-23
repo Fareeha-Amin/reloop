@@ -13,7 +13,7 @@ def test_create_donation(client):
     assert body["quantity"] == 8
     assert body["is_priority"] is True
     assert body["editable"] is True
-    assert body["allowed_actions"] == ["CANCEL"]
+    assert body["allowed_actions"] == ["CANCEL", "OFFER"]
     assert body["images"] == []
 
 

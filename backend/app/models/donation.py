@@ -23,8 +23,15 @@ from app.domain.lifecycle import INITIAL_STATE
 class Donation(UUIDPrimaryKey, Timestamps, Base):
     """A donor's listing. Never hard-deleted; a withdrawal moves it to CANCELLED.
 
-    The pickup address and coordinates are sensitive (non-negotiable 10). In Phase 1 a
-    donation is readable only by its donor and by admins.
+    The pickup address and coordinates are sensitive (non-negotiable 10): the full row
+    is readable by its donor and by admins (admin reads are recorded); an acceptor sees
+    the address only while it holds the donation (see app.services.offers).
+
+    The pickup window is advisory: acceptors see it, but nothing enforces it. A LISTED
+    donation the donor never offers escalates after LISTED_STALL.
+
+    Nothing about matching is stored here: offers, declines, exclusions and escalations
+    are all derived from Match rows and StatusEvents.
     """
 
     __tablename__ = "donations"

@@ -25,7 +25,39 @@ VOCABULARY_VALUES = {member.value for enum in VOCABULARIES for member in enum}
 
 def test_vocabularies_found():
     names = {enum.__name__ for enum in VOCABULARIES}
-    assert {"Role", "Category", "Condition", "Urgency", "VerificationStatus", "DonationStatus"} <= names
+    assert {
+        "Role",
+        "Category",
+        "Condition",
+        "Urgency",
+        "VerificationStatus",
+        "DonationStatus",
+        "DonationAction",
+        "Actor",
+        "EscalationCause",
+        "OfferSource",
+        "OfferResponse",
+        "RejectReason",
+        "HandoverMode",
+        "AddressAccess",
+        "ScoreFactor",
+        "FilterReason",
+        "RankingTrigger",
+    } <= names
+
+
+def test_app_code_issues_no_bulk_update_or_delete():
+    """Bulk UPDATE/DELETE statements bypass the ORM, and with it the append-only guard
+    (app.db.AppendOnly). App code changes rows only through the ORM."""
+    offenders = []
+    for path in APP_DIR.rglob("*.py"):
+        tree = ast.parse(path.read_text(encoding="utf-8"))
+        for node in ast.walk(tree):
+            if isinstance(node, ast.ImportFrom) and node.module and node.module.startswith("sqlalchemy"):
+                for alias in node.names:
+                    if alias.name in {"update", "delete"}:
+                        offenders.append(f"{path.relative_to(APP_DIR)}:{node.lineno} {alias.name}")
+    assert not offenders, "Bulk statements bypass the append-only guard:\n" + "\n".join(offenders)
 
 
 def test_vocabulary_values_are_upper_snake_and_match_names():
