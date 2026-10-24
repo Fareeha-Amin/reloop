@@ -1,9 +1,10 @@
 /** Reads from the API, through TanStack Query. Polling keeps statuses fresh (no websockets). */
 
-import { useQuery } from '@tanstack/react-query';
+import { keepPreviousData, useQuery } from '@tanstack/react-query';
 
 import { unwrap } from '../api/errors';
-import { FEED_PAGE_SIZE, POLL_MS } from '../config';
+import type { Category, DonationStatus, VerificationStatus } from '../api/schema';
+import { ADMIN_PAGE_SIZE, FEED_PAGE_SIZE, POLL_MS } from '../config';
 import { client } from './api';
 
 export const keys = {
@@ -55,4 +56,121 @@ export function useNotifications(enabled: boolean) {
     refetchInterval: POLL_MS.notifications,
     enabled,
   });
+}
+
+// --- Public discovery map --------------------------------------------------------------------
+
+export function useDiscovery(category: string | null) {
+  return useQuery({
+    queryKey: ['discovery', category ?? 'all'],
+    queryFn: () =>
+      unwrap(client.GET('/discovery/organisations', { params: { query: category ? { category: category as Category } : {} } })),
+    placeholderData: keepPreviousData,
+  });
+}
+
+// --- Acceptor ------------------------------------------------------------------------------
+
+export function useMyOrganisation() {
+  return useQuery({ queryKey: ['organisation'], queryFn: () => unwrap(client.GET('/organisations/me')) });
+}
+
+export function useNeeds() {
+  return useQuery({ queryKey: ['needs'], queryFn: () => unwrap(client.GET('/organisations/me/needs')) });
+}
+
+export function useOffers() {
+  return useQuery({
+    queryKey: ['offers'],
+    queryFn: () => unwrap(client.GET('/organisations/me/offers')),
+    refetchInterval: POLL_MS.list,
+  });
+}
+
+export function useOffer(matchId: string) {
+  return useQuery({
+    queryKey: ['offers', matchId],
+    queryFn: () => unwrap(client.GET('/organisations/me/offers/{match_id}', { params: { path: { match_id: matchId } } })),
+    refetchInterval: POLL_MS.donation,
+  });
+}
+
+export function useHeldDonations() {
+  return useQuery({
+    queryKey: ['held'],
+    queryFn: () => unwrap(client.GET('/organisations/me/donations')),
+    refetchInterval: POLL_MS.list,
+  });
+}
+
+export function useHeldDonation(id: string) {
+  return useQuery({
+    queryKey: ['held', id],
+    queryFn: () => unwrap(client.GET('/organisations/me/donations/{donation_id}', path(id))),
+    refetchInterval: POLL_MS.donation,
+  });
+}
+
+// --- Admin -----------------------------------------------------------------------------------
+
+export function useAwaitingAdmin() {
+  return useQuery({
+    queryKey: ['admin', 'awaiting'],
+    queryFn: () => unwrap(client.GET('/admin/awaiting')),
+    refetchInterval: POLL_MS.list,
+  });
+}
+
+export function useAdminOrganisations(status: string | null) {
+  return useQuery({
+    queryKey: ['admin', 'organisations', status ?? 'all'],
+    queryFn: () =>
+      unwrap(
+        client.GET('/admin/organisations', {
+          params: { query: { limit: ADMIN_PAGE_SIZE, ...(status ? { verification_status: status as VerificationStatus } : {}) } },
+        }),
+      ),
+    placeholderData: keepPreviousData,
+  });
+}
+
+export function useAdminOrganisation(id: string) {
+  return useQuery({
+    queryKey: ['admin', 'organisation', id],
+    queryFn: () => unwrap(client.GET('/admin/organisations/{org_id}', { params: { path: { org_id: id } } })),
+  });
+}
+
+export function useAdminDonations(status: string | null, page: number) {
+  return useQuery({
+    queryKey: ['admin', 'donations', status ?? 'all', page],
+    queryFn: () =>
+      unwrap(
+        client.GET('/admin/donations', {
+          params: {
+            query: { limit: ADMIN_PAGE_SIZE, offset: page * ADMIN_PAGE_SIZE, ...(status ? { status: status as DonationStatus } : {}) },
+          },
+        }),
+      ),
+    placeholderData: keepPreviousData,
+    refetchInterval: POLL_MS.list,
+  });
+}
+
+/**
+ * Every read of the admin detail is recorded in the address-access log, so it is NEVER
+ * polled or refetched on focus: one read per visit, plus one after an admin action.
+ */
+export function useAdminDonation(id: string) {
+  return useQuery({
+    queryKey: ['admin', 'donation', id],
+    queryFn: () => unwrap(client.GET('/admin/donations/{donation_id}', path(id))),
+    refetchOnWindowFocus: false,
+    refetchOnReconnect: false,
+    retry: false,
+  });
+}
+
+export function useRecyclers() {
+  return useQuery({ queryKey: ['admin', 'recyclers'], queryFn: () => unwrap(client.GET('/admin/recyclers')) });
 }

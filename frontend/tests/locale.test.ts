@@ -3,7 +3,8 @@
  *
  * - Every value of every API vocabulary has a label (vocab.<Vocabulary>.<VALUE>), so a
  *   value the backend adds fails here until it is named.
- * - Every lifecycle action has a notification sentence, every condition a hint.
+ * - Every lifecycle action has a notification sentence, every condition a hint, every
+ *   verification status an explanation for the organisation.
  * - Every key spelled out in the code (t('...') and `...Key: '...'` properties) exists.
  */
 
@@ -92,6 +93,11 @@ describe('locale file', () => {
     expect(keys.length).toBeGreaterThan(100);
     const missing = keys.filter(({ key }) => lookup(key) === undefined).map(({ key, where }) => `${key} (${where})`);
     expect(missing).toEqual([]);
+  });
+
+  it('explains every verification status to the organisation', () => {
+    const statuses = VOCABULARIES.find(([name]) => name === 'VerificationStatus')![1].enum;
+    expect(statuses.filter((s) => typeof lookup(`acceptor.verification.${s}`) !== 'string')).toEqual([]);
   });
 
   it('declares its locale', () => {

@@ -1,8 +1,15 @@
 import { Link } from 'react-router';
 
 import type { NotificationOut } from '../api/schema';
+import { paths } from '../app/paths';
+import { useNotifications } from '../app/queries';
+import { useSession } from '../app/session';
+import { useSeenMarker } from '../app/unread';
 import { formatRelative } from '../i18n/format';
 import { has, t } from '../i18n';
+import { LinkButton } from '../ui/Button';
+import { Card, CardTitle } from '../ui/Card';
+import { Icon } from '../ui/icons';
 import { ToneDot } from '../ui/Tag';
 import { statusTone, vocabLabel } from '../vocab/display';
 import { notificationLink } from '../vocab/roles';
@@ -55,5 +62,35 @@ export function NotificationList({
         );
       })}
     </ul>
+  );
+}
+
+const RECENT_NOTIFICATIONS = 6;
+
+/** The latest few notifications, for a dashboard's side column. */
+export function RecentActivity() {
+  const { user } = useSession();
+  const notifications = useNotifications(true);
+  const { seen } = useSeenMarker(user?.id ?? null);
+  return (
+    <Card>
+      <CardTitle
+        aside={
+          <LinkButton to={paths.notifications} variant="ghost" size="sm" iconAfter="arrowRight">
+            {t('common.seeAll')}
+          </LinkButton>
+        }
+      >
+        <span className="flex items-center gap-2">
+          <Icon name="bell" className="size-5 text-brand-600" />
+          {t('notifications.recent')}
+        </span>
+      </CardTitle>
+      {notifications.data && notifications.data.length > 0 && user ? (
+        <NotificationList items={notifications.data.slice(0, RECENT_NOTIFICATIONS)} role={user.role} seen={seen} compact />
+      ) : (
+        <p className="text-sm text-ink-muted">{notifications.isPending ? t('common.loading') : t('notifications.empty')}</p>
+      )}
+    </Card>
   );
 }

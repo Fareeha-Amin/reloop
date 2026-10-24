@@ -167,3 +167,28 @@ def test_recycling_rate_is_copied_at_assignment(client, db):
     db.commit()
     assignment = db.scalar(select(Recycling).where(Recycling.donation_id == donation["id"]))
     assert str(assignment.rate_per_kg) == "12.00"  # ... does not rewrite the assignment
+
+
+def test_awaiting_lists_the_admin_queue_and_recycling_to_confirm(client, db):
+    h.add_recycler(db, "Peenya Textiles", at=h.PEENYA, categories=("CLOTHES",))
+    clothes_donor, clothes = _escalated(client, db, category="CLOTHES")
+    toys_donor, toys = _escalated(client, db, category="TOYS")  # no recycler takes toys
+    for headers, donation in ((clothes_donor, clothes), (toys_donor, toys)):
+        resp = client.post(f"/donations/{donation['id']}/redirect-to-recycling", headers=headers)
+        assert resp.status_code == 200, resp.text
+    admin = h.admin(client, db)
+
+    resp = client.get("/admin/awaiting", headers=admin)
+    assert resp.status_code == 200, resp.text
+    items = {i["donation"]["id"]: i for i in resp.json()}
+    assert items[clothes["id"]]["donation"]["status"] == "WASTE_REDIRECTED"
+    assert items[clothes["id"]]["via"] == "REDIRECT_TO_RECYCLING"
+    assert items[clothes["id"]]["allowed_actions"] == ["CONFIRM_RECYCLED"]
+    assert items[toys["id"]]["donation"]["status"] == "NEEDS_ADMIN"
+    assert items[toys["id"]]["via"] == "NO_RECYCLER"
+    assert "pickup_address_text" not in items[toys["id"]]["donation"]
+    # Longest-waiting first; the narrower queue still holds NEEDS_ADMIN only.
+    assert list(items) == [clothes["id"], toys["id"]]
+    queue = client.get("/admin/queue", headers=admin).json()
+    assert [i["donation"]["id"] for i in queue] == [toys["id"]]
+    assert client.get("/admin/awaiting", headers=clothes_donor).status_code == 403

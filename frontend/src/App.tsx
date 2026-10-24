@@ -10,9 +10,16 @@ import { Candidates } from './pages/donor/Candidates';
 import { DonationDetail } from './pages/donor/DonationDetail';
 import { DonorDashboard } from './pages/donor/DonorDashboard';
 import { NewDonation } from './pages/donor/NewDonation';
+import { AcceptorDashboard } from './pages/acceptor/AcceptorDashboard';
+import { HeldDonation } from './pages/acceptor/HeldDonation';
+import { OfferDetail } from './pages/acceptor/OfferDetail';
+import { AdminDonation } from './pages/admin/AdminDonation';
+import { AdminOrganisation } from './pages/admin/AdminOrganisation';
+import { AdminPanel } from './pages/admin/AdminPanel';
+import { DiscoveryMap } from './pages/DiscoveryMap';
 import { Landing } from './pages/Landing';
+import { NotFound } from './pages/NotFound';
 import { Notifications } from './pages/Notifications';
-import { NotFound, Placeholder } from './pages/Placeholder';
 import { ROLE } from './vocab/roles';
 
 const router = createBrowserRouter([
@@ -24,7 +31,7 @@ const router = createBrowserRouter([
       { path: '/register', element: <RegisterChoice /> },
       { path: '/register/donor', element: <RegisterDonor /> },
       { path: '/register/organisation', element: <RegisterOrganisation /> },
-      { path: '/map', element: <Placeholder /> },
+      { path: '/map', element: <DiscoveryMap /> },
       {
         path: '/notifications',
         element: (
@@ -49,9 +56,30 @@ const router = createBrowserRouter([
         path: '/donor/donations/:id/candidates',
         element: <RequireRole role={ROLE.donor}><Candidates /></RequireRole>,
       },
-      // Second half of Phase 3: acceptor dashboard and admin panel (labelled stubs until then).
-      { path: '/acceptor/*', element: <RequireRole role={ROLE.acceptor}><Placeholder /></RequireRole> },
-      { path: '/admin/*', element: <RequireRole role={ROLE.admin}><Placeholder /></RequireRole> },
+      {
+        path: '/acceptor',
+        element: <RequireRole role={ROLE.acceptor}><AcceptorDashboard /></RequireRole>,
+      },
+      {
+        path: '/acceptor/offers/:matchId',
+        element: <RequireRole role={ROLE.acceptor}><OfferDetail /></RequireRole>,
+      },
+      {
+        path: '/acceptor/donations/:id',
+        element: <RequireRole role={ROLE.acceptor}><HeldDonation /></RequireRole>,
+      },
+      {
+        path: '/admin',
+        element: <RequireRole role={ROLE.admin}><AdminPanel /></RequireRole>,
+      },
+      {
+        path: '/admin/donations/:id',
+        element: <RequireRole role={ROLE.admin}><AdminDonation /></RequireRole>,
+      },
+      {
+        path: '/admin/organisations/:id',
+        element: <RequireRole role={ROLE.admin}><AdminOrganisation /></RequireRole>,
+      },
       { path: '*', element: <NotFound /> },
     ],
   },

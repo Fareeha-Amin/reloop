@@ -7,27 +7,51 @@ recycling, so every donation ends in reuse or material recovery.
 Background: [docs/ReLoop_Project_Context.pdf](docs/ReLoop_Project_Context.pdf) ·
 Build brief: [PROMPT.md](PROMPT.md) · Decision log: [CLAUDE.md](CLAUDE.md)
 
-## Status: Phase 3, first half (the React frontend)
+## Status: Phase 3 (the React frontend)
 
-**What exists (Phase 3, first half)**
+**What exists (Phase 3)**
 
-- **A React frontend** (`frontend/`): landing page, registration for donors and
-  organisations (organisations drop a map pin for their location), login, the donor
-  dashboard, a three-step donation flow (what → where & when → photos & review), the
-  ranked list of organisations with each score broken into readable reasons, the
-  donation page (actions, the organisation holding it, a timeline of status events,
-  offers and recycling), and in-app notifications.
+- **A React frontend** (`frontend/`) for all three roles, in light and dark themes (a
+  header toggle; the system setting by default).
+  - **Everyone:** a landing page about the cause, registration (organisations drop a
+    map pin for their location), login, and a public **discovery map** of verified
+    organisations and their live needs, filterable by category.
+  - **Donors:** a dashboard, a three-step donation flow (what → where & when → photos
+    & review), the ranked list of organisations with each score broken into readable
+    reasons, and the donation page (actions, the organisation holding it, a timeline of
+    status events, offers and recycling).
+  - **Organisations:** a dashboard with the offer inbox (most urgent first), the
+    donations being received, the needs list (add, edit, mark as met, reopen) and the
+    verification status. An offer page shows only a rounded distance; accepting it
+    opens the donation with its released address, where the pickup is scheduled and
+    receipt confirmed.
+  - **Admins:** a panel with everything waiting on an admin (the admin queue and
+    recycling to confirm, each with its allowed actions), organisations (filter,
+    verify or reject with a note), all donations (status filter, paged, without
+    addresses), recyclers, and a button that runs the deadline sweep. The donation
+    record shows the precise address, the full timeline with reasons, and every stored
+    ranking run with its score breakdowns. It never refreshes by itself, because each
+    load is recorded as an address access.
+  - In-app notifications for every role.
 - **The UI decides nothing.** Buttons are drawn from the API's `allowed_actions`.
   Vocabulary values (statuses, actions, categories, …) appear only in
   `frontend/src/vocab/`, which a test enforces. API types are generated from the
   backend's OpenAPI schema.
-- **Honest labels.** Whatever the API marks as simulated, estimated or placeholder is
-  labelled the same way on screen.
-- **Backend additions:** `GET /notifications` (a per-user feed derived from the audit
-  log, with no new table), and `holder` on a donation: the organisation holding it,
-  with its address and phone, shown to the donor while it holds the donation.
-- **Not yet built (second half of Phase 3):** the organisation dashboard, the admin
-  panel and the discovery map. Their routes show a page that says so.
+- **Honest labels.** Whatever the API marks as simulated, estimated, placeholder or
+  approximate is labelled the same way on screen.
+- **Backend additions:**
+  - `GET /notifications`: a per-user feed derived from the audit log, with no new
+    table.
+  - `holder` on a donation: the organisation holding it, with its address and phone,
+    shown to the donor while it holds the donation.
+  - `GET /discovery/organisations` (public, no login): verified organisations and
+    their active needs, at positions rounded to `DISCOVERY_COORD_DECIMALS` (2 decimal
+    places: within about 0.8 km). No address, phone, contact person or registration ID.
+  - `GET /admin/awaiting`: every donation in a state that waits on an admin
+    (`lifecycle.states_awaiting(ADMIN)`: the admin queue and recycling to confirm).
+    `GET /admin/queue` is unchanged.
+  - Ranking runs' `slate` is now typed (`CandidateOut`, the same shape as the donor's
+    preview), and recyclers carry their `currency`.
 
 **What exists (Phase 2)**
 
@@ -108,6 +132,7 @@ notifications. Anything not listed above is not built.
 | **Recycler confirmation** | **SIMULATED.** There is no recycler login. An admin confirms recycling on the recycler's behalf, with a recorded reason. |
 | **Distances** | Haversine in Python over every organisation that accepts the category. No PostGIS. Fine at seed scale; revisit when the instant-pickup module needs fast geo-queries. |
 | **Map tiles** (frontend) | OpenStreetMap's public tile servers, no API key. Their usage policy suits development and demos, not production traffic: a deployment needs a tile provider. Locations are the pins people drop; nothing is geocoded. |
+| **Discovery map positions** | **APPROXIMATE.** Rounded to 2 decimal places of a degree before they leave the API (`positions_are_approximate`, `position_error_km`), and drawn as shaded areas, not pins. Matching uses the precise positions. |
 | **Notifications** | In-app only, polled (`POLL_MS` in `frontend/src/config.ts`). **Push (Firebase Cloud Messaging) and email are deferred**, not built. Read/unread state is kept in each browser, so it does not follow you to another device. |
 
 ### Deferred (not built, by decision)
@@ -152,6 +177,14 @@ notifications. Anything not listed above is not built.
   handling and a cookie flow that a future mobile client would not share.
 - **Server error messages are in English.** The UI's own text comes from the locale
   file, but messages from the API are shown as sent.
+- **No profile editing in the UI.** Organisations can change their profile through
+  `PATCH /organisations/me`, but the dashboard only shows it. Donors have no profile
+  page.
+- **Organisations see the donor's address, not their phone.** The API releases the
+  pickup address on acceptance; contact beyond that happens at the handover.
+- **The admin organisation list shows the first 25** for each filter, without paging.
+- **Dark mode needs a 2024-or-later browser** (Chrome 123, Safari 17.5, Firefox 120):
+  the colour tokens use CSS `light-dark()`. Older browsers get the light theme.
 
 ### Units
 
@@ -196,8 +229,9 @@ frontend/
     i18n/             en.json (every user-facing string) and the t() helper
     styles/theme.css  design tokens: the one place to restyle
     ui/               shared, token-only components (buttons, cards, tags, forms, ...)
-    components/       ReLoop components (timeline, action bar, map picker, ...)
-    pages/            routes, built from ui/ and components/
+    components/       ReLoop components (timeline, action bar, maps, needs, ...)
+    pages/            routes, built from ui/ and components/: auth/, donor/,
+                      acceptor/, admin/, the landing page and the discovery map
   tests/              Vitest: API client, token refresh, no-literals guard, locale
 docs/       project context document
 ```
@@ -321,3 +355,71 @@ the radius in effect. That admin read is itself recorded as an address access.
    `allowed_actions: [CANCEL]` and no address. Other items may be in the queue.
 3. `POST /admin/donations/{id}/requeue` and `.../redirect-to-recycling` (each with a
    reason) → 409. `POST /admin/donations/{id}/cancel` with a reason → `CANCELLED`.
+
+## Acceptance test (Phase 3, in the browser)
+
+The same three paths, through the UI. Start the API (`uvicorn app.main:app --reload`)
+and the frontend (`npm run dev`), run `seed` once, and use three browser windows (or
+one normal and two private windows), since each holds one login: the donor
+`demo.donor@example.org`, the admin, and whichever organisation is offered the
+donation. Seed organisations log in as `seed.<slug>@example.org` with the seed
+password.
+
+**Finding the holder, in the UI:** on the donor's donation page the line under the
+title says who the offer is waiting for. As admin, open the **Organisations** tab, find
+that organisation, and its page shows the **Login email**.
+
+**Before you start:** open `/map` while logged out. Verified organisations appear as
+shaded circles with their needs, marked **Approximate**; the category chips filter
+them. No address or phone appears anywhere on the page.
+
+**A. Rejected until it escalates, then COMPLETED**
+1. As the donor: **New donation** → Clothes, Gently used, 12 → **Use my location** or
+   drop a pin in Indiranagar, type an address → **List and find matches**. The ranked
+   list opens, each card with a match score and **Why this ranking**.
+2. **Offer** on the first card. The donation page shows *Offered* and *Waiting for … to
+   answer*.
+3. Three times: log in as the holder. Its dashboard lists the offer under **Offers
+   waiting for you**; open it. The page shows *About N km away* (**Approximate**) and no
+   address. **Decline** → pick a reason → **Decline**. You return to the dashboard.
+   After the third decline the donor's page says **Your decision is needed** and offers
+   **Re-match**, **Send to recycling**, **Upgrade to priority** and **Cancel donation**.
+4. As the donor, **Re-match** → confirm. A fourth organisation holds the offer.
+5. As that organisation, open the offer → **Accept** → confirm. You land on the
+   donation with **The donor's pickup point** (address and map, *Released to you*).
+6. If the page offers **Schedule pickup**, the organisation collects: choose a time.
+   If it offers nothing, the organisation does not collect: as the donor, **I'll drop
+   it off** and choose a time. The donor's page now shows **Who's receiving it** with
+   the organisation's address and phone.
+7. As the donor, **I've handed it over**. As the organisation, **Confirm receipt**: the
+   page says *You no longer hold this donation* and hides the address. The donor sees
+   **Completed · reused**.
+8. As admin, open the donation (from **Donations**, or a notification). The notice says
+   the view was recorded; **Ranking runs** lists four runs, each offer made to rank 1.
+
+**B. No candidates → recycling → RECYCLED**
+1. As the donor, list clothes with the pin at Nelamangala: zoom the map out and drop it
+   on the town, about 26 km north-west of the centre (the nearest verified organisation
+   is beyond the 15 km radius).
+2. The ranked list says **No organisation in range right now** → **Continue**. The
+   donation page offers only **Send to recycling** and **Cancel donation**.
+3. **Send to recycling** → confirm → *Going to recycling*.
+4. As admin, **Waiting on you** lists it under *Going to recycling* with one button,
+   **Confirm recycled**. It stays disabled until a reason is typed; confirm.
+5. As the donor, the page shows *Recycled* and a recycling card (GreenCycle Textile
+   Recovery, 15.9 km): 6 kg, ₹72.00, fee ₹7.20, your credit ₹64.80, marked
+   **Simulated**, **Estimated mass** and **Placeholder weights**.
+
+**C. Toys → no recycler → NEEDS_ADMIN**
+1. As B, but Toys: **Send to recycling** → *Admin review*.
+2. As admin, **Waiting on you** lists it under *Admin review*, arrived *No recycler in
+   range*, with only **Cancel donation** (no re-queue and no recycling, because there
+   is nothing to re-queue to and no recycler). Cancel with a reason → *Cancelled*.
+
+**Organisations and verification**
+1. Register a new organisation at `/register`. Its dashboard says it is pending; add a
+   need with **Add a need**.
+2. As admin, **Organisations** → *Pending verification* → open it → **Status:
+   Verified**, add a note → **Save verification**. The organisation's dashboard now
+   says it is verified and shows the note, and it appears on `/map`.
+3. **Run the sweep now** reports what it checked and changed (usually nothing).

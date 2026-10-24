@@ -195,3 +195,17 @@
 .leaflet-control-attribution a {
   color: var(--color-brand-600) !important;
 }
+.leaflet-popup-content-wrapper,
+.leaflet-popup-tip {
+  background: var(--color-surface);
+  color: var(--color-ink);
+  box-shadow: var(--shadow-lift);
+}
+.leaflet-popup-content {
+  margin: 14px 16px;
+  font-size: 14px;
+  line-height: 1.45;
+}
+.leaflet-container a.leaflet-popup-close-button {
+  color: var(--color-ink-muted);
+}

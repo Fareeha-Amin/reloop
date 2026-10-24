@@ -681,6 +681,29 @@ export interface paths {
         patch?: never;
         trace?: never;
     };
+    "/admin/awaiting": {
+        parameters: {
+            query?: never;
+            header?: never;
+            path?: never;
+            cookie?: never;
+        };
+        /**
+         * Awaiting Admin
+         * @description Every donation waiting on an admin: the states with an admin action out of them
+         *     (lifecycle.states_awaiting(ADMIN): the unroutable queue, and recycling to confirm),
+         *     longest-waiting first, with the transition that put each one there and what can be
+         *     done about it.
+         */
+        get: operations["awaiting_admin_admin_awaiting_get"];
+        put?: never;
+        post?: never;
+        delete?: never;
+        options?: never;
+        head?: never;
+        patch?: never;
+        trace?: never;
+    };
     "/admin/donations/{donation_id}": {
         parameters: {
             query?: never;
@@ -835,6 +858,27 @@ export interface paths {
          *     from the audit log on each request, with no push or email (see README). Poll it.
          */
         get: operations["list_notifications_notifications_get"];
+        put?: never;
+        post?: never;
+        delete?: never;
+        options?: never;
+        head?: never;
+        patch?: never;
+        trace?: never;
+    };
+    "/discovery/organisations": {
+        parameters: {
+            query?: never;
+            header?: never;
+            path?: never;
+            cookie?: never;
+        };
+        /**
+         * Discover Organisations
+         * @description Public, no login. Verified organisations with their active needs, at positions
+         *     rounded to about a kilometre. No address, phone, contact person or registration ID.
+         */
+        get: operations["discover_organisations_discovery_organisations_get"];
         put?: never;
         post?: never;
         delete?: never;
@@ -1133,6 +1177,61 @@ export interface components {
          * @enum {string}
          */
         Condition: "NEW" | "GENTLY_USED" | "USED";
+        /** DiscoveryNeedOut */
+        DiscoveryNeedOut: {
+            category: components["schemas"]["Category"];
+            /**
+             * Quantity Needed
+             * @description A count of items.
+             */
+            quantity_needed: number;
+            urgency: components["schemas"]["Urgency"];
+        };
+        /** DiscoveryOrganisationOut */
+        DiscoveryOrganisationOut: {
+            /**
+             * Id
+             * Format: uuid
+             */
+            id: string;
+            /** Name */
+            name: string;
+            /**
+             * Latitude
+             * @description Approximate: rounded (see position_error_km).
+             */
+            latitude: number;
+            /**
+             * Longitude
+             * @description Approximate: rounded (see position_error_km).
+             */
+            longitude: number;
+            /** Pickup Capable */
+            pickup_capable: boolean;
+            /** Categories Accepted */
+            categories_accepted: components["schemas"]["Category"][];
+            /**
+             * Needs
+             * @description Active needs only.
+             */
+            needs: components["schemas"]["DiscoveryNeedOut"][];
+        };
+        /** DiscoveryOut */
+        DiscoveryOut: {
+            /** Organisations */
+            organisations: components["schemas"]["DiscoveryOrganisationOut"][];
+            /**
+             * Positions Are Approximate
+             * @default true
+             * @constant
+             */
+            positions_are_approximate: true;
+            /**
+             * Position Error Km
+             * @description The furthest a shown position can be from the organisation's real one.
+             */
+            position_error_km: number;
+        };
         /**
          * DonationAction
          * @description Things that can happen to a donation. The lifecycle table maps
@@ -1739,7 +1838,7 @@ export interface components {
         };
         /**
          * QueueItemOut
-         * @description A donation in NEEDS_ADMIN, with the transition that put it there.
+         * @description A donation waiting on an admin, with the transition that put it there.
          */
         QueueItemOut: {
             donation: components["schemas"]["DonationSummaryOut"];
@@ -1771,10 +1870,11 @@ export interface components {
             config: {
                 [key: string]: unknown;
             };
-            /** Slate */
-            slate: {
-                [key: string]: unknown;
-            }[];
+            /**
+             * Slate
+             * @description The eligible organisations the decision was made against, best first.
+             */
+            slate: components["schemas"]["CandidateOut"][];
             /** Filtered Out */
             filtered_out: {
                 [key: string]: number;
@@ -1818,6 +1918,11 @@ export interface components {
             categories_accepted: components["schemas"]["Category"][];
             /** Rate Per Kg */
             rate_per_kg: string;
+            /**
+             * Currency
+             * @default INR
+             */
+            currency: string;
             /** Is Active */
             is_active: boolean;
         };
@@ -2068,6 +2173,9 @@ export type CandidateOut = components['schemas']['CandidateOut'];
 export type Category = components['schemas']['Category'];
 export type ComponentOut = components['schemas']['ComponentOut'];
 export type Condition = components['schemas']['Condition'];
+export type DiscoveryNeedOut = components['schemas']['DiscoveryNeedOut'];
+export type DiscoveryOrganisationOut = components['schemas']['DiscoveryOrganisationOut'];
+export type DiscoveryOut = components['schemas']['DiscoveryOut'];
 export type DonationAction = components['schemas']['DonationAction'];
 export type DonationCreate = components['schemas']['DonationCreate'];
 export type DonationImageOut = components['schemas']['DonationImageOut'];
@@ -3327,6 +3435,26 @@ export interface operations {
             };
         };
     };
+    awaiting_admin_admin_awaiting_get: {
+        parameters: {
+            query?: never;
+            header?: never;
+            path?: never;
+            cookie?: never;
+        };
+        requestBody?: never;
+        responses: {
+            /** @description Successful Response */
+            200: {
+                headers: {
+                    [name: string]: unknown;
+                };
+                content: {
+                    "application/json": components["schemas"]["QueueItemOut"][];
+                };
+            };
+        };
+    };
     get_donation_detail_admin_donations__donation_id__get: {
         parameters: {
             query?: never;
@@ -3557,6 +3685,37 @@ export interface operations {
                 };
                 content: {
                     "application/json": components["schemas"]["NotificationOut"][];
+                };
+            };
+            /** @description Validation Error */
+            422: {
+                headers: {
+                    [name: string]: unknown;
+                };
+                content: {
+                    "application/json": components["schemas"]["HTTPValidationError"];
+                };
+            };
+        };
+    };
+    discover_organisations_discovery_organisations_get: {
+        parameters: {
+            query?: {
+                category?: components["schemas"]["Category"] | null;
+            };
+            header?: never;
+            path?: never;
+            cookie?: never;
+        };
+        requestBody?: never;
+        responses: {
+            /** @description Successful Response */
+            200: {
+                headers: {
+                    [name: string]: unknown;
+                };
+                content: {
+                    "application/json": components["schemas"]["DiscoveryOut"];
                 };
             };
             /** @description Validation Error */

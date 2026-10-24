@@ -4,6 +4,7 @@ from datetime import UTC, datetime
 from fastapi import APIRouter
 
 from app.constants import Actor, DonationStatus, VerificationStatus
+from app.domain import lifecycle
 from app.routers.common import PageDep
 from app.routers.donations import donation_out
 from app.schemas.admin import (
@@ -63,6 +64,16 @@ def set_verification(
 # --- Donations ------------------------------------------------------------------------------
 
 
+def _queue_item(db, entry) -> QueueItemOut:
+    return QueueItemOut(
+        donation=DonationSummaryOut.model_validate(entry.donation),
+        entered_at=entry.entered_at,
+        from_state=entry.from_state,
+        via=entry.via,
+        allowed_actions=sorted(actions.available(db, entry.donation, Actor.ADMIN)),
+    )
+
+
 @router.get("/donations", response_model=list[DonationSummaryOut])
 def list_donations(
     admin: AdminUser,
@@ -78,16 +89,16 @@ def list_donations(
 def unroutable_queue(admin: AdminUser, db: DbSession):
     """Donations that could not be routed (NEEDS_ADMIN), longest-waiting first, with the
     transition that put each one here and what can be done about it."""
-    return [
-        QueueItemOut(
-            donation=DonationSummaryOut.model_validate(e.donation),
-            entered_at=e.entered_at,
-            from_state=e.from_state,
-            via=e.via,
-            allowed_actions=sorted(actions.available(db, e.donation, Actor.ADMIN)),
-        )
-        for e in admin_views.queue(db)
-    ]
+    return [_queue_item(db, e) for e in admin_views.queue(db)]
+
+
+@router.get("/awaiting", response_model=list[QueueItemOut])
+def awaiting_admin(admin: AdminUser, db: DbSession):
+    """Every donation waiting on an admin: the states with an admin action out of them
+    (lifecycle.states_awaiting(ADMIN): the unroutable queue, and recycling to confirm),
+    longest-waiting first, with the transition that put each one there and what can be
+    done about it."""
+    return [_queue_item(db, e) for e in admin_views.awaiting(db, lifecycle.states_awaiting(Actor.ADMIN))]
 
 
 @router.get("/donations/{donation_id}", response_model=AdminDonationDetailOut)

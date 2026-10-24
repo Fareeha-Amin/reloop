@@ -27,6 +27,7 @@ function ActionDialog({
   onDone?: (result: unknown) => void;
 }) {
   const queryClient = useQueryClient();
+  const navigate = useNavigate();
   const [when, setWhen] = useState(() => toLocalInput(tomorrowAt(DEFAULT_WINDOW_HOURS.start)));
   const [reason, setReason] = useState('');
   const [reasonCode, setReasonCode] = useState<string>(rejectReasonValues[0]);
@@ -41,8 +42,9 @@ function ActionDialog({
       return spec.run!(id, payload);
     },
     onSuccess: async (result) => {
-      await queryClient.invalidateQueries();
       onClose();
+      if (spec.next) navigate(spec.next(id, result));
+      await queryClient.invalidateQueries();
       onDone?.(result);
     },
   });

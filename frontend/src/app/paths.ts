@@ -20,4 +20,5 @@ export const paths = {
 
   admin: '/admin',
   adminDonation: (id: string) => `/admin/donations/${id}`,
+  adminOrganisation: (id: string) => `/admin/organisations/${id}`,
 };

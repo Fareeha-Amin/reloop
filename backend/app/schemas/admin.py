@@ -3,14 +3,17 @@ from datetime import datetime
 from decimal import Decimal
 from typing import Any
 
-from app.constants import Category, DonationAction, DonationStatus, RankingTrigger
+from pydantic import Field
+
+from app.constants import CURRENCY, Category, DonationAction, DonationStatus, FilterReason, RankingTrigger
 from app.schemas.common import OutputModel
 from app.schemas.donation import DonationOut, DonationSummaryOut
+from app.schemas.matching import CandidateOut
 from app.schemas.timeline import TimelineOut
 
 
 class QueueItemOut(OutputModel):
-    """A donation in NEEDS_ADMIN, with the transition that put it there."""
+    """A donation waiting on an admin, with the transition that put it there."""
 
     donation: DonationSummaryOut
     entered_at: datetime
@@ -26,8 +29,8 @@ class RankingRunOut(OutputModel):
     declines: int
     config_version: str
     config: dict[str, Any]
-    slate: list[dict[str, Any]]
-    filtered_out: dict[str, int]
+    slate: list[CandidateOut] = Field(description="The eligible organisations the decision was made against, best first.")
+    filtered_out: dict[FilterReason, int]
     created_at: datetime
 
 
@@ -62,4 +65,5 @@ class RecyclerOut(OutputModel):
     longitude: float
     categories_accepted: list[Category]
     rate_per_kg: Decimal
+    currency: str = CURRENCY
     is_active: bool

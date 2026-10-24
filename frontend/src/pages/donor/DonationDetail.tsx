@@ -96,13 +96,13 @@ export function DonationDetail() {
                   label: t('fields.window'),
                   value: t('common.range', { from: formatDateTime(d.pickup_window_start), to: formatDateTime(d.pickup_window_end) }),
                 },
-                d.note && { label: t('fields.note'), value: d.note },
+                d.note && { label: t('donation.yourNote'), value: d.note },
                 { label: t('donation.created'), value: formatDateTime(d.created_at) },
               ]}
             />
             <p className="mt-5 text-xs text-ink-muted">{t('donation.windowAdvisory')}</p>
             <div className="mt-6">
-              <h3 className="mb-3 text-sm font-semibold tracking-wide text-ink-muted uppercase">{t('donation.photos')}</h3>
+              <h3 className="mb-3 font-sans text-xs font-semibold tracking-wide text-ink-muted uppercase">{t('donation.photos')}</h3>
               <ImageGallery donationId={d.id} imageIds={d.images.map((i) => i.id)} />
             </div>
           </Card>

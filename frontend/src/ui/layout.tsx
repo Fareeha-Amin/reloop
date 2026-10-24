@@ -78,3 +78,34 @@ export function Stepper({ steps, current }: { steps: string[]; current: number }
     </ol>
   );
 }
+
+/** The deep-green welcome banner at the top of each role's home page. */
+export function HeroBanner({
+  eyebrow,
+  title,
+  intro,
+  actions,
+  children,
+}: {
+  eyebrow: ReactNode;
+  title: ReactNode;
+  intro?: ReactNode;
+  actions?: ReactNode;
+  children?: ReactNode;
+}) {
+  return (
+    <div className="relative mb-10 overflow-hidden rounded-card bg-brand-900 p-6 text-brand-50 shadow-lift sm:p-10">
+      <div className="pointer-events-none absolute -top-24 -right-16 size-72 rounded-full bg-leaf/25 blur-3xl" />
+      <div className="pointer-events-none absolute -bottom-32 left-10 size-72 rounded-full bg-clay-500/20 blur-3xl" />
+      <div className="relative flex flex-col gap-6 sm:flex-row sm:items-end sm:justify-between">
+        <div className="min-w-0">
+          <p className="text-xs font-semibold tracking-[0.14em] text-leaf uppercase">{eyebrow}</p>
+          <h1 className="mt-2 text-3xl font-semibold text-surface sm:text-4xl">{title}</h1>
+          {intro && <div className="mt-2 max-w-xl text-brand-100">{intro}</div>}
+          {children && <div className="mt-4">{children}</div>}
+        </div>
+        {actions && <div className="flex shrink-0 flex-wrap gap-2">{actions}</div>}
+      </div>
+    </div>
+  );
+}

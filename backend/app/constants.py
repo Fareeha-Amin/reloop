@@ -289,6 +289,9 @@ SWEEP_INTERVAL = timedelta(minutes=15)
 
 # Before acceptance an acceptor sees only distance, rounded to this step.
 DISTANCE_DISCLOSURE_STEP_KM = 0.5
+# The public discovery map shows verified organisations at positions rounded to this many
+# decimal places of a degree (2: within about 0.8 km), and never their address.
+DISCOVERY_COORD_DECIMALS = 2
 
 # --- Recycling (simulated settlement) -------------------------------------------------
 

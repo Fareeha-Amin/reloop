@@ -1,4 +1,5 @@
-"""Admin read models: the unroutable queue, ranking runs, recyclers."""
+"""Admin read models: the unroutable queue, everything awaiting an admin, ranking runs,
+recyclers."""
 
 import uuid
 from dataclasses import dataclass
@@ -19,19 +20,24 @@ class QueueEntry:
     via: DonationAction
 
 
-def queue(db: Session) -> list[QueueEntry]:
-    """Donations in NEEDS_ADMIN, longest-waiting first, with the transition that put
-    each one there (a STALL from some state, or NO_RECYCLER)."""
+def awaiting(db: Session, states: frozenset[DonationStatus]) -> list[QueueEntry]:
+    """Donations in any of `states`, longest-waiting first, with the transition that put
+    each one in its current state."""
     entries = []
-    for donation in db.scalars(select(Donation).where(Donation.status == DonationStatus.NEEDS_ADMIN)):
+    for donation in db.scalars(select(Donation).where(Donation.status.in_(states))):
         event = db.scalar(
             select(StatusEvent)
-            .where(StatusEvent.donation_id == donation.id, StatusEvent.to_state == DonationStatus.NEEDS_ADMIN)
+            .where(StatusEvent.donation_id == donation.id, StatusEvent.to_state == donation.status)
             .order_by(StatusEvent.id.desc())
             .limit(1)
         )
         entries.append(QueueEntry(donation, event.created_at, event.from_state, event.action))
     return sorted(entries, key=lambda e: e.entered_at)
+
+
+def queue(db: Session) -> list[QueueEntry]:
+    """Donations in NEEDS_ADMIN (a STALL from some state, or NO_RECYCLER)."""
+    return awaiting(db, frozenset({DonationStatus.NEEDS_ADMIN}))
 
 
 def ranking_runs(db: Session, donation_id: uuid.UUID) -> list[RankingRun]:

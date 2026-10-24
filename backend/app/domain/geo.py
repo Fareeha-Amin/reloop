@@ -3,9 +3,10 @@ fine at the current scale — see README)."""
 
 import math
 
-from app.constants import DISTANCE_DISCLOSURE_STEP_KM
+from app.constants import DISCOVERY_COORD_DECIMALS, DISTANCE_DISCLOSURE_STEP_KM
 
 _EARTH_RADIUS_KM = 6371.0088  # mean Earth radius
+_KM_PER_DEGREE = math.pi * _EARTH_RADIUS_KM / 180  # of latitude; of longitude at the equator
 
 
 def haversine_km(lat1: float, lng1: float, lat2: float, lng2: float) -> float:
@@ -21,3 +22,16 @@ def disclose_distance_km(distance_km: float, step: float = DISTANCE_DISCLOSURE_S
     """The distance an acceptor may see before acceptance: rounded to the nearest step,
     and never less than one step, so "0 km" never pinpoints the donor."""
     return max(step, math.floor(distance_km / step + 0.5) * step)  # half-up, not banker's
+
+
+def approximate_position(lat: float, lng: float, decimals: int = DISCOVERY_COORD_DECIMALS) -> tuple[float, float]:
+    """A position rounded to `decimals` places of a degree, for public display: the
+    neighbourhood, not the door."""
+    return round(lat, decimals), round(lng, decimals)
+
+
+def approximation_error_km(decimals: int = DISCOVERY_COORD_DECIMALS) -> float:
+    """The furthest a rounded position can be from the true one: half a step in both
+    latitude and longitude, at the equator (where a degree of longitude is longest)."""
+    half_step_km = 0.5 * 10**-decimals * _KM_PER_DEGREE
+    return math.hypot(half_step_km, half_step_km)

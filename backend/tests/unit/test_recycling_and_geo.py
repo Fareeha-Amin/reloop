@@ -9,7 +9,12 @@ from app.constants import (
     RECYCLING_PLATFORM_FEE_PCT,
     Category,
 )
-from app.domain.geo import disclose_distance_km, haversine_km
+from app.domain.geo import (
+    approximate_position,
+    approximation_error_km,
+    disclose_distance_km,
+    haversine_km,
+)
 from app.domain.recycling import CollectorFacts, select_recycler, settle
 
 INDIRANAGAR = (12.9784, 77.6408)
@@ -84,3 +89,15 @@ def test_credit_plus_fee_is_exactly_gross(quantity, rate):
 def test_weights_are_labelled_as_placeholders():
     assert CATEGORY_WEIGHTS_ARE_PLACEHOLDERS is True
     assert set(CATEGORY_WEIGHT_KG) == set(Category)
+
+
+def test_approximate_position_rounds_to_two_decimals_by_default():
+    assert approximate_position(12.97194, 77.64126) == (12.97, 77.64)
+    assert approximate_position(12.97194, 77.64126, decimals=1) == (13.0, 77.6)
+
+
+def test_approximate_position_stays_within_the_stated_error():
+    error = approximation_error_km()
+    assert 0.7 < error < 0.8  # two decimals: "about a kilometre"
+    for lat, lng in [(12.97194, 77.64126), (12.975, 77.645), (0.004999, 0.004999), (-33.86785, 151.20732)]:
+        assert haversine_km(lat, lng, *approximate_position(lat, lng)) <= error

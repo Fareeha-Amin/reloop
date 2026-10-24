@@ -2,7 +2,7 @@
   "openapi": "3.1.0",
   "info": {
     "title": "ReLoop API",
-    "description": "The core loop: explainable matching, the full donation lifecycle, rejection handling, escalation, a recycling fallback and the deadline sweeper (in-process every 15 minutes; POST /admin/sweep runs it now). Phase 3 adds an in-app notification feed (polled; no push or email). **Stubs and simulations:** geocoding is a stub (coordinates are accepted as supplied); recycling settlements are **simulated** over **estimated** mass (per-category weights are placeholders), and an admin confirms recycling on the recycler's behalf. No money moves.",
+    "description": "The core loop: explainable matching, the full donation lifecycle, rejection handling, escalation, a recycling fallback and the deadline sweeper (in-process every 15 minutes; POST /admin/sweep runs it now). Phase 3 adds an in-app notification feed (polled; no push or email) and a public discovery map of verified organisations at approximate positions. **Stubs and simulations:** geocoding is a stub (coordinates are accepted as supplied); recycling settlements are **simulated** over **estimated** mass (per-category weights are placeholders), and an admin confirms recycling on the recycler's behalf. No money moves.",
     "version": "0.3.0-phase3"
   },
   "paths": {
@@ -1950,6 +1950,37 @@
         ]
       }
     },
+    "/admin/awaiting": {
+      "get": {
+        "tags": [
+          "admin"
+        ],
+        "summary": "Awaiting Admin",
+        "description": "Every donation waiting on an admin: the states with an admin action out of them\n(lifecycle.states_awaiting(ADMIN): the unroutable queue, and recycling to confirm),\nlongest-waiting first, with the transition that put each one there and what can be\ndone about it.",
+        "operationId": "awaiting_admin_admin_awaiting_get",
+        "responses": {
+          "200": {
+            "description": "Successful Response",
+            "content": {
+              "application/json": {
+                "schema": {
+                  "items": {
+                    "$ref": "#/components/schemas/QueueItemOut"
+                  },
+                  "type": "array",
+                  "title": "Response Awaiting Admin Admin Awaiting Get"
+                }
+              }
+            }
+          }
+        },
+        "security": [
+          {
+            "OAuth2PasswordBearer": []
+          }
+        ]
+      }
+    },
     "/admin/donations/{donation_id}": {
       "get": {
         "tags": [
@@ -2341,6 +2372,56 @@
                     "$ref": "#/components/schemas/NotificationOut"
                   },
                   "title": "Response List Notifications Notifications Get"
+                }
+              }
+            }
+          },
+          "422": {
+            "description": "Validation Error",
+            "content": {
+              "application/json": {
+                "schema": {
+                  "$ref": "#/components/schemas/HTTPValidationError"
+                }
+              }
+            }
+          }
+        }
+      }
+    },
+    "/discovery/organisations": {
+      "get": {
+        "tags": [
+          "public: discovery"
+        ],
+        "summary": "Discover Organisations",
+        "description": "Public, no login. Verified organisations with their active needs, at positions\nrounded to about a kilometre. No address, phone, contact person or registration ID.",
+        "operationId": "discover_organisations_discovery_organisations_get",
+        "parameters": [
+          {
+            "name": "category",
+            "in": "query",
+            "required": false,
+            "schema": {
+              "anyOf": [
+                {
+                  "$ref": "#/components/schemas/Category"
+                },
+                {
+                  "type": "null"
+                }
+              ],
+              "title": "Category"
+            }
+          }
+        ],
+        "responses": {
+          "200": {
+            "description": "Successful Response",
+            "content": {
+              "application/json": {
+                "schema": {
+                  "$ref": "#/components/schemas/DiscoveryOut"
                 }
               }
             }
@@ -2969,6 +3050,109 @@
           "USED"
         ],
         "title": "Condition"
+      },
+      "DiscoveryNeedOut": {
+        "properties": {
+          "category": {
+            "$ref": "#/components/schemas/Category"
+          },
+          "quantity_needed": {
+            "type": "integer",
+            "title": "Quantity Needed",
+            "description": "A count of items."
+          },
+          "urgency": {
+            "$ref": "#/components/schemas/Urgency"
+          }
+        },
+        "type": "object",
+        "required": [
+          "category",
+          "quantity_needed",
+          "urgency"
+        ],
+        "title": "DiscoveryNeedOut"
+      },
+      "DiscoveryOrganisationOut": {
+        "properties": {
+          "id": {
+            "type": "string",
+            "format": "uuid",
+            "title": "Id"
+          },
+          "name": {
+            "type": "string",
+            "title": "Name"
+          },
+          "latitude": {
+            "type": "number",
+            "title": "Latitude",
+            "description": "Approximate: rounded (see position_error_km)."
+          },
+          "longitude": {
+            "type": "number",
+            "title": "Longitude",
+            "description": "Approximate: rounded (see position_error_km)."
+          },
+          "pickup_capable": {
+            "type": "boolean",
+            "title": "Pickup Capable"
+          },
+          "categories_accepted": {
+            "items": {
+              "$ref": "#/components/schemas/Category"
+            },
+            "type": "array",
+            "title": "Categories Accepted"
+          },
+          "needs": {
+            "items": {
+              "$ref": "#/components/schemas/DiscoveryNeedOut"
+            },
+            "type": "array",
+            "title": "Needs",
+            "description": "Active needs only."
+          }
+        },
+        "type": "object",
+        "required": [
+          "id",
+          "name",
+          "latitude",
+          "longitude",
+          "pickup_capable",
+          "categories_accepted",
+          "needs"
+        ],
+        "title": "DiscoveryOrganisationOut"
+      },
+      "DiscoveryOut": {
+        "properties": {
+          "organisations": {
+            "items": {
+              "$ref": "#/components/schemas/DiscoveryOrganisationOut"
+            },
+            "type": "array",
+            "title": "Organisations"
+          },
+          "positions_are_approximate": {
+            "type": "boolean",
+            "const": true,
+            "title": "Positions Are Approximate",
+            "default": true
+          },
+          "position_error_km": {
+            "type": "number",
+            "title": "Position Error Km",
+            "description": "The furthest a shown position can be from the organisation's real one."
+          }
+        },
+        "type": "object",
+        "required": [
+          "organisations",
+          "position_error_km"
+        ],
+        "title": "DiscoveryOut"
       },
       "DonationAction": {
         "type": "string",
@@ -4468,7 +4652,7 @@
           "allowed_actions"
         ],
         "title": "QueueItemOut",
-        "description": "A donation in NEEDS_ADMIN, with the transition that put it there."
+        "description": "A donation waiting on an admin, with the transition that put it there."
       },
       "RankingRunOut": {
         "properties": {
@@ -4499,15 +4683,18 @@
           },
           "slate": {
             "items": {
-              "additionalProperties": true,
-              "type": "object"
+              "$ref": "#/components/schemas/CandidateOut"
             },
             "type": "array",
-            "title": "Slate"
+            "title": "Slate",
+            "description": "The eligible organisations the decision was made against, best first."
           },
           "filtered_out": {
             "additionalProperties": {
               "type": "integer"
+            },
+            "propertyNames": {
+              "$ref": "#/components/schemas/FilterReason"
             },
             "type": "object",
             "title": "Filtered Out"
@@ -4591,6 +4778,11 @@
           "rate_per_kg": {
             "type": "string",
             "title": "Rate Per Kg"
+          },
+          "currency": {
+            "type": "string",
+            "title": "Currency",
+            "default": "INR"
           },
           "is_active": {
             "type": "boolean",

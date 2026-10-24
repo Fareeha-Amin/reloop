@@ -16,6 +16,10 @@ Rules this code follows:
   vocabulary values appear only in `src/vocab/` (`tests/no-literals.test.ts`).
 - **Strings** live in `src/i18n/en.json` and are read with `t()` (`tests/locale.test.ts`).
 - **Styling** comes from tokens in `src/styles/theme.css`, used by `src/ui/`. Pages
-  compose `src/ui/` and `src/components/`.
+  compose `src/ui/` and `src/components/`. Each colour token is a light/dark pair
+  (`light-dark()`); `src/ui/theme.ts` sets `data-theme` on `<html>` from the header
+  toggle or, by default, the system setting.
+- **The admin donation record is never polled.** Each load is recorded as an address
+  access (`useAdminDonation` in `src/app/queries.ts`).
 - **API types** are generated (`npm run gen:api`) from `src/api/openapi.json`, which the
   backend writes (`python -m app.cli export-openapi`). Never edit `src/api/schema.ts`.

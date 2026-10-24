@@ -17,6 +17,9 @@ export const POLL_MS = {
 export const FEED_PAGE_SIZE = 30;
 export const UNREAD_BADGE_MAX = 9;
 
+/** Rows per page in the admin panel's lists. */
+export const ADMIN_PAGE_SIZE = 25;
+
 export const MAP = {
   /** Central Bengaluru: where a location picker opens before a pin is placed. */
   center: [12.9716, 77.5946] as [number, number],

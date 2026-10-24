@@ -12,7 +12,7 @@
  *   admin  - an admin on any donation (id: donation id)
  */
 
-import type { DonationAction, RejectReason } from '../api/schema';
+import type { AcceptedDonationOut, DonationAction, RejectReason } from '../api/schema';
 import { unwrap } from '../api/errors';
 import { client } from '../app/api';
 import { paths } from '../app/paths';
@@ -44,6 +44,8 @@ export interface ActionSpec {
   confirmKey?: string;
   run?: (id: string, payload: ActionPayload) => Promise<unknown>;
   to?: (id: string) => string;
+  /** The page to show once the call succeeds, if not the current one. */
+  next?: (id: string, result: unknown) => string;
 }
 
 const donation = (id: string) => ({ params: { path: { donation_id: id } } });
@@ -113,6 +115,7 @@ const SPECS: Record<Surface, Partial<Record<DonationAction, ActionSpec>>> = {
       labelKey: 'actions.accept.label',
       confirmKey: 'actions.accept.confirm',
       run: (id) => unwrap(client.POST('/organisations/me/offers/{match_id}/accept', match(id))),
+      next: (_, result) => paths.heldDonation((result as AcceptedDonationOut).donation_id),
     },
     REJECT: {
       input: 'reject',
@@ -126,6 +129,7 @@ const SPECS: Record<Surface, Partial<Record<DonationAction, ActionSpec>>> = {
             body: { reason_code: p.reasonCode ?? 'OTHER', note: p.note || null },
           }),
         ),
+      next: () => paths.acceptor,
     },
   },
   held: {

@@ -1,6 +1,6 @@
 import L from 'leaflet';
-import { useEffect, useState } from 'react';
-import { MapContainer, Marker, TileLayer, useMap, useMapEvents } from 'react-leaflet';
+import { useEffect, useRef, useState, type ReactNode } from 'react';
+import { Circle, MapContainer, Marker, Popup, TileLayer, useMap, useMapEvents } from 'react-leaflet';
 
 import { MAP } from '../config';
 import { t } from '../i18n';
@@ -138,6 +138,90 @@ export function PointMap({ point, className = 'h-56' }: { point: Point; classNam
       <MapContainer center={[point.lat, point.lng]} zoom={MAP.pinnedZoom} className={`${className} w-full`} scrollWheelZoom={false}>
         <Tiles />
         <Marker position={[point.lat, point.lng]} icon={pinIcon()} />
+      </MapContainer>
+    </div>
+  );
+}
+
+export interface Area {
+  id: string;
+  center: Point;
+  radiusKm: number;
+}
+
+function FitAreas({ areas }: { areas: Area[] }) {
+  const map = useMap();
+  const signature = areas.map((a) => a.id).join();
+  useEffect(() => {
+    if (areas.length === 0) return;
+    const bounds = L.latLngBounds(areas.map((a) => [a.center.lat, a.center.lng] as [number, number]));
+    map.fitBounds(bounds.pad(0.15), { maxZoom: MAP.zoom + 1 });
+    // Refit only when the set of areas changes (e.g. a new filter), not on every render.
+  }, [signature]); // eslint-disable-line react-hooks/exhaustive-deps
+  return null;
+}
+
+function FlyToArea({ area }: { area: Area | null }) {
+  const map = useMap();
+  useEffect(() => {
+    if (area) map.flyTo([area.center.lat, area.center.lng], Math.max(map.getZoom(), MAP.zoom + 1), { duration: 0.6 });
+  }, [area?.id]); // eslint-disable-line react-hooks/exhaustive-deps
+  return null;
+}
+
+/**
+ * Approximate places drawn as shaded circles as wide as the position's uncertainty, never
+ * as pins: a pin would claim a precision the data does not have.
+ */
+export function AreaMap({
+  areas,
+  selected,
+  onSelect,
+  renderPopup,
+  className = 'h-[28rem]',
+}: {
+  areas: Area[];
+  selected: string | null;
+  onSelect: (id: string) => void;
+  renderPopup: (id: string) => ReactNode;
+  className?: string;
+}) {
+  const focus = areas.find((a) => a.id === selected) ?? null;
+  const circles = useRef(new Map<string, L.Circle>());
+  useEffect(() => {
+    if (selected) circles.current.get(selected)?.openPopup();
+  }, [selected]);
+
+  return (
+    <div className="overflow-hidden rounded-card border border-line shadow-card">
+      <MapContainer center={MAP.center} zoom={MAP.zoom} className={`${className} w-full`} scrollWheelZoom>
+        <Tiles />
+        <FitAreas areas={areas} />
+        <FlyToArea area={focus} />
+        {areas.map((area) => (
+          <Circle
+            key={area.id}
+            ref={(circle) => {
+              if (circle) circles.current.set(area.id, circle);
+              else circles.current.delete(area.id);
+            }}
+            center={[area.center.lat, area.center.lng]}
+            radius={area.radiusKm * 1000}
+            pathOptions={{ className: 'fill-brand-500 stroke-brand-700', fillOpacity: 0.22, weight: 2 }}
+            eventHandlers={{ click: () => onSelect(area.id) }}
+          >
+            <Popup minWidth={260}>{renderPopup(area.id)}</Popup>
+          </Circle>
+        ))}
+        {focus && (
+          <Circle
+            key={`selected-${focus.id}`}
+            center={[focus.center.lat, focus.center.lng]}
+            radius={focus.radiusKm * 1000}
+            interactive={false}
+            pathOptions={{ className: 'fill-clay-500 stroke-clay-500', fillOpacity: 0.3, weight: 3 }}
+          />
+        )}
       </MapContainer>
     </div>
   );

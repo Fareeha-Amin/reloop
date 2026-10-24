@@ -60,10 +60,10 @@ export function DonationCard({ donation }: { donation: DonationOut }) {
 }
 
 /** The organisation holding the donation, with its address and contact for the handover. */
-export function HolderCard({ holder }: { holder: HolderOut }) {
+export function HolderCard({ holder, title, note }: { holder: HolderOut; title?: string; note?: string }) {
   return (
     <Card>
-      <CardTitle aside={<Tag tone="active" icon="check">{t('holder.accepted')}</Tag>}>{t('holder.title')}</CardTitle>
+      <CardTitle aside={<Tag tone="active" icon="check">{t('holder.accepted')}</Tag>}>{title ?? t('holder.title')}</CardTitle>
       <div className="grid gap-5 md:grid-cols-2">
         <div className="space-y-4">
           <div>
@@ -90,7 +90,7 @@ export function HolderCard({ holder }: { holder: HolderOut }) {
               },
             ]}
           />
-          <p className="text-xs text-ink-muted">{t('holder.privacy')}</p>
+          <p className="text-xs text-ink-muted">{note ?? t('holder.privacy')}</p>
         </div>
         <PointMap point={{ lat: holder.latitude, lng: holder.longitude }} />
       </div>
