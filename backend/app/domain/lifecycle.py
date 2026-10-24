@@ -145,6 +145,11 @@ def allowed_actions(
     )
 
 
+def states_awaiting(actor: Actor) -> frozenset[DonationStatus]:
+    """States with at least one edge `actor` performs: where a donation waits on them."""
+    return frozenset(state for (state, _), who in ACTORS.items() if who == actor)
+
+
 def successors(current: DonationStatus) -> frozenset[DonationStatus]:
     return frozenset(target for (state, _), target in TRANSITIONS.items() if state == current)
 

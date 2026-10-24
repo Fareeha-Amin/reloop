@@ -1,0 +1,44 @@
+@import "tailwindcss";
+@import "./theme.css";
+@import "leaflet/dist/leaflet.css";
+
+@layer base {
+  html {
+    background: var(--color-canvas);
+    color: var(--color-ink);
+    font-family: var(--font-sans);
+    -webkit-font-smoothing: antialiased;
+  }
+  body {
+    min-height: 100dvh;
+  }
+  h1,
+  h2,
+  h3 {
+    font-family: var(--font-display);
+    letter-spacing: -0.015em;
+  }
+  :focus-visible {
+    outline: none;
+    box-shadow: var(--shadow-focus);
+  }
+  ::selection {
+    background: var(--color-leaf);
+  }
+}
+
+/* Leaflet sits inside rounded cards. */
+.leaflet-container {
+  font-family: var(--font-sans);
+  background: var(--color-surface-sunk);
+}
+
+@media (prefers-reduced-motion: reduce) {
+  *,
+  *::before,
+  *::after {
+    animation-duration: 1ms !important;
+    animation-iteration-count: 1 !important;
+    transition-duration: 1ms !important;
+  }
+}

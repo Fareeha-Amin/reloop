@@ -7,7 +7,7 @@ from fastapi import APIRouter, Body, File, Response, UploadFile, status
 from app.constants import IMAGE_MAX_BYTES, Actor, Role
 from app.models import Donation, User
 from app.routers.common import GeocoderDep, PageDep, StorageDep
-from app.schemas.donation import DonationCreate, DonationImageOut, DonationOut, DonationUpdate
+from app.schemas.donation import DonationCreate, DonationImageOut, DonationOut, DonationUpdate, HolderOut
 from app.schemas.matching import OfferCreate, ScheduleIn, SlateOut
 from app.schemas.timeline import TimelineOut
 from app.security.deps import CurrentUser, DbSession, DonorOrAdminUser, DonorUser
@@ -23,10 +23,12 @@ def _now() -> datetime:
 
 def donation_out(db, donation: Donation, viewer: User) -> DonationOut:
     actor = Actor.ADMIN if viewer.role == Role.ADMIN else Actor.DONOR
+    held = matching.holder(db, donation)
     return DonationOut.from_donation(
         donation,
         actions.available(db, donation, actor),
         actions.escalation_cause(db, donation),
+        HolderOut.from_match(held) if held is not None else None,
     )
 
 

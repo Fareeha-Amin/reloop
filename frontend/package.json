@@ -1,0 +1,41 @@
+{
+  "name": "reloop-frontend",
+  "private": true,
+  "version": "0.3.0",
+  "type": "module",
+  "engines": {
+    "node": ">=24 <25"
+  },
+  "scripts": {
+    "dev": "vite",
+    "build": "tsc -b && vite build",
+    "preview": "vite preview",
+    "typecheck": "tsc -b",
+    "test": "vitest run",
+    "test:watch": "vitest",
+    "gen:api": "openapi-typescript src/api/openapi.json -o src/api/schema.ts --enum-values --root-types --root-types-no-schema-prefix",
+    "check:api": "openapi-typescript src/api/openapi.json -o src/api/schema.ts --enum-values --root-types --root-types-no-schema-prefix --check"
+  },
+  "dependencies": {
+    "@tanstack/react-query": "5.104.5",
+    "leaflet": "1.9.4",
+    "openapi-fetch": "0.17.0",
+    "react": "19.3.1",
+    "react-dom": "19.3.1",
+    "react-leaflet": "5.0.0",
+    "react-router": "8.5.0"
+  },
+  "devDependencies": {
+    "@tailwindcss/vite": "4.3.3",
+    "@types/leaflet": "1.9.22",
+    "@types/node": "24.19.2",
+    "@types/react": "19.3.0",
+    "@types/react-dom": "19.3.0",
+    "@vitejs/plugin-react": "6.1.2",
+    "openapi-typescript": "7.13.0",
+    "tailwindcss": "4.3.3",
+    "typescript": "5.9.3",
+    "vite": "8.3.5",
+    "vitest": "5.0.5"
+  }
+}

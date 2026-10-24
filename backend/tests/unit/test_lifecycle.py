@@ -224,3 +224,9 @@ def test_editable_states_are_not_terminal():
 def test_held_states_follow_acceptance_and_precede_completion():
     assert HELD_STATES == {S.ACCEPTED, S.PICKUP_SCHEDULED, S.IN_TRANSIT}
     assert HELD_STATES <= NON_TERMINAL - TRANSIENT_STATES
+
+
+def test_states_awaiting_an_admin_are_the_queue_and_recycling_confirmation():
+    """The admin's notification feed is derived from this."""
+    assert lifecycle.states_awaiting(Actor.ADMIN) == {DonationStatus.NEEDS_ADMIN, DonationStatus.WASTE_REDIRECTED}
+    assert not lifecycle.states_awaiting(Actor.ADMIN) & TERMINAL_STATES

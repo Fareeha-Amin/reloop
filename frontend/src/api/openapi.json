@@ -1,0 +1,5128 @@
+{
+  "openapi": "3.1.0",
+  "info": {
+    "title": "ReLoop API",
+    "description": "The core loop: explainable matching, the full donation lifecycle, rejection handling, escalation, a recycling fallback and the deadline sweeper (in-process every 15 minutes; POST /admin/sweep runs it now). Phase 3 adds an in-app notification feed (polled; no push or email). **Stubs and simulations:** geocoding is a stub (coordinates are accepted as supplied); recycling settlements are **simulated** over **estimated** mass (per-category weights are placeholders), and an admin confirms recycling on the recycler's behalf. No money moves.",
+    "version": "0.3.0-phase3"
+  },
+  "paths": {
+    "/auth/register/donor": {
+      "post": {
+        "tags": [
+          "auth"
+        ],
+        "summary": "Register Donor",
+        "operationId": "register_donor_auth_register_donor_post",
+        "requestBody": {
+          "content": {
+            "application/json": {
+              "schema": {
+                "$ref": "#/components/schemas/DonorRegister"
+              }
+            }
+          },
+          "required": true
+        },
+        "responses": {
+          "201": {
+            "description": "Successful Response",
+            "content": {
+              "application/json": {
+                "schema": {
+                  "$ref": "#/components/schemas/UserOut"
+                }
+              }
+            }
+          },
+          "422": {
+            "description": "Validation Error",
+            "content": {
+              "application/json": {
+                "schema": {
+                  "$ref": "#/components/schemas/HTTPValidationError"
+                }
+              }
+            }
+          }
+        }
+      }
+    },
+    "/auth/register/acceptor": {
+      "post": {
+        "tags": [
+          "auth"
+        ],
+        "summary": "Register Acceptor",
+        "operationId": "register_acceptor_auth_register_acceptor_post",
+        "requestBody": {
+          "content": {
+            "application/json": {
+              "schema": {
+                "$ref": "#/components/schemas/AcceptorRegister"
+              }
+            }
+          },
+          "required": true
+        },
+        "responses": {
+          "201": {
+            "description": "Successful Response",
+            "content": {
+              "application/json": {
+                "schema": {
+                  "$ref": "#/components/schemas/AcceptorRegistered"
+                }
+              }
+            }
+          },
+          "422": {
+            "description": "Validation Error",
+            "content": {
+              "application/json": {
+                "schema": {
+                  "$ref": "#/components/schemas/HTTPValidationError"
+                }
+              }
+            }
+          }
+        }
+      }
+    },
+    "/auth/login": {
+      "post": {
+        "tags": [
+          "auth"
+        ],
+        "summary": "Login",
+        "description": "OAuth2 password flow. `username` is the account's email address.",
+        "operationId": "login_auth_login_post",
+        "requestBody": {
+          "content": {
+            "application/x-www-form-urlencoded": {
+              "schema": {
+                "$ref": "#/components/schemas/Body_login_auth_login_post"
+              }
+            }
+          },
+          "required": true
+        },
+        "responses": {
+          "200": {
+            "description": "Successful Response",
+            "content": {
+              "application/json": {
+                "schema": {
+                  "$ref": "#/components/schemas/TokenPair"
+                }
+              }
+            }
+          },
+          "422": {
+            "description": "Validation Error",
+            "content": {
+              "application/json": {
+                "schema": {
+                  "$ref": "#/components/schemas/HTTPValidationError"
+                }
+              }
+            }
+          }
+        }
+      }
+    },
+    "/auth/refresh": {
+      "post": {
+        "tags": [
+          "auth"
+        ],
+        "summary": "Refresh",
+        "description": "Exchange a refresh token for a new access token. Stateless: refresh tokens are\nnot rotated or revocable (see README, Known limitations).",
+        "operationId": "refresh_auth_refresh_post",
+        "requestBody": {
+          "content": {
+            "application/json": {
+              "schema": {
+                "$ref": "#/components/schemas/RefreshRequest"
+              }
+            }
+          },
+          "required": true
+        },
+        "responses": {
+          "200": {
+            "description": "Successful Response",
+            "content": {
+              "application/json": {
+                "schema": {
+                  "$ref": "#/components/schemas/AccessToken"
+                }
+              }
+            }
+          },
+          "422": {
+            "description": "Validation Error",
+            "content": {
+              "application/json": {
+                "schema": {
+                  "$ref": "#/components/schemas/HTTPValidationError"
+                }
+              }
+            }
+          }
+        }
+      }
+    },
+    "/auth/me": {
+      "get": {
+        "tags": [
+          "auth"
+        ],
+        "summary": "Me",
+        "operationId": "me_auth_me_get",
+        "responses": {
+          "200": {
+            "description": "Successful Response",
+            "content": {
+              "application/json": {
+                "schema": {
+                  "$ref": "#/components/schemas/UserOut"
+                }
+              }
+            }
+          }
+        },
+        "security": [
+          {
+            "OAuth2PasswordBearer": []
+          }
+        ]
+      }
+    },
+    "/organisations/me": {
+      "get": {
+        "tags": [
+          "acceptor: organisation & needs"
+        ],
+        "summary": "Get My Organisation",
+        "operationId": "get_my_organisation_organisations_me_get",
+        "responses": {
+          "200": {
+            "description": "Successful Response",
+            "content": {
+              "application/json": {
+                "schema": {
+                  "$ref": "#/components/schemas/OrganizationOut"
+                }
+              }
+            }
+          }
+        },
+        "security": [
+          {
+            "OAuth2PasswordBearer": []
+          }
+        ]
+      },
+      "patch": {
+        "tags": [
+          "acceptor: organisation & needs"
+        ],
+        "summary": "Update My Organisation",
+        "operationId": "update_my_organisation_organisations_me_patch",
+        "requestBody": {
+          "content": {
+            "application/json": {
+              "schema": {
+                "$ref": "#/components/schemas/OrganizationUpdate"
+              }
+            }
+          },
+          "required": true
+        },
+        "responses": {
+          "200": {
+            "description": "Successful Response",
+            "content": {
+              "application/json": {
+                "schema": {
+                  "$ref": "#/components/schemas/OrganizationOut"
+                }
+              }
+            }
+          },
+          "422": {
+            "description": "Validation Error",
+            "content": {
+              "application/json": {
+                "schema": {
+                  "$ref": "#/components/schemas/HTTPValidationError"
+                }
+              }
+            }
+          }
+        },
+        "security": [
+          {
+            "OAuth2PasswordBearer": []
+          }
+        ]
+      }
+    },
+    "/organisations/me/needs": {
+      "get": {
+        "tags": [
+          "acceptor: organisation & needs"
+        ],
+        "summary": "List Needs",
+        "operationId": "list_needs_organisations_me_needs_get",
+        "security": [
+          {
+            "OAuth2PasswordBearer": []
+          }
+        ],
+        "parameters": [
+          {
+            "name": "active_only",
+            "in": "query",
+            "required": false,
+            "schema": {
+              "type": "boolean",
+              "default": false,
+              "title": "Active Only"
+            }
+          }
+        ],
+        "responses": {
+          "200": {
+            "description": "Successful Response",
+            "content": {
+              "application/json": {
+                "schema": {
+                  "type": "array",
+                  "items": {
+                    "$ref": "#/components/schemas/NeedOut"
+                  },
+                  "title": "Response List Needs Organisations Me Needs Get"
+                }
+              }
+            }
+          },
+          "422": {
+            "description": "Validation Error",
+            "content": {
+              "application/json": {
+                "schema": {
+                  "$ref": "#/components/schemas/HTTPValidationError"
+                }
+              }
+            }
+          }
+        }
+      },
+      "post": {
+        "tags": [
+          "acceptor: organisation & needs"
+        ],
+        "summary": "Create Need",
+        "description": "Unverified organisations may maintain needs; verification gates matching (Phase 2),\nnot list upkeep.",
+        "operationId": "create_need_organisations_me_needs_post",
+        "security": [
+          {
+            "OAuth2PasswordBearer": []
+          }
+        ],
+        "requestBody": {
+          "required": true,
+          "content": {
+            "application/json": {
+              "schema": {
+                "$ref": "#/components/schemas/NeedCreate"
+              }
+            }
+          }
+        },
+        "responses": {
+          "201": {
+            "description": "Successful Response",
+            "content": {
+              "application/json": {
+                "schema": {
+                  "$ref": "#/components/schemas/NeedOut"
+                }
+              }
+            }
+          },
+          "422": {
+            "description": "Validation Error",
+            "content": {
+              "application/json": {
+                "schema": {
+                  "$ref": "#/components/schemas/HTTPValidationError"
+                }
+              }
+            }
+          }
+        }
+      }
+    },
+    "/organisations/me/needs/{need_id}": {
+      "patch": {
+        "tags": [
+          "acceptor: organisation & needs"
+        ],
+        "summary": "Update Need",
+        "description": "Update quantity or urgency, or set is_active=false. Needs are never deleted.",
+        "operationId": "update_need_organisations_me_needs__need_id__patch",
+        "security": [
+          {
+            "OAuth2PasswordBearer": []
+          }
+        ],
+        "parameters": [
+          {
+            "name": "need_id",
+            "in": "path",
+            "required": true,
+            "schema": {
+              "type": "string",
+              "format": "uuid",
+              "title": "Need Id"
+            }
+          }
+        ],
+        "requestBody": {
+          "required": true,
+          "content": {
+            "application/json": {
+              "schema": {
+                "$ref": "#/components/schemas/NeedUpdate"
+              }
+            }
+          }
+        },
+        "responses": {
+          "200": {
+            "description": "Successful Response",
+            "content": {
+              "application/json": {
+                "schema": {
+                  "$ref": "#/components/schemas/NeedOut"
+                }
+              }
+            }
+          },
+          "422": {
+            "description": "Validation Error",
+            "content": {
+              "application/json": {
+                "schema": {
+                  "$ref": "#/components/schemas/HTTPValidationError"
+                }
+              }
+            }
+          }
+        }
+      }
+    },
+    "/organisations/me/offers": {
+      "get": {
+        "tags": [
+          "acceptor: offers & accepted donations"
+        ],
+        "summary": "List Offers",
+        "description": "Open offers, highest queue priority first (priority donations and donations that\nhave been declined elsewhere rise), then oldest first. No address or coordinates.",
+        "operationId": "list_offers_organisations_me_offers_get",
+        "responses": {
+          "200": {
+            "description": "Successful Response",
+            "content": {
+              "application/json": {
+                "schema": {
+                  "items": {
+                    "$ref": "#/components/schemas/OfferOut"
+                  },
+                  "type": "array",
+                  "title": "Response List Offers Organisations Me Offers Get"
+                }
+              }
+            }
+          }
+        },
+        "security": [
+          {
+            "OAuth2PasswordBearer": []
+          }
+        ]
+      }
+    },
+    "/organisations/me/offers/{match_id}": {
+      "get": {
+        "tags": [
+          "acceptor: offers & accepted donations"
+        ],
+        "summary": "Get Offer",
+        "operationId": "get_offer_organisations_me_offers__match_id__get",
+        "security": [
+          {
+            "OAuth2PasswordBearer": []
+          }
+        ],
+        "parameters": [
+          {
+            "name": "match_id",
+            "in": "path",
+            "required": true,
+            "schema": {
+              "type": "string",
+              "format": "uuid",
+              "title": "Match Id"
+            }
+          }
+        ],
+        "responses": {
+          "200": {
+            "description": "Successful Response",
+            "content": {
+              "application/json": {
+                "schema": {
+                  "$ref": "#/components/schemas/OfferOut"
+                }
+              }
+            }
+          },
+          "422": {
+            "description": "Validation Error",
+            "content": {
+              "application/json": {
+                "schema": {
+                  "$ref": "#/components/schemas/HTTPValidationError"
+                }
+              }
+            }
+          }
+        }
+      }
+    },
+    "/organisations/me/offers/{match_id}/accept": {
+      "post": {
+        "tags": [
+          "acceptor: offers & accepted donations"
+        ],
+        "summary": "Accept Offer",
+        "description": "MATCHED → ACCEPTED. Releases the precise pickup address to this organisation (the\nrelease is recorded) for as long as it holds the donation.",
+        "operationId": "accept_offer_organisations_me_offers__match_id__accept_post",
+        "security": [
+          {
+            "OAuth2PasswordBearer": []
+          }
+        ],
+        "parameters": [
+          {
+            "name": "match_id",
+            "in": "path",
+            "required": true,
+            "schema": {
+              "type": "string",
+              "format": "uuid",
+              "title": "Match Id"
+            }
+          }
+        ],
+        "responses": {
+          "200": {
+            "description": "Successful Response",
+            "content": {
+              "application/json": {
+                "schema": {
+                  "$ref": "#/components/schemas/AcceptedDonationOut"
+                }
+              }
+            }
+          },
+          "422": {
+            "description": "Validation Error",
+            "content": {
+              "application/json": {
+                "schema": {
+                  "$ref": "#/components/schemas/HTTPValidationError"
+                }
+              }
+            }
+          }
+        }
+      }
+    },
+    "/organisations/me/offers/{match_id}/reject": {
+      "post": {
+        "tags": [
+          "acceptor: offers & accepted donations"
+        ],
+        "summary": "Reject Offer",
+        "description": "Recorded with its reason code, never deleted. This organisation is never offered\nthe donation again; it is re-offered or escalated to its donor at once.",
+        "operationId": "reject_offer_organisations_me_offers__match_id__reject_post",
+        "security": [
+          {
+            "OAuth2PasswordBearer": []
+          }
+        ],
+        "parameters": [
+          {
+            "name": "match_id",
+            "in": "path",
+            "required": true,
+            "schema": {
+              "type": "string",
+              "format": "uuid",
+              "title": "Match Id"
+            }
+          }
+        ],
+        "requestBody": {
+          "required": true,
+          "content": {
+            "application/json": {
+              "schema": {
+                "$ref": "#/components/schemas/RejectIn"
+              }
+            }
+          }
+        },
+        "responses": {
+          "200": {
+            "description": "Successful Response",
+            "content": {
+              "application/json": {
+                "schema": {
+                  "$ref": "#/components/schemas/OfferOut"
+                }
+              }
+            }
+          },
+          "422": {
+            "description": "Validation Error",
+            "content": {
+              "application/json": {
+                "schema": {
+                  "$ref": "#/components/schemas/HTTPValidationError"
+                }
+              }
+            }
+          }
+        }
+      }
+    },
+    "/organisations/me/donations": {
+      "get": {
+        "tags": [
+          "acceptor: offers & accepted donations"
+        ],
+        "summary": "List Accepted Donations",
+        "operationId": "list_accepted_donations_organisations_me_donations_get",
+        "responses": {
+          "200": {
+            "description": "Successful Response",
+            "content": {
+              "application/json": {
+                "schema": {
+                  "items": {
+                    "$ref": "#/components/schemas/AcceptedDonationOut"
+                  },
+                  "type": "array",
+                  "title": "Response List Accepted Donations Organisations Me Donations Get"
+                }
+              }
+            }
+          }
+        },
+        "security": [
+          {
+            "OAuth2PasswordBearer": []
+          }
+        ]
+      }
+    },
+    "/organisations/me/donations/{donation_id}": {
+      "get": {
+        "tags": [
+          "acceptor: offers & accepted donations"
+        ],
+        "summary": "Get Accepted Donation",
+        "operationId": "get_accepted_donation_organisations_me_donations__donation_id__get",
+        "security": [
+          {
+            "OAuth2PasswordBearer": []
+          }
+        ],
+        "parameters": [
+          {
+            "name": "donation_id",
+            "in": "path",
+            "required": true,
+            "schema": {
+              "type": "string",
+              "format": "uuid",
+              "title": "Donation Id"
+            }
+          }
+        ],
+        "responses": {
+          "200": {
+            "description": "Successful Response",
+            "content": {
+              "application/json": {
+                "schema": {
+                  "$ref": "#/components/schemas/AcceptedDonationOut"
+                }
+              }
+            }
+          },
+          "422": {
+            "description": "Validation Error",
+            "content": {
+              "application/json": {
+                "schema": {
+                  "$ref": "#/components/schemas/HTTPValidationError"
+                }
+              }
+            }
+          }
+        }
+      }
+    },
+    "/organisations/me/donations/{donation_id}/schedule-pickup": {
+      "post": {
+        "tags": [
+          "acceptor: offers & accepted donations"
+        ],
+        "summary": "Schedule Pickup",
+        "description": "ACCEPTED → PICKUP_SCHEDULED, this organisation collecting. The time must be in the\nfuture; the donor's pickup window is advisory. Not offered if the organisation does\nnot collect (pickup_capable false).",
+        "operationId": "schedule_pickup_organisations_me_donations__donation_id__schedule_pickup_post",
+        "security": [
+          {
+            "OAuth2PasswordBearer": []
+          }
+        ],
+        "parameters": [
+          {
+            "name": "donation_id",
+            "in": "path",
+            "required": true,
+            "schema": {
+              "type": "string",
+              "format": "uuid",
+              "title": "Donation Id"
+            }
+          }
+        ],
+        "requestBody": {
+          "required": true,
+          "content": {
+            "application/json": {
+              "schema": {
+                "$ref": "#/components/schemas/ScheduleIn"
+              }
+            }
+          }
+        },
+        "responses": {
+          "200": {
+            "description": "Successful Response",
+            "content": {
+              "application/json": {
+                "schema": {
+                  "$ref": "#/components/schemas/AcceptedDonationOut"
+                }
+              }
+            }
+          },
+          "422": {
+            "description": "Validation Error",
+            "content": {
+              "application/json": {
+                "schema": {
+                  "$ref": "#/components/schemas/HTTPValidationError"
+                }
+              }
+            }
+          }
+        }
+      }
+    },
+    "/organisations/me/donations/{donation_id}/confirm-receipt": {
+      "post": {
+        "tags": [
+          "acceptor: offers & accepted donations"
+        ],
+        "summary": "Confirm Receipt",
+        "description": "PICKUP_SCHEDULED or IN_TRANSIT → COMPLETED: reuse, an outcome.",
+        "operationId": "confirm_receipt_organisations_me_donations__donation_id__confirm_receipt_post",
+        "security": [
+          {
+            "OAuth2PasswordBearer": []
+          }
+        ],
+        "parameters": [
+          {
+            "name": "donation_id",
+            "in": "path",
+            "required": true,
+            "schema": {
+              "type": "string",
+              "format": "uuid",
+              "title": "Donation Id"
+            }
+          }
+        ],
+        "responses": {
+          "200": {
+            "description": "Successful Response",
+            "content": {
+              "application/json": {
+                "schema": {
+                  "$ref": "#/components/schemas/AcceptedDonationOut"
+                }
+              }
+            }
+          },
+          "422": {
+            "description": "Validation Error",
+            "content": {
+              "application/json": {
+                "schema": {
+                  "$ref": "#/components/schemas/HTTPValidationError"
+                }
+              }
+            }
+          }
+        }
+      }
+    },
+    "/donations": {
+      "post": {
+        "tags": [
+          "donor: donations"
+        ],
+        "summary": "Create Donation",
+        "operationId": "create_donation_donations_post",
+        "security": [
+          {
+            "OAuth2PasswordBearer": []
+          }
+        ],
+        "requestBody": {
+          "required": true,
+          "content": {
+            "application/json": {
+              "schema": {
+                "$ref": "#/components/schemas/DonationCreate"
+              }
+            }
+          }
+        },
+        "responses": {
+          "201": {
+            "description": "Successful Response",
+            "content": {
+              "application/json": {
+                "schema": {
+                  "$ref": "#/components/schemas/DonationOut"
+                }
+              }
+            }
+          },
+          "422": {
+            "description": "Validation Error",
+            "content": {
+              "application/json": {
+                "schema": {
+                  "$ref": "#/components/schemas/HTTPValidationError"
+                }
+              }
+            }
+          }
+        }
+      },
+      "get": {
+        "tags": [
+          "donor: donations"
+        ],
+        "summary": "List My Donations",
+        "operationId": "list_my_donations_donations_get",
+        "security": [
+          {
+            "OAuth2PasswordBearer": []
+          }
+        ],
+        "parameters": [
+          {
+            "name": "limit",
+            "in": "query",
+            "required": false,
+            "schema": {
+              "type": "integer",
+              "maximum": 100,
+              "minimum": 1,
+              "default": 20,
+              "title": "Limit"
+            }
+          },
+          {
+            "name": "offset",
+            "in": "query",
+            "required": false,
+            "schema": {
+              "type": "integer",
+              "minimum": 0,
+              "default": 0,
+              "title": "Offset"
+            }
+          }
+        ],
+        "responses": {
+          "200": {
+            "description": "Successful Response",
+            "content": {
+              "application/json": {
+                "schema": {
+                  "type": "array",
+                  "items": {
+                    "$ref": "#/components/schemas/DonationOut"
+                  },
+                  "title": "Response List My Donations Donations Get"
+                }
+              }
+            }
+          },
+          "422": {
+            "description": "Validation Error",
+            "content": {
+              "application/json": {
+                "schema": {
+                  "$ref": "#/components/schemas/HTTPValidationError"
+                }
+              }
+            }
+          }
+        }
+      }
+    },
+    "/donations/{donation_id}": {
+      "get": {
+        "tags": [
+          "donor: donations"
+        ],
+        "summary": "Get Donation",
+        "description": "Readable by the donor who owns it and by admins. Anyone else gets 404. An admin\nread of the precise address is recorded.",
+        "operationId": "get_donation_donations__donation_id__get",
+        "security": [
+          {
+            "OAuth2PasswordBearer": []
+          }
+        ],
+        "parameters": [
+          {
+            "name": "donation_id",
+            "in": "path",
+            "required": true,
+            "schema": {
+              "type": "string",
+              "format": "uuid",
+              "title": "Donation Id"
+            }
+          }
+        ],
+        "responses": {
+          "200": {
+            "description": "Successful Response",
+            "content": {
+              "application/json": {
+                "schema": {
+                  "$ref": "#/components/schemas/DonationOut"
+                }
+              }
+            }
+          },
+          "422": {
+            "description": "Validation Error",
+            "content": {
+              "application/json": {
+                "schema": {
+                  "$ref": "#/components/schemas/HTTPValidationError"
+                }
+              }
+            }
+          }
+        }
+      },
+      "patch": {
+        "tags": [
+          "donor: donations"
+        ],
+        "summary": "Update Donation",
+        "description": "Only while the donation is editable (LISTED). Status cannot be set here.",
+        "operationId": "update_donation_donations__donation_id__patch",
+        "security": [
+          {
+            "OAuth2PasswordBearer": []
+          }
+        ],
+        "parameters": [
+          {
+            "name": "donation_id",
+            "in": "path",
+            "required": true,
+            "schema": {
+              "type": "string",
+              "format": "uuid",
+              "title": "Donation Id"
+            }
+          }
+        ],
+        "requestBody": {
+          "required": true,
+          "content": {
+            "application/json": {
+              "schema": {
+                "$ref": "#/components/schemas/DonationUpdate"
+              }
+            }
+          }
+        },
+        "responses": {
+          "200": {
+            "description": "Successful Response",
+            "content": {
+              "application/json": {
+                "schema": {
+                  "$ref": "#/components/schemas/DonationOut"
+                }
+              }
+            }
+          },
+          "422": {
+            "description": "Validation Error",
+            "content": {
+              "application/json": {
+                "schema": {
+                  "$ref": "#/components/schemas/HTTPValidationError"
+                }
+              }
+            }
+          }
+        }
+      }
+    },
+    "/donations/{donation_id}/timeline": {
+      "get": {
+        "tags": [
+          "donor: donations"
+        ],
+        "summary": "Get Timeline",
+        "description": "Status events, every offer and its response, and any recycling (simulated).",
+        "operationId": "get_timeline_donations__donation_id__timeline_get",
+        "security": [
+          {
+            "OAuth2PasswordBearer": []
+          }
+        ],
+        "parameters": [
+          {
+            "name": "donation_id",
+            "in": "path",
+            "required": true,
+            "schema": {
+              "type": "string",
+              "format": "uuid",
+              "title": "Donation Id"
+            }
+          }
+        ],
+        "responses": {
+          "200": {
+            "description": "Successful Response",
+            "content": {
+              "application/json": {
+                "schema": {
+                  "$ref": "#/components/schemas/TimelineOut"
+                }
+              }
+            }
+          },
+          "422": {
+            "description": "Validation Error",
+            "content": {
+              "application/json": {
+                "schema": {
+                  "$ref": "#/components/schemas/HTTPValidationError"
+                }
+              }
+            }
+          }
+        }
+      }
+    },
+    "/donations/{donation_id}/candidates": {
+      "get": {
+        "tags": [
+          "donor: donations"
+        ],
+        "summary": "Get Candidates",
+        "description": "The eligible organisations, best first, each score broken into its factors. A\npreview: nothing is stored. Offering re-ranks and stores the slate it used.",
+        "operationId": "get_candidates_donations__donation_id__candidates_get",
+        "security": [
+          {
+            "OAuth2PasswordBearer": []
+          }
+        ],
+        "parameters": [
+          {
+            "name": "donation_id",
+            "in": "path",
+            "required": true,
+            "schema": {
+              "type": "string",
+              "format": "uuid",
+              "title": "Donation Id"
+            }
+          }
+        ],
+        "responses": {
+          "200": {
+            "description": "Successful Response",
+            "content": {
+              "application/json": {
+                "schema": {
+                  "$ref": "#/components/schemas/SlateOut"
+                }
+              }
+            }
+          },
+          "422": {
+            "description": "Validation Error",
+            "content": {
+              "application/json": {
+                "schema": {
+                  "$ref": "#/components/schemas/HTTPValidationError"
+                }
+              }
+            }
+          }
+        }
+      }
+    },
+    "/donations/{donation_id}/offer": {
+      "post": {
+        "tags": [
+          "donor: donations"
+        ],
+        "summary": "Offer",
+        "description": "LISTED → MATCHED: offer to the top candidate, or to `organization_id` if it is in\nthe eligible slate. If the slate is empty the donation escalates instead\n(status ESCALATED, escalation_cause NO_CANDIDATES).",
+        "operationId": "offer_donations__donation_id__offer_post",
+        "security": [
+          {
+            "OAuth2PasswordBearer": []
+          }
+        ],
+        "parameters": [
+          {
+            "name": "donation_id",
+            "in": "path",
+            "required": true,
+            "schema": {
+              "type": "string",
+              "format": "uuid",
+              "title": "Donation Id"
+            }
+          }
+        ],
+        "requestBody": {
+          "content": {
+            "application/json": {
+              "schema": {
+                "anyOf": [
+                  {
+                    "$ref": "#/components/schemas/OfferCreate"
+                  },
+                  {
+                    "type": "null"
+                  }
+                ],
+                "title": "Data"
+              }
+            }
+          }
+        },
+        "responses": {
+          "200": {
+            "description": "Successful Response",
+            "content": {
+              "application/json": {
+                "schema": {
+                  "$ref": "#/components/schemas/DonationOut"
+                }
+              }
+            }
+          },
+          "422": {
+            "description": "Validation Error",
+            "content": {
+              "application/json": {
+                "schema": {
+                  "$ref": "#/components/schemas/HTTPValidationError"
+                }
+              }
+            }
+          }
+        }
+      }
+    },
+    "/donations/{donation_id}/cancel": {
+      "post": {
+        "tags": [
+          "donor: donations"
+        ],
+        "summary": "Cancel Donation",
+        "description": "Withdraw the donation (from LISTED, MATCHED or ESCALATED). It is kept, with status\nCANCELLED, not deleted. An open offer is closed as RETRACTED.",
+        "operationId": "cancel_donation_donations__donation_id__cancel_post",
+        "security": [
+          {
+            "OAuth2PasswordBearer": []
+          }
+        ],
+        "parameters": [
+          {
+            "name": "donation_id",
+            "in": "path",
+            "required": true,
+            "schema": {
+              "type": "string",
+              "format": "uuid",
+              "title": "Donation Id"
+            }
+          }
+        ],
+        "responses": {
+          "200": {
+            "description": "Successful Response",
+            "content": {
+              "application/json": {
+                "schema": {
+                  "$ref": "#/components/schemas/DonationOut"
+                }
+              }
+            }
+          },
+          "422": {
+            "description": "Validation Error",
+            "content": {
+              "application/json": {
+                "schema": {
+                  "$ref": "#/components/schemas/HTTPValidationError"
+                }
+              }
+            }
+          }
+        }
+      }
+    },
+    "/donations/{donation_id}/rematch": {
+      "post": {
+        "tags": [
+          "donor: donations"
+        ],
+        "summary": "Rematch",
+        "description": "ESCALATED → re-offer to the next candidate. Offered only while the slate is\nnon-empty.",
+        "operationId": "rematch_donations__donation_id__rematch_post",
+        "security": [
+          {
+            "OAuth2PasswordBearer": []
+          }
+        ],
+        "parameters": [
+          {
+            "name": "donation_id",
+            "in": "path",
+            "required": true,
+            "schema": {
+              "type": "string",
+              "format": "uuid",
+              "title": "Donation Id"
+            }
+          }
+        ],
+        "responses": {
+          "200": {
+            "description": "Successful Response",
+            "content": {
+              "application/json": {
+                "schema": {
+                  "$ref": "#/components/schemas/DonationOut"
+                }
+              }
+            }
+          },
+          "422": {
+            "description": "Validation Error",
+            "content": {
+              "application/json": {
+                "schema": {
+                  "$ref": "#/components/schemas/HTTPValidationError"
+                }
+              }
+            }
+          }
+        }
+      }
+    },
+    "/donations/{donation_id}/upgrade-priority": {
+      "post": {
+        "tags": [
+          "donor: donations"
+        ],
+        "summary": "Upgrade Priority",
+        "description": "As rematch, and flags the donation as priority. Priority orders acceptors' inboxes;\nit does not change which organisations are eligible or how they are ranked.",
+        "operationId": "upgrade_priority_donations__donation_id__upgrade_priority_post",
+        "security": [
+          {
+            "OAuth2PasswordBearer": []
+          }
+        ],
+        "parameters": [
+          {
+            "name": "donation_id",
+            "in": "path",
+            "required": true,
+            "schema": {
+              "type": "string",
+              "format": "uuid",
+              "title": "Donation Id"
+            }
+          }
+        ],
+        "responses": {
+          "200": {
+            "description": "Successful Response",
+            "content": {
+              "application/json": {
+                "schema": {
+                  "$ref": "#/components/schemas/DonationOut"
+                }
+              }
+            }
+          },
+          "422": {
+            "description": "Validation Error",
+            "content": {
+              "application/json": {
+                "schema": {
+                  "$ref": "#/components/schemas/HTTPValidationError"
+                }
+              }
+            }
+          }
+        }
+      }
+    },
+    "/donations/{donation_id}/redirect-to-recycling": {
+      "post": {
+        "tags": [
+          "donor: donations"
+        ],
+        "summary": "Redirect To Recycling",
+        "description": "ESCALATED → WASTE_REDIRECTED, routed to the nearest active recycler for the\ncategory. If there is none, the donation goes to the admin queue (NEEDS_ADMIN).",
+        "operationId": "redirect_to_recycling_donations__donation_id__redirect_to_recycling_post",
+        "security": [
+          {
+            "OAuth2PasswordBearer": []
+          }
+        ],
+        "parameters": [
+          {
+            "name": "donation_id",
+            "in": "path",
+            "required": true,
+            "schema": {
+              "type": "string",
+              "format": "uuid",
+              "title": "Donation Id"
+            }
+          }
+        ],
+        "responses": {
+          "200": {
+            "description": "Successful Response",
+            "content": {
+              "application/json": {
+                "schema": {
+                  "$ref": "#/components/schemas/DonationOut"
+                }
+              }
+            }
+          },
+          "422": {
+            "description": "Validation Error",
+            "content": {
+              "application/json": {
+                "schema": {
+                  "$ref": "#/components/schemas/HTTPValidationError"
+                }
+              }
+            }
+          }
+        }
+      }
+    },
+    "/donations/{donation_id}/choose-dropoff": {
+      "post": {
+        "tags": [
+          "donor: donations"
+        ],
+        "summary": "Choose Dropoff",
+        "description": "ACCEPTED → PICKUP_SCHEDULED, the donor delivering. The time must be in the future.",
+        "operationId": "choose_dropoff_donations__donation_id__choose_dropoff_post",
+        "security": [
+          {
+            "OAuth2PasswordBearer": []
+          }
+        ],
+        "parameters": [
+          {
+            "name": "donation_id",
+            "in": "path",
+            "required": true,
+            "schema": {
+              "type": "string",
+              "format": "uuid",
+              "title": "Donation Id"
+            }
+          }
+        ],
+        "requestBody": {
+          "required": true,
+          "content": {
+            "application/json": {
+              "schema": {
+                "$ref": "#/components/schemas/ScheduleIn"
+              }
+            }
+          }
+        },
+        "responses": {
+          "200": {
+            "description": "Successful Response",
+            "content": {
+              "application/json": {
+                "schema": {
+                  "$ref": "#/components/schemas/DonationOut"
+                }
+              }
+            }
+          },
+          "422": {
+            "description": "Validation Error",
+            "content": {
+              "application/json": {
+                "schema": {
+                  "$ref": "#/components/schemas/HTTPValidationError"
+                }
+              }
+            }
+          }
+        }
+      }
+    },
+    "/donations/{donation_id}/mark-handed-over": {
+      "post": {
+        "tags": [
+          "donor: donations"
+        ],
+        "summary": "Mark Handed Over",
+        "description": "PICKUP_SCHEDULED → IN_TRANSIT: the donor has handed the goods over.",
+        "operationId": "mark_handed_over_donations__donation_id__mark_handed_over_post",
+        "security": [
+          {
+            "OAuth2PasswordBearer": []
+          }
+        ],
+        "parameters": [
+          {
+            "name": "donation_id",
+            "in": "path",
+            "required": true,
+            "schema": {
+              "type": "string",
+              "format": "uuid",
+              "title": "Donation Id"
+            }
+          }
+        ],
+        "responses": {
+          "200": {
+            "description": "Successful Response",
+            "content": {
+              "application/json": {
+                "schema": {
+                  "$ref": "#/components/schemas/DonationOut"
+                }
+              }
+            }
+          },
+          "422": {
+            "description": "Validation Error",
+            "content": {
+              "application/json": {
+                "schema": {
+                  "$ref": "#/components/schemas/HTTPValidationError"
+                }
+              }
+            }
+          }
+        }
+      }
+    },
+    "/donations/{donation_id}/images": {
+      "post": {
+        "tags": [
+          "donor: donations"
+        ],
+        "summary": "Upload Images",
+        "description": "Validated server-side and re-encoded, which strips EXIF (including GPS) and other\nmetadata. All-or-nothing: if any file is rejected, none is stored.",
+        "operationId": "upload_images_donations__donation_id__images_post",
+        "security": [
+          {
+            "OAuth2PasswordBearer": []
+          }
+        ],
+        "parameters": [
+          {
+            "name": "donation_id",
+            "in": "path",
+            "required": true,
+            "schema": {
+              "type": "string",
+              "format": "uuid",
+              "title": "Donation Id"
+            }
+          }
+        ],
+        "requestBody": {
+          "required": true,
+          "content": {
+            "multipart/form-data": {
+              "schema": {
+                "$ref": "#/components/schemas/Body_upload_images_donations__donation_id__images_post"
+              }
+            }
+          }
+        },
+        "responses": {
+          "201": {
+            "description": "Successful Response",
+            "content": {
+              "application/json": {
+                "schema": {
+                  "type": "array",
+                  "items": {
+                    "$ref": "#/components/schemas/DonationImageOut"
+                  },
+                  "title": "Response Upload Images Donations  Donation Id  Images Post"
+                }
+              }
+            }
+          },
+          "422": {
+            "description": "Validation Error",
+            "content": {
+              "application/json": {
+                "schema": {
+                  "$ref": "#/components/schemas/HTTPValidationError"
+                }
+              }
+            }
+          }
+        }
+      }
+    },
+    "/donations/{donation_id}/images/{image_id}": {
+      "get": {
+        "tags": [
+          "donor: donations"
+        ],
+        "summary": "Get Image",
+        "description": "The donor, admins, and an organisation while it has an open offer for the\ndonation or holds it.",
+        "operationId": "get_image_donations__donation_id__images__image_id__get",
+        "security": [
+          {
+            "OAuth2PasswordBearer": []
+          }
+        ],
+        "parameters": [
+          {
+            "name": "donation_id",
+            "in": "path",
+            "required": true,
+            "schema": {
+              "type": "string",
+              "format": "uuid",
+              "title": "Donation Id"
+            }
+          },
+          {
+            "name": "image_id",
+            "in": "path",
+            "required": true,
+            "schema": {
+              "type": "string",
+              "format": "uuid",
+              "title": "Image Id"
+            }
+          }
+        ],
+        "responses": {
+          "200": {
+            "description": "Successful Response",
+            "content": {
+              "image/jpeg": {},
+              "image/png": {},
+              "image/webp": {}
+            }
+          },
+          "422": {
+            "description": "Validation Error",
+            "content": {
+              "application/json": {
+                "schema": {
+                  "$ref": "#/components/schemas/HTTPValidationError"
+                }
+              }
+            }
+          }
+        }
+      },
+      "delete": {
+        "tags": [
+          "donor: donations"
+        ],
+        "summary": "Delete Image",
+        "operationId": "delete_image_donations__donation_id__images__image_id__delete",
+        "security": [
+          {
+            "OAuth2PasswordBearer": []
+          }
+        ],
+        "parameters": [
+          {
+            "name": "donation_id",
+            "in": "path",
+            "required": true,
+            "schema": {
+              "type": "string",
+              "format": "uuid",
+              "title": "Donation Id"
+            }
+          },
+          {
+            "name": "image_id",
+            "in": "path",
+            "required": true,
+            "schema": {
+              "type": "string",
+              "format": "uuid",
+              "title": "Image Id"
+            }
+          }
+        ],
+        "responses": {
+          "204": {
+            "description": "Successful Response"
+          },
+          "422": {
+            "description": "Validation Error",
+            "content": {
+              "application/json": {
+                "schema": {
+                  "$ref": "#/components/schemas/HTTPValidationError"
+                }
+              }
+            }
+          }
+        }
+      }
+    },
+    "/admin/organisations": {
+      "get": {
+        "tags": [
+          "admin"
+        ],
+        "summary": "List Organisations",
+        "operationId": "list_organisations_admin_organisations_get",
+        "security": [
+          {
+            "OAuth2PasswordBearer": []
+          }
+        ],
+        "parameters": [
+          {
+            "name": "verification_status",
+            "in": "query",
+            "required": false,
+            "schema": {
+              "anyOf": [
+                {
+                  "$ref": "#/components/schemas/VerificationStatus"
+                },
+                {
+                  "type": "null"
+                }
+              ],
+              "title": "Verification Status"
+            }
+          },
+          {
+            "name": "limit",
+            "in": "query",
+            "required": false,
+            "schema": {
+              "type": "integer",
+              "maximum": 100,
+              "minimum": 1,
+              "default": 20,
+              "title": "Limit"
+            }
+          },
+          {
+            "name": "offset",
+            "in": "query",
+            "required": false,
+            "schema": {
+              "type": "integer",
+              "minimum": 0,
+              "default": 0,
+              "title": "Offset"
+            }
+          }
+        ],
+        "responses": {
+          "200": {
+            "description": "Successful Response",
+            "content": {
+              "application/json": {
+                "schema": {
+                  "type": "array",
+                  "items": {
+                    "$ref": "#/components/schemas/OrganizationOut"
+                  },
+                  "title": "Response List Organisations Admin Organisations Get"
+                }
+              }
+            }
+          },
+          "422": {
+            "description": "Validation Error",
+            "content": {
+              "application/json": {
+                "schema": {
+                  "$ref": "#/components/schemas/HTTPValidationError"
+                }
+              }
+            }
+          }
+        }
+      }
+    },
+    "/admin/organisations/{org_id}": {
+      "get": {
+        "tags": [
+          "admin"
+        ],
+        "summary": "Get Organisation",
+        "operationId": "get_organisation_admin_organisations__org_id__get",
+        "security": [
+          {
+            "OAuth2PasswordBearer": []
+          }
+        ],
+        "parameters": [
+          {
+            "name": "org_id",
+            "in": "path",
+            "required": true,
+            "schema": {
+              "type": "string",
+              "format": "uuid",
+              "title": "Org Id"
+            }
+          }
+        ],
+        "responses": {
+          "200": {
+            "description": "Successful Response",
+            "content": {
+              "application/json": {
+                "schema": {
+                  "$ref": "#/components/schemas/AdminOrganizationDetail"
+                }
+              }
+            }
+          },
+          "422": {
+            "description": "Validation Error",
+            "content": {
+              "application/json": {
+                "schema": {
+                  "$ref": "#/components/schemas/HTTPValidationError"
+                }
+              }
+            }
+          }
+        }
+      }
+    },
+    "/admin/organisations/{org_id}/verification": {
+      "patch": {
+        "tags": [
+          "admin"
+        ],
+        "summary": "Set Verification",
+        "description": "The only way an organisation's verification status changes. Records which admin\nchanged it and when.",
+        "operationId": "set_verification_admin_organisations__org_id__verification_patch",
+        "security": [
+          {
+            "OAuth2PasswordBearer": []
+          }
+        ],
+        "parameters": [
+          {
+            "name": "org_id",
+            "in": "path",
+            "required": true,
+            "schema": {
+              "type": "string",
+              "format": "uuid",
+              "title": "Org Id"
+            }
+          }
+        ],
+        "requestBody": {
+          "required": true,
+          "content": {
+            "application/json": {
+              "schema": {
+                "$ref": "#/components/schemas/VerificationUpdate"
+              }
+            }
+          }
+        },
+        "responses": {
+          "200": {
+            "description": "Successful Response",
+            "content": {
+              "application/json": {
+                "schema": {
+                  "$ref": "#/components/schemas/AdminOrganizationDetail"
+                }
+              }
+            }
+          },
+          "422": {
+            "description": "Validation Error",
+            "content": {
+              "application/json": {
+                "schema": {
+                  "$ref": "#/components/schemas/HTTPValidationError"
+                }
+              }
+            }
+          }
+        }
+      }
+    },
+    "/admin/donations": {
+      "get": {
+        "tags": [
+          "admin"
+        ],
+        "summary": "List Donations",
+        "description": "Without addresses. The precise address is in the detail, where each read is recorded.",
+        "operationId": "list_donations_admin_donations_get",
+        "security": [
+          {
+            "OAuth2PasswordBearer": []
+          }
+        ],
+        "parameters": [
+          {
+            "name": "status",
+            "in": "query",
+            "required": false,
+            "schema": {
+              "anyOf": [
+                {
+                  "$ref": "#/components/schemas/DonationStatus"
+                },
+                {
+                  "type": "null"
+                }
+              ],
+              "title": "Status"
+            }
+          },
+          {
+            "name": "limit",
+            "in": "query",
+            "required": false,
+            "schema": {
+              "type": "integer",
+              "maximum": 100,
+              "minimum": 1,
+              "default": 20,
+              "title": "Limit"
+            }
+          },
+          {
+            "name": "offset",
+            "in": "query",
+            "required": false,
+            "schema": {
+              "type": "integer",
+              "minimum": 0,
+              "default": 0,
+              "title": "Offset"
+            }
+          }
+        ],
+        "responses": {
+          "200": {
+            "description": "Successful Response",
+            "content": {
+              "application/json": {
+                "schema": {
+                  "type": "array",
+                  "items": {
+                    "$ref": "#/components/schemas/DonationSummaryOut"
+                  },
+                  "title": "Response List Donations Admin Donations Get"
+                }
+              }
+            }
+          },
+          "422": {
+            "description": "Validation Error",
+            "content": {
+              "application/json": {
+                "schema": {
+                  "$ref": "#/components/schemas/HTTPValidationError"
+                }
+              }
+            }
+          }
+        }
+      }
+    },
+    "/admin/queue": {
+      "get": {
+        "tags": [
+          "admin"
+        ],
+        "summary": "Unroutable Queue",
+        "description": "Donations that could not be routed (NEEDS_ADMIN), longest-waiting first, with the\ntransition that put each one here and what can be done about it.",
+        "operationId": "unroutable_queue_admin_queue_get",
+        "responses": {
+          "200": {
+            "description": "Successful Response",
+            "content": {
+              "application/json": {
+                "schema": {
+                  "items": {
+                    "$ref": "#/components/schemas/QueueItemOut"
+                  },
+                  "type": "array",
+                  "title": "Response Unroutable Queue Admin Queue Get"
+                }
+              }
+            }
+          }
+        },
+        "security": [
+          {
+            "OAuth2PasswordBearer": []
+          }
+        ]
+      }
+    },
+    "/admin/donations/{donation_id}": {
+      "get": {
+        "tags": [
+          "admin"
+        ],
+        "summary": "Get Donation Detail",
+        "description": "Full detail, including the precise address. This read is recorded.",
+        "operationId": "get_donation_detail_admin_donations__donation_id__get",
+        "security": [
+          {
+            "OAuth2PasswordBearer": []
+          }
+        ],
+        "parameters": [
+          {
+            "name": "donation_id",
+            "in": "path",
+            "required": true,
+            "schema": {
+              "type": "string",
+              "format": "uuid",
+              "title": "Donation Id"
+            }
+          }
+        ],
+        "responses": {
+          "200": {
+            "description": "Successful Response",
+            "content": {
+              "application/json": {
+                "schema": {
+                  "$ref": "#/components/schemas/AdminDonationDetailOut"
+                }
+              }
+            }
+          },
+          "422": {
+            "description": "Validation Error",
+            "content": {
+              "application/json": {
+                "schema": {
+                  "$ref": "#/components/schemas/HTTPValidationError"
+                }
+              }
+            }
+          }
+        }
+      }
+    },
+    "/admin/donations/{donation_id}/requeue": {
+      "post": {
+        "tags": [
+          "admin"
+        ],
+        "summary": "Requeue",
+        "description": "NEEDS_ADMIN → back into matching: re-offered at once, or escalated to the donor if\nthe decline threshold is still reached. Offered only while the slate is non-empty.",
+        "operationId": "requeue_admin_donations__donation_id__requeue_post",
+        "security": [
+          {
+            "OAuth2PasswordBearer": []
+          }
+        ],
+        "parameters": [
+          {
+            "name": "donation_id",
+            "in": "path",
+            "required": true,
+            "schema": {
+              "type": "string",
+              "format": "uuid",
+              "title": "Donation Id"
+            }
+          }
+        ],
+        "requestBody": {
+          "required": true,
+          "content": {
+            "application/json": {
+              "schema": {
+                "$ref": "#/components/schemas/ReasonIn"
+              }
+            }
+          }
+        },
+        "responses": {
+          "200": {
+            "description": "Successful Response",
+            "content": {
+              "application/json": {
+                "schema": {
+                  "$ref": "#/components/schemas/DonationOut"
+                }
+              }
+            }
+          },
+          "422": {
+            "description": "Validation Error",
+            "content": {
+              "application/json": {
+                "schema": {
+                  "$ref": "#/components/schemas/HTTPValidationError"
+                }
+              }
+            }
+          }
+        }
+      }
+    },
+    "/admin/donations/{donation_id}/redirect-to-recycling": {
+      "post": {
+        "tags": [
+          "admin"
+        ],
+        "summary": "Redirect To Recycling",
+        "description": "NEEDS_ADMIN → WASTE_REDIRECTED. Offered only if a recycler can take it.",
+        "operationId": "redirect_to_recycling_admin_donations__donation_id__redirect_to_recycling_post",
+        "security": [
+          {
+            "OAuth2PasswordBearer": []
+          }
+        ],
+        "parameters": [
+          {
+            "name": "donation_id",
+            "in": "path",
+            "required": true,
+            "schema": {
+              "type": "string",
+              "format": "uuid",
+              "title": "Donation Id"
+            }
+          }
+        ],
+        "requestBody": {
+          "required": true,
+          "content": {
+            "application/json": {
+              "schema": {
+                "$ref": "#/components/schemas/ReasonIn"
+              }
+            }
+          }
+        },
+        "responses": {
+          "200": {
+            "description": "Successful Response",
+            "content": {
+              "application/json": {
+                "schema": {
+                  "$ref": "#/components/schemas/DonationOut"
+                }
+              }
+            }
+          },
+          "422": {
+            "description": "Validation Error",
+            "content": {
+              "application/json": {
+                "schema": {
+                  "$ref": "#/components/schemas/HTTPValidationError"
+                }
+              }
+            }
+          }
+        }
+      }
+    },
+    "/admin/donations/{donation_id}/cancel": {
+      "post": {
+        "tags": [
+          "admin"
+        ],
+        "summary": "Cancel",
+        "description": "NEEDS_ADMIN → CANCELLED.",
+        "operationId": "cancel_admin_donations__donation_id__cancel_post",
+        "security": [
+          {
+            "OAuth2PasswordBearer": []
+          }
+        ],
+        "parameters": [
+          {
+            "name": "donation_id",
+            "in": "path",
+            "required": true,
+            "schema": {
+              "type": "string",
+              "format": "uuid",
+              "title": "Donation Id"
+            }
+          }
+        ],
+        "requestBody": {
+          "required": true,
+          "content": {
+            "application/json": {
+              "schema": {
+                "$ref": "#/components/schemas/ReasonIn"
+              }
+            }
+          }
+        },
+        "responses": {
+          "200": {
+            "description": "Successful Response",
+            "content": {
+              "application/json": {
+                "schema": {
+                  "$ref": "#/components/schemas/DonationOut"
+                }
+              }
+            }
+          },
+          "422": {
+            "description": "Validation Error",
+            "content": {
+              "application/json": {
+                "schema": {
+                  "$ref": "#/components/schemas/HTTPValidationError"
+                }
+              }
+            }
+          }
+        }
+      }
+    },
+    "/admin/donations/{donation_id}/confirm-recycled": {
+      "post": {
+        "tags": [
+          "admin"
+        ],
+        "summary": "Confirm Recycled",
+        "description": "WASTE_REDIRECTED → RECYCLED. SIMULATED: the admin confirms on the recycler's\nbehalf, and a simulated settlement over estimated mass is recorded (see the\ndonation's timeline). No money moves.",
+        "operationId": "confirm_recycled_admin_donations__donation_id__confirm_recycled_post",
+        "security": [
+          {
+            "OAuth2PasswordBearer": []
+          }
+        ],
+        "parameters": [
+          {
+            "name": "donation_id",
+            "in": "path",
+            "required": true,
+            "schema": {
+              "type": "string",
+              "format": "uuid",
+              "title": "Donation Id"
+            }
+          }
+        ],
+        "requestBody": {
+          "required": true,
+          "content": {
+            "application/json": {
+              "schema": {
+                "$ref": "#/components/schemas/ReasonIn"
+              }
+            }
+          }
+        },
+        "responses": {
+          "200": {
+            "description": "Successful Response",
+            "content": {
+              "application/json": {
+                "schema": {
+                  "$ref": "#/components/schemas/DonationOut"
+                }
+              }
+            }
+          },
+          "422": {
+            "description": "Validation Error",
+            "content": {
+              "application/json": {
+                "schema": {
+                  "$ref": "#/components/schemas/HTTPValidationError"
+                }
+              }
+            }
+          }
+        }
+      }
+    },
+    "/admin/sweep": {
+      "post": {
+        "tags": [
+          "admin"
+        ],
+        "summary": "Run Sweep",
+        "description": "Apply every due deadline now: expired offers, donations never offered, silent\ndonors and stalled handovers. Safe to run repeatedly. Also: python -m app.cli sweep.",
+        "operationId": "run_sweep_admin_sweep_post",
+        "responses": {
+          "200": {
+            "description": "Successful Response",
+            "content": {
+              "application/json": {
+                "schema": {
+                  "$ref": "#/components/schemas/SweepReportOut"
+                }
+              }
+            }
+          }
+        },
+        "security": [
+          {
+            "OAuth2PasswordBearer": []
+          }
+        ]
+      }
+    },
+    "/admin/recyclers": {
+      "get": {
+        "tags": [
+          "admin"
+        ],
+        "summary": "List Recyclers",
+        "operationId": "list_recyclers_admin_recyclers_get",
+        "responses": {
+          "200": {
+            "description": "Successful Response",
+            "content": {
+              "application/json": {
+                "schema": {
+                  "items": {
+                    "$ref": "#/components/schemas/RecyclerOut"
+                  },
+                  "type": "array",
+                  "title": "Response List Recyclers Admin Recyclers Get"
+                }
+              }
+            }
+          }
+        },
+        "security": [
+          {
+            "OAuth2PasswordBearer": []
+          }
+        ]
+      }
+    },
+    "/notifications": {
+      "get": {
+        "tags": [
+          "notifications"
+        ],
+        "summary": "List Notifications",
+        "description": "Status events on donations you are party to, newest first. In-app only: derived\nfrom the audit log on each request, with no push or email (see README). Poll it.",
+        "operationId": "list_notifications_notifications_get",
+        "security": [
+          {
+            "OAuth2PasswordBearer": []
+          }
+        ],
+        "parameters": [
+          {
+            "name": "limit",
+            "in": "query",
+            "required": false,
+            "schema": {
+              "type": "integer",
+              "maximum": 100,
+              "minimum": 1,
+              "default": 20,
+              "title": "Limit"
+            }
+          },
+          {
+            "name": "offset",
+            "in": "query",
+            "required": false,
+            "schema": {
+              "type": "integer",
+              "minimum": 0,
+              "default": 0,
+              "title": "Offset"
+            }
+          }
+        ],
+        "responses": {
+          "200": {
+            "description": "Successful Response",
+            "content": {
+              "application/json": {
+                "schema": {
+                  "type": "array",
+                  "items": {
+                    "$ref": "#/components/schemas/NotificationOut"
+                  },
+                  "title": "Response List Notifications Notifications Get"
+                }
+              }
+            }
+          },
+          "422": {
+            "description": "Validation Error",
+            "content": {
+              "application/json": {
+                "schema": {
+                  "$ref": "#/components/schemas/HTTPValidationError"
+                }
+              }
+            }
+          }
+        }
+      }
+    },
+    "/health": {
+      "get": {
+        "tags": [
+          "meta"
+        ],
+        "summary": "Health",
+        "operationId": "health_health_get",
+        "responses": {
+          "200": {
+            "description": "Successful Response",
+            "content": {
+              "application/json": {
+                "schema": {
+                  "additionalProperties": {
+                    "type": "string"
+                  },
+                  "type": "object",
+                  "title": "Response Health Health Get"
+                }
+              }
+            }
+          }
+        }
+      }
+    }
+  },
+  "components": {
+    "schemas": {
+      "AcceptedDonationOut": {
+        "properties": {
+          "donation_id": {
+            "type": "string",
+            "format": "uuid",
+            "title": "Donation Id"
+          },
+          "match_id": {
+            "type": "string",
+            "format": "uuid",
+            "title": "Match Id"
+          },
+          "status": {
+            "$ref": "#/components/schemas/DonationStatus"
+          },
+          "category": {
+            "$ref": "#/components/schemas/Category"
+          },
+          "quantity": {
+            "type": "integer",
+            "title": "Quantity",
+            "description": "A count of items."
+          },
+          "condition": {
+            "$ref": "#/components/schemas/Condition"
+          },
+          "note": {
+            "anyOf": [
+              {
+                "type": "string"
+              },
+              {
+                "type": "null"
+              }
+            ],
+            "title": "Note"
+          },
+          "pickup_window_start": {
+            "type": "string",
+            "format": "date-time",
+            "title": "Pickup Window Start"
+          },
+          "pickup_window_end": {
+            "type": "string",
+            "format": "date-time",
+            "title": "Pickup Window End"
+          },
+          "distance_km": {
+            "type": "number",
+            "title": "Distance Km",
+            "description": "Approximate: rounded to the nearest 0.5 km."
+          },
+          "address_released": {
+            "type": "boolean",
+            "title": "Address Released"
+          },
+          "pickup_address_text": {
+            "anyOf": [
+              {
+                "type": "string"
+              },
+              {
+                "type": "null"
+              }
+            ],
+            "title": "Pickup Address Text"
+          },
+          "pickup_latitude": {
+            "anyOf": [
+              {
+                "type": "number"
+              },
+              {
+                "type": "null"
+              }
+            ],
+            "title": "Pickup Latitude"
+          },
+          "pickup_longitude": {
+            "anyOf": [
+              {
+                "type": "number"
+              },
+              {
+                "type": "null"
+              }
+            ],
+            "title": "Pickup Longitude"
+          },
+          "image_ids": {
+            "items": {
+              "type": "string",
+              "format": "uuid"
+            },
+            "type": "array",
+            "title": "Image Ids"
+          },
+          "handover": {
+            "anyOf": [
+              {
+                "$ref": "#/components/schemas/HandoverOut"
+              },
+              {
+                "type": "null"
+              }
+            ]
+          },
+          "allowed_actions": {
+            "items": {
+              "$ref": "#/components/schemas/DonationAction"
+            },
+            "type": "array",
+            "title": "Allowed Actions"
+          }
+        },
+        "type": "object",
+        "required": [
+          "donation_id",
+          "match_id",
+          "status",
+          "category",
+          "quantity",
+          "condition",
+          "note",
+          "pickup_window_start",
+          "pickup_window_end",
+          "distance_km",
+          "address_released",
+          "pickup_address_text",
+          "pickup_latitude",
+          "pickup_longitude",
+          "image_ids",
+          "handover",
+          "allowed_actions"
+        ],
+        "title": "AcceptedDonationOut",
+        "description": "A donation this organisation accepted. The precise address is present only while\nthe organisation holds it (ACCEPTED, PICKUP_SCHEDULED, IN_TRANSIT)."
+      },
+      "AcceptorRegister": {
+        "properties": {
+          "email": {
+            "type": "string",
+            "format": "email",
+            "title": "Email"
+          },
+          "password": {
+            "type": "string",
+            "maxLength": 128,
+            "minLength": 10,
+            "title": "Password"
+          },
+          "full_name": {
+            "type": "string",
+            "maxLength": 200,
+            "minLength": 1,
+            "title": "Full Name"
+          },
+          "phone": {
+            "type": "string",
+            "pattern": "^\\+?[0-9][0-9 ()-]{6,19}$",
+            "title": "Phone"
+          },
+          "organization": {
+            "$ref": "#/components/schemas/OrganizationCreate"
+          }
+        },
+        "additionalProperties": false,
+        "type": "object",
+        "required": [
+          "email",
+          "password",
+          "full_name",
+          "phone",
+          "organization"
+        ],
+        "title": "AcceptorRegister",
+        "description": "Creates the acceptor's login and its organisation profile together.\nThe organisation starts PENDING; only an admin can verify it.",
+        "examples": [
+          {
+            "email": "sunrise@example.org",
+            "full_name": "Meera Iyer",
+            "organization": {
+              "address_text": "12 MG Road, Bengaluru",
+              "categories_accepted": [
+                "CLOTHES",
+                "BOOKS"
+              ],
+              "contact_person": "Meera Iyer",
+              "latitude": 12.9716,
+              "longitude": 77.5946,
+              "name": "Sunrise Home",
+              "phone": "+91 80 2222 3333",
+              "pickup_capable": true,
+              "registration_id": "KA-1",
+              "storage_capacity": 200
+            },
+            "password": "sunrise-home-2026",
+            "phone": "+91 98450 11111"
+          }
+        ]
+      },
+      "AcceptorRegistered": {
+        "properties": {
+          "user": {
+            "$ref": "#/components/schemas/UserOut"
+          },
+          "organization": {
+            "$ref": "#/components/schemas/OrganizationOut"
+          }
+        },
+        "type": "object",
+        "required": [
+          "user",
+          "organization"
+        ],
+        "title": "AcceptorRegistered"
+      },
+      "AccessToken": {
+        "properties": {
+          "access_token": {
+            "type": "string",
+            "title": "Access Token"
+          },
+          "token_type": {
+            "type": "string",
+            "title": "Token Type",
+            "default": "bearer"
+          }
+        },
+        "type": "object",
+        "required": [
+          "access_token"
+        ],
+        "title": "AccessToken",
+        "description": "Refreshing issues a new access token only. The refresh token is not extended, so a\nsession ends when the refresh token expires, however active it has been."
+      },
+      "Actor": {
+        "type": "string",
+        "enum": [
+          "DONOR",
+          "ACCEPTOR",
+          "ADMIN",
+          "SYSTEM"
+        ],
+        "title": "Actor",
+        "description": "Who performs a lifecycle action. SYSTEM covers both in-request automation\n(re-offers, escalation) and the sweeper."
+      },
+      "AdminDonationDetailOut": {
+        "properties": {
+          "donation": {
+            "$ref": "#/components/schemas/DonationOut"
+          },
+          "timeline": {
+            "$ref": "#/components/schemas/TimelineOut"
+          },
+          "ranking_runs": {
+            "items": {
+              "$ref": "#/components/schemas/RankingRunOut"
+            },
+            "type": "array",
+            "title": "Ranking Runs"
+          }
+        },
+        "type": "object",
+        "required": [
+          "donation",
+          "timeline",
+          "ranking_runs"
+        ],
+        "title": "AdminDonationDetailOut",
+        "description": "Includes the precise address; every read is recorded in address_access_events."
+      },
+      "AdminOrganizationDetail": {
+        "properties": {
+          "id": {
+            "type": "string",
+            "format": "uuid",
+            "title": "Id"
+          },
+          "name": {
+            "type": "string",
+            "title": "Name"
+          },
+          "registration_id": {
+            "type": "string",
+            "title": "Registration Id"
+          },
+          "contact_person": {
+            "type": "string",
+            "title": "Contact Person"
+          },
+          "phone": {
+            "type": "string",
+            "title": "Phone"
+          },
+          "address_text": {
+            "type": "string",
+            "title": "Address Text"
+          },
+          "latitude": {
+            "type": "number",
+            "title": "Latitude"
+          },
+          "longitude": {
+            "type": "number",
+            "title": "Longitude"
+          },
+          "pickup_capable": {
+            "type": "boolean",
+            "title": "Pickup Capable"
+          },
+          "storage_capacity": {
+            "type": "integer",
+            "title": "Storage Capacity",
+            "description": "A count of items."
+          },
+          "categories_accepted": {
+            "items": {
+              "$ref": "#/components/schemas/Category"
+            },
+            "type": "array",
+            "title": "Categories Accepted"
+          },
+          "verification_status": {
+            "$ref": "#/components/schemas/VerificationStatus"
+          },
+          "verification_note": {
+            "anyOf": [
+              {
+                "type": "string"
+              },
+              {
+                "type": "null"
+              }
+            ],
+            "title": "Verification Note"
+          },
+          "verification_updated_at": {
+            "anyOf": [
+              {
+                "type": "string",
+                "format": "date-time"
+              },
+              {
+                "type": "null"
+              }
+            ],
+            "title": "Verification Updated At"
+          },
+          "created_at": {
+            "type": "string",
+            "format": "date-time",
+            "title": "Created At"
+          },
+          "updated_at": {
+            "type": "string",
+            "format": "date-time",
+            "title": "Updated At"
+          },
+          "account_email": {
+            "type": "string",
+            "title": "Account Email"
+          },
+          "needs": {
+            "items": {
+              "$ref": "#/components/schemas/NeedOut"
+            },
+            "type": "array",
+            "title": "Needs"
+          }
+        },
+        "type": "object",
+        "required": [
+          "id",
+          "name",
+          "registration_id",
+          "contact_person",
+          "phone",
+          "address_text",
+          "latitude",
+          "longitude",
+          "pickup_capable",
+          "storage_capacity",
+          "categories_accepted",
+          "verification_status",
+          "verification_note",
+          "verification_updated_at",
+          "created_at",
+          "updated_at",
+          "account_email",
+          "needs"
+        ],
+        "title": "AdminOrganizationDetail"
+      },
+      "Body_login_auth_login_post": {
+        "properties": {
+          "grant_type": {
+            "anyOf": [
+              {
+                "type": "string",
+                "pattern": "^password$"
+              },
+              {
+                "type": "null"
+              }
+            ],
+            "title": "Grant Type"
+          },
+          "username": {
+            "type": "string",
+            "title": "Username"
+          },
+          "password": {
+            "type": "string",
+            "format": "password",
+            "title": "Password"
+          },
+          "scope": {
+            "type": "string",
+            "title": "Scope",
+            "default": ""
+          },
+          "client_id": {
+            "anyOf": [
+              {
+                "type": "string"
+              },
+              {
+                "type": "null"
+              }
+            ],
+            "title": "Client Id"
+          },
+          "client_secret": {
+            "anyOf": [
+              {
+                "type": "string"
+              },
+              {
+                "type": "null"
+              }
+            ],
+            "format": "password",
+            "title": "Client Secret"
+          }
+        },
+        "type": "object",
+        "required": [
+          "username",
+          "password"
+        ],
+        "title": "Body_login_auth_login_post"
+      },
+      "Body_upload_images_donations__donation_id__images_post": {
+        "properties": {
+          "files": {
+            "items": {
+              "type": "string",
+              "contentMediaType": "application/octet-stream",
+              "format": "binary"
+            },
+            "type": "array",
+            "title": "Files",
+            "description": "JPEG, PNG or WebP images."
+          }
+        },
+        "type": "object",
+        "required": [
+          "files"
+        ],
+        "title": "Body_upload_images_donations__donation_id__images_post"
+      },
+      "CandidateOut": {
+        "properties": {
+          "rank": {
+            "type": "integer",
+            "title": "Rank"
+          },
+          "organization_id": {
+            "type": "string",
+            "format": "uuid",
+            "title": "Organization Id"
+          },
+          "organization_name": {
+            "type": "string",
+            "title": "Organization Name"
+          },
+          "pickup_capable": {
+            "type": "boolean",
+            "title": "Pickup Capable"
+          },
+          "distance_km": {
+            "type": "number",
+            "title": "Distance Km"
+          },
+          "score": {
+            "type": "number",
+            "title": "Score"
+          },
+          "components": {
+            "items": {
+              "$ref": "#/components/schemas/ComponentOut"
+            },
+            "type": "array",
+            "title": "Components"
+          }
+        },
+        "type": "object",
+        "required": [
+          "rank",
+          "organization_id",
+          "organization_name",
+          "pickup_capable",
+          "distance_km",
+          "score",
+          "components"
+        ],
+        "title": "CandidateOut"
+      },
+      "Category": {
+        "type": "string",
+        "enum": [
+          "CLOTHES",
+          "TOYS",
+          "BOOKS"
+        ],
+        "title": "Category",
+        "description": "MVP categories. Food is deliberately out of scope (no cold-chain handling)."
+      },
+      "ComponentOut": {
+        "properties": {
+          "factor": {
+            "$ref": "#/components/schemas/ScoreFactor"
+          },
+          "raw": {
+            "anyOf": [
+              {
+                "type": "number"
+              },
+              {
+                "type": "string"
+              },
+              {
+                "type": "null"
+              }
+            ],
+            "title": "Raw",
+            "description": "The underlying fact: km (PROXIMITY), items needed (NEED_MATCH), urgency (URGENCY), remaining items (CAPACITY_HEADROOM), observed rate or null if no history (ACCEPTANCE_RATE)."
+          },
+          "value": {
+            "type": "number",
+            "title": "Value",
+            "description": "The factor value, in [0, 1]."
+          },
+          "weight": {
+            "type": "number",
+            "title": "Weight"
+          },
+          "contribution": {
+            "type": "number",
+            "title": "Contribution",
+            "description": "weight x value; the contributions sum to the score."
+          }
+        },
+        "type": "object",
+        "required": [
+          "factor",
+          "raw",
+          "value",
+          "weight",
+          "contribution"
+        ],
+        "title": "ComponentOut",
+        "description": "One factor of a score. Structured, not a sentence, so a client can render or\ntranslate it: e.g. PROXIMITY, raw 2.1 (km), value 0.86, weight 0.3, contribution 0.258."
+      },
+      "Condition": {
+        "type": "string",
+        "enum": [
+          "NEW",
+          "GENTLY_USED",
+          "USED"
+        ],
+        "title": "Condition"
+      },
+      "DonationAction": {
+        "type": "string",
+        "enum": [
+          "OFFER",
+          "ESCALATE",
+          "CANCEL",
+          "ACCEPT",
+          "REJECT",
+          "EXPIRE",
+          "REOFFER",
+          "REMATCH",
+          "UPGRADE_PRIORITY",
+          "REDIRECT_TO_RECYCLING",
+          "STALL",
+          "SCHEDULE_PICKUP",
+          "CHOOSE_DROPOFF",
+          "MARK_HANDED_OVER",
+          "CONFIRM_RECEIPT",
+          "CONFIRM_RECYCLED",
+          "NO_RECYCLER",
+          "REQUEUE"
+        ],
+        "title": "DonationAction",
+        "description": "Things that can happen to a donation. The lifecycle table maps\n(state, action) -> next state, and declares who may perform each."
+      },
+      "DonationCreate": {
+        "properties": {
+          "category": {
+            "$ref": "#/components/schemas/Category"
+          },
+          "quantity": {
+            "type": "integer",
+            "maximum": 1000.0,
+            "minimum": 1.0,
+            "title": "Quantity",
+            "description": "A count of items."
+          },
+          "condition": {
+            "$ref": "#/components/schemas/Condition"
+          },
+          "note": {
+            "anyOf": [
+              {
+                "type": "string",
+                "maxLength": 1000
+              },
+              {
+                "type": "null"
+              }
+            ],
+            "title": "Note"
+          },
+          "is_priority": {
+            "type": "boolean",
+            "title": "Is Priority",
+            "default": false
+          },
+          "pickup_address_text": {
+            "type": "string",
+            "maxLength": 300,
+            "minLength": 1,
+            "title": "Pickup Address Text"
+          },
+          "pickup_latitude": {
+            "type": "number",
+            "maximum": 90.0,
+            "minimum": -90.0,
+            "title": "Pickup Latitude"
+          },
+          "pickup_longitude": {
+            "type": "number",
+            "maximum": 180.0,
+            "minimum": -180.0,
+            "title": "Pickup Longitude"
+          },
+          "pickup_window_start": {
+            "type": "string",
+            "format": "date-time",
+            "title": "Pickup Window Start"
+          },
+          "pickup_window_end": {
+            "type": "string",
+            "format": "date-time",
+            "title": "Pickup Window End"
+          }
+        },
+        "additionalProperties": false,
+        "type": "object",
+        "required": [
+          "category",
+          "quantity",
+          "condition",
+          "pickup_address_text",
+          "pickup_latitude",
+          "pickup_longitude",
+          "pickup_window_start",
+          "pickup_window_end"
+        ],
+        "title": "DonationCreate",
+        "examples": [
+          {
+            "category": "CLOTHES",
+            "condition": "GENTLY_USED",
+            "is_priority": false,
+            "note": "Children's winter clothes, ages 4-8",
+            "pickup_address_text": "45 Indiranagar 100ft Rd, Bengaluru",
+            "pickup_latitude": 12.9784,
+            "pickup_longitude": 77.6408,
+            "pickup_window_end": "2030-01-15T13:00:00+05:30",
+            "pickup_window_start": "2030-01-15T10:00:00+05:30",
+            "quantity": 12
+          }
+        ]
+      },
+      "DonationImageOut": {
+        "properties": {
+          "id": {
+            "type": "string",
+            "format": "uuid",
+            "title": "Id"
+          },
+          "content_type": {
+            "type": "string",
+            "title": "Content Type"
+          },
+          "size_bytes": {
+            "type": "integer",
+            "title": "Size Bytes"
+          },
+          "created_at": {
+            "type": "string",
+            "format": "date-time",
+            "title": "Created At"
+          }
+        },
+        "type": "object",
+        "required": [
+          "id",
+          "content_type",
+          "size_bytes",
+          "created_at"
+        ],
+        "title": "DonationImageOut"
+      },
+      "DonationOut": {
+        "properties": {
+          "id": {
+            "type": "string",
+            "format": "uuid",
+            "title": "Id"
+          },
+          "donor_id": {
+            "type": "string",
+            "format": "uuid",
+            "title": "Donor Id"
+          },
+          "category": {
+            "$ref": "#/components/schemas/Category"
+          },
+          "quantity": {
+            "type": "integer",
+            "title": "Quantity",
+            "description": "A count of items."
+          },
+          "condition": {
+            "$ref": "#/components/schemas/Condition"
+          },
+          "note": {
+            "anyOf": [
+              {
+                "type": "string"
+              },
+              {
+                "type": "null"
+              }
+            ],
+            "title": "Note"
+          },
+          "is_priority": {
+            "type": "boolean",
+            "title": "Is Priority"
+          },
+          "pickup_address_text": {
+            "type": "string",
+            "title": "Pickup Address Text"
+          },
+          "pickup_latitude": {
+            "type": "number",
+            "title": "Pickup Latitude"
+          },
+          "pickup_longitude": {
+            "type": "number",
+            "title": "Pickup Longitude"
+          },
+          "pickup_window_start": {
+            "type": "string",
+            "format": "date-time",
+            "title": "Pickup Window Start"
+          },
+          "pickup_window_end": {
+            "type": "string",
+            "format": "date-time",
+            "title": "Pickup Window End"
+          },
+          "status": {
+            "$ref": "#/components/schemas/DonationStatus"
+          },
+          "escalation_cause": {
+            "anyOf": [
+              {
+                "$ref": "#/components/schemas/EscalationCause"
+              },
+              {
+                "type": "null"
+              }
+            ]
+          },
+          "editable": {
+            "type": "boolean",
+            "title": "Editable"
+          },
+          "allowed_actions": {
+            "items": {
+              "$ref": "#/components/schemas/DonationAction"
+            },
+            "type": "array",
+            "title": "Allowed Actions"
+          },
+          "images": {
+            "items": {
+              "$ref": "#/components/schemas/DonationImageOut"
+            },
+            "type": "array",
+            "title": "Images"
+          },
+          "holder": {
+            "anyOf": [
+              {
+                "$ref": "#/components/schemas/HolderOut"
+              },
+              {
+                "type": "null"
+              }
+            ]
+          },
+          "created_at": {
+            "type": "string",
+            "format": "date-time",
+            "title": "Created At"
+          },
+          "updated_at": {
+            "type": "string",
+            "format": "date-time",
+            "title": "Updated At"
+          }
+        },
+        "type": "object",
+        "required": [
+          "id",
+          "donor_id",
+          "category",
+          "quantity",
+          "condition",
+          "note",
+          "is_priority",
+          "pickup_address_text",
+          "pickup_latitude",
+          "pickup_longitude",
+          "pickup_window_start",
+          "pickup_window_end",
+          "status",
+          "editable",
+          "allowed_actions",
+          "images",
+          "created_at",
+          "updated_at"
+        ],
+        "title": "DonationOut"
+      },
+      "DonationStatus": {
+        "type": "string",
+        "enum": [
+          "LISTED",
+          "MATCHED",
+          "RE_MATCHING",
+          "ESCALATED",
+          "ACCEPTED",
+          "PICKUP_SCHEDULED",
+          "IN_TRANSIT",
+          "COMPLETED",
+          "WASTE_REDIRECTED",
+          "RECYCLED",
+          "NEEDS_ADMIN",
+          "CANCELLED"
+        ],
+        "title": "DonationStatus",
+        "description": "Donation lifecycle states. Which state may follow which is defined only in\n`app.domain.lifecycle`."
+      },
+      "DonationSummaryOut": {
+        "properties": {
+          "id": {
+            "type": "string",
+            "format": "uuid",
+            "title": "Id"
+          },
+          "donor_id": {
+            "type": "string",
+            "format": "uuid",
+            "title": "Donor Id"
+          },
+          "category": {
+            "$ref": "#/components/schemas/Category"
+          },
+          "quantity": {
+            "type": "integer",
+            "title": "Quantity",
+            "description": "A count of items."
+          },
+          "condition": {
+            "$ref": "#/components/schemas/Condition"
+          },
+          "is_priority": {
+            "type": "boolean",
+            "title": "Is Priority"
+          },
+          "pickup_window_start": {
+            "type": "string",
+            "format": "date-time",
+            "title": "Pickup Window Start"
+          },
+          "pickup_window_end": {
+            "type": "string",
+            "format": "date-time",
+            "title": "Pickup Window End"
+          },
+          "status": {
+            "$ref": "#/components/schemas/DonationStatus"
+          },
+          "created_at": {
+            "type": "string",
+            "format": "date-time",
+            "title": "Created At"
+          },
+          "updated_at": {
+            "type": "string",
+            "format": "date-time",
+            "title": "Updated At"
+          }
+        },
+        "type": "object",
+        "required": [
+          "id",
+          "donor_id",
+          "category",
+          "quantity",
+          "condition",
+          "is_priority",
+          "pickup_window_start",
+          "pickup_window_end",
+          "status",
+          "created_at",
+          "updated_at"
+        ],
+        "title": "DonationSummaryOut",
+        "description": "A donation without its precise address or coordinates (admin lists and queue)."
+      },
+      "DonationUpdate": {
+        "properties": {
+          "category": {
+            "anyOf": [
+              {
+                "$ref": "#/components/schemas/Category"
+              },
+              {
+                "type": "null"
+              }
+            ]
+          },
+          "quantity": {
+            "anyOf": [
+              {
+                "type": "integer",
+                "maximum": 1000.0,
+                "minimum": 1.0,
+                "description": "A count of items."
+              },
+              {
+                "type": "null"
+              }
+            ],
+            "title": "Quantity"
+          },
+          "condition": {
+            "anyOf": [
+              {
+                "$ref": "#/components/schemas/Condition"
+              },
+              {
+                "type": "null"
+              }
+            ]
+          },
+          "note": {
+            "anyOf": [
+              {
+                "type": "string",
+                "maxLength": 1000
+              },
+              {
+                "type": "null"
+              }
+            ],
+            "title": "Note"
+          },
+          "is_priority": {
+            "anyOf": [
+              {
+                "type": "boolean"
+              },
+              {
+                "type": "null"
+              }
+            ],
+            "title": "Is Priority"
+          },
+          "pickup_address_text": {
+            "anyOf": [
+              {
+                "type": "string",
+                "maxLength": 300,
+                "minLength": 1
+              },
+              {
+                "type": "null"
+              }
+            ],
+            "title": "Pickup Address Text"
+          },
+          "pickup_latitude": {
+            "anyOf": [
+              {
+                "type": "number",
+                "maximum": 90.0,
+                "minimum": -90.0
+              },
+              {
+                "type": "null"
+              }
+            ],
+            "title": "Pickup Latitude"
+          },
+          "pickup_longitude": {
+            "anyOf": [
+              {
+                "type": "number",
+                "maximum": 180.0,
+                "minimum": -180.0
+              },
+              {
+                "type": "null"
+              }
+            ],
+            "title": "Pickup Longitude"
+          },
+          "pickup_window_start": {
+            "anyOf": [
+              {
+                "type": "string",
+                "format": "date-time"
+              },
+              {
+                "type": "null"
+              }
+            ],
+            "title": "Pickup Window Start"
+          },
+          "pickup_window_end": {
+            "anyOf": [
+              {
+                "type": "string",
+                "format": "date-time"
+              },
+              {
+                "type": "null"
+              }
+            ],
+            "title": "Pickup Window End"
+          }
+        },
+        "additionalProperties": false,
+        "type": "object",
+        "title": "DonationUpdate",
+        "description": "Any subset of the donor-editable fields. Status is not here: it changes only\nthrough lifecycle actions such as POST /donations/{id}/cancel."
+      },
+      "DonorRegister": {
+        "properties": {
+          "email": {
+            "type": "string",
+            "format": "email",
+            "title": "Email"
+          },
+          "password": {
+            "type": "string",
+            "maxLength": 128,
+            "minLength": 10,
+            "title": "Password"
+          },
+          "full_name": {
+            "type": "string",
+            "maxLength": 200,
+            "minLength": 1,
+            "title": "Full Name"
+          },
+          "phone": {
+            "type": "string",
+            "pattern": "^\\+?[0-9][0-9 ()-]{6,19}$",
+            "title": "Phone"
+          }
+        },
+        "additionalProperties": false,
+        "type": "object",
+        "required": [
+          "email",
+          "password",
+          "full_name",
+          "phone"
+        ],
+        "title": "DonorRegister"
+      },
+      "EscalationCause": {
+        "type": "string",
+        "enum": [
+          "THRESHOLD_REACHED",
+          "NO_CANDIDATES",
+          "NOT_OFFERED"
+        ],
+        "title": "EscalationCause",
+        "description": "Why the system escalated a donation to its donor."
+      },
+      "EventOut": {
+        "properties": {
+          "at": {
+            "type": "string",
+            "format": "date-time",
+            "title": "At"
+          },
+          "from_state": {
+            "$ref": "#/components/schemas/DonationStatus"
+          },
+          "to_state": {
+            "$ref": "#/components/schemas/DonationStatus"
+          },
+          "action": {
+            "$ref": "#/components/schemas/DonationAction"
+          },
+          "actor": {
+            "$ref": "#/components/schemas/Actor"
+          },
+          "cause": {
+            "anyOf": [
+              {
+                "$ref": "#/components/schemas/EscalationCause"
+              },
+              {
+                "type": "null"
+              }
+            ]
+          },
+          "reason": {
+            "anyOf": [
+              {
+                "type": "string"
+              },
+              {
+                "type": "null"
+              }
+            ],
+            "title": "Reason",
+            "description": "Admin-recorded reason. Shown to admins only."
+          }
+        },
+        "type": "object",
+        "required": [
+          "at",
+          "from_state",
+          "to_state",
+          "action",
+          "actor",
+          "cause",
+          "reason"
+        ],
+        "title": "EventOut"
+      },
+      "FilterReason": {
+        "type": "string",
+        "enum": [
+          "NOT_VERIFIED",
+          "CATEGORY_NOT_ACCEPTED",
+          "EXCLUDED",
+          "OUT_OF_RADIUS",
+          "INSUFFICIENT_CAPACITY"
+        ],
+        "title": "FilterReason",
+        "description": "Why an organisation was left out of a slate (hard filters, applied before scoring)."
+      },
+      "HTTPValidationError": {
+        "properties": {
+          "detail": {
+            "items": {
+              "$ref": "#/components/schemas/ValidationError"
+            },
+            "type": "array",
+            "title": "Detail"
+          }
+        },
+        "type": "object",
+        "title": "HTTPValidationError"
+      },
+      "HandoverMode": {
+        "type": "string",
+        "enum": [
+          "ACCEPTOR_PICKUP",
+          "DONOR_DROPOFF"
+        ],
+        "title": "HandoverMode",
+        "description": "Decides who sets the handover time, not who performs the transitions."
+      },
+      "HandoverOut": {
+        "properties": {
+          "mode": {
+            "$ref": "#/components/schemas/HandoverMode"
+          },
+          "scheduled_for": {
+            "type": "string",
+            "format": "date-time",
+            "title": "Scheduled For"
+          }
+        },
+        "type": "object",
+        "required": [
+          "mode",
+          "scheduled_for"
+        ],
+        "title": "HandoverOut"
+      },
+      "HolderOut": {
+        "properties": {
+          "organization_id": {
+            "type": "string",
+            "format": "uuid",
+            "title": "Organization Id"
+          },
+          "organization_name": {
+            "type": "string",
+            "title": "Organization Name"
+          },
+          "contact_person": {
+            "type": "string",
+            "title": "Contact Person"
+          },
+          "phone": {
+            "type": "string",
+            "title": "Phone"
+          },
+          "address_text": {
+            "type": "string",
+            "title": "Address Text"
+          },
+          "latitude": {
+            "type": "number",
+            "title": "Latitude"
+          },
+          "longitude": {
+            "type": "number",
+            "title": "Longitude"
+          },
+          "pickup_capable": {
+            "type": "boolean",
+            "title": "Pickup Capable"
+          },
+          "handover": {
+            "anyOf": [
+              {
+                "$ref": "#/components/schemas/HandoverOut"
+              },
+              {
+                "type": "null"
+              }
+            ],
+            "description": "Set once a pickup or drop-off is scheduled."
+          }
+        },
+        "type": "object",
+        "required": [
+          "organization_id",
+          "organization_name",
+          "contact_person",
+          "phone",
+          "address_text",
+          "latitude",
+          "longitude",
+          "pickup_capable",
+          "handover"
+        ],
+        "title": "HolderOut",
+        "description": "The organisation holding the donation (lifecycle.HELD_STATES), shown to its donor\nwith the organisation's address and contact for the handover. Present only while\nheld; once the donation leaves those states the donor no longer sees them."
+      },
+      "NeedCreate": {
+        "properties": {
+          "category": {
+            "$ref": "#/components/schemas/Category"
+          },
+          "quantity_needed": {
+            "type": "integer",
+            "maximum": 1000.0,
+            "minimum": 1.0,
+            "title": "Quantity Needed",
+            "description": "A count of items."
+          },
+          "urgency": {
+            "$ref": "#/components/schemas/Urgency"
+          }
+        },
+        "additionalProperties": false,
+        "type": "object",
+        "required": [
+          "category",
+          "quantity_needed",
+          "urgency"
+        ],
+        "title": "NeedCreate"
+      },
+      "NeedOut": {
+        "properties": {
+          "id": {
+            "type": "string",
+            "format": "uuid",
+            "title": "Id"
+          },
+          "category": {
+            "$ref": "#/components/schemas/Category"
+          },
+          "quantity_needed": {
+            "type": "integer",
+            "title": "Quantity Needed",
+            "description": "A count of items."
+          },
+          "urgency": {
+            "$ref": "#/components/schemas/Urgency"
+          },
+          "is_active": {
+            "type": "boolean",
+            "title": "Is Active"
+          },
+          "created_at": {
+            "type": "string",
+            "format": "date-time",
+            "title": "Created At"
+          },
+          "updated_at": {
+            "type": "string",
+            "format": "date-time",
+            "title": "Updated At"
+          }
+        },
+        "type": "object",
+        "required": [
+          "id",
+          "category",
+          "quantity_needed",
+          "urgency",
+          "is_active",
+          "created_at",
+          "updated_at"
+        ],
+        "title": "NeedOut"
+      },
+      "NeedUpdate": {
+        "properties": {
+          "quantity_needed": {
+            "anyOf": [
+              {
+                "type": "integer",
+                "maximum": 1000.0,
+                "minimum": 1.0,
+                "description": "A count of items."
+              },
+              {
+                "type": "null"
+              }
+            ],
+            "title": "Quantity Needed"
+          },
+          "urgency": {
+            "anyOf": [
+              {
+                "$ref": "#/components/schemas/Urgency"
+              },
+              {
+                "type": "null"
+              }
+            ]
+          },
+          "is_active": {
+            "anyOf": [
+              {
+                "type": "boolean"
+              },
+              {
+                "type": "null"
+              }
+            ],
+            "title": "Is Active"
+          }
+        },
+        "additionalProperties": false,
+        "type": "object",
+        "title": "NeedUpdate",
+        "description": "A need's category is fixed; to need something else, add a new need. Needs are\nnever deleted: set is_active to false instead."
+      },
+      "NotificationOut": {
+        "properties": {
+          "id": {
+            "type": "integer",
+            "title": "Id",
+            "description": "The status event's id. Increases over time; use it to track what has been seen."
+          },
+          "at": {
+            "type": "string",
+            "format": "date-time",
+            "title": "At"
+          },
+          "donation_id": {
+            "type": "string",
+            "format": "uuid",
+            "title": "Donation Id"
+          },
+          "category": {
+            "$ref": "#/components/schemas/Category"
+          },
+          "quantity": {
+            "type": "integer",
+            "title": "Quantity",
+            "description": "A count of items."
+          },
+          "action": {
+            "$ref": "#/components/schemas/DonationAction"
+          },
+          "actor": {
+            "$ref": "#/components/schemas/Actor"
+          },
+          "from_state": {
+            "$ref": "#/components/schemas/DonationStatus"
+          },
+          "to_state": {
+            "$ref": "#/components/schemas/DonationStatus"
+          },
+          "cause": {
+            "anyOf": [
+              {
+                "$ref": "#/components/schemas/EscalationCause"
+              },
+              {
+                "type": "null"
+              }
+            ]
+          },
+          "organization_name": {
+            "anyOf": [
+              {
+                "type": "string"
+              },
+              {
+                "type": "null"
+              }
+            ],
+            "title": "Organization Name",
+            "description": "The organisation of the offer this event concerns, if any."
+          }
+        },
+        "type": "object",
+        "required": [
+          "id",
+          "at",
+          "donation_id",
+          "category",
+          "quantity",
+          "action",
+          "actor",
+          "from_state",
+          "to_state",
+          "cause",
+          "organization_name"
+        ],
+        "title": "NotificationOut",
+        "description": "One status event. Admin reasons and acceptors' rejection notes are never included;\nthey stay in the admin detail view."
+      },
+      "OfferCreate": {
+        "properties": {
+          "organization_id": {
+            "anyOf": [
+              {
+                "type": "string",
+                "format": "uuid"
+              },
+              {
+                "type": "null"
+              }
+            ],
+            "title": "Organization Id",
+            "description": "Any organisation in the eligible slate. Omit for the top candidate."
+          }
+        },
+        "additionalProperties": false,
+        "type": "object",
+        "title": "OfferCreate"
+      },
+      "OfferHistoryOut": {
+        "properties": {
+          "match_id": {
+            "type": "string",
+            "format": "uuid",
+            "title": "Match Id"
+          },
+          "organization_id": {
+            "type": "string",
+            "format": "uuid",
+            "title": "Organization Id"
+          },
+          "organization_name": {
+            "type": "string",
+            "title": "Organization Name"
+          },
+          "rank": {
+            "type": "integer",
+            "title": "Rank",
+            "description": "The organisation's rank in the slate the offer was made from."
+          },
+          "offered_by": {
+            "$ref": "#/components/schemas/OfferSource"
+          },
+          "offered_at": {
+            "type": "string",
+            "format": "date-time",
+            "title": "Offered At"
+          },
+          "expires_at": {
+            "type": "string",
+            "format": "date-time",
+            "title": "Expires At"
+          },
+          "response": {
+            "anyOf": [
+              {
+                "$ref": "#/components/schemas/OfferResponse"
+              },
+              {
+                "type": "null"
+              }
+            ],
+            "description": "null while the offer is open."
+          },
+          "reason_code": {
+            "anyOf": [
+              {
+                "$ref": "#/components/schemas/RejectReason"
+              },
+              {
+                "type": "null"
+              }
+            ]
+          },
+          "note": {
+            "anyOf": [
+              {
+                "type": "string"
+              },
+              {
+                "type": "null"
+              }
+            ],
+            "title": "Note",
+            "description": "The acceptor's note on a rejection. Shown to admins only."
+          },
+          "responded_at": {
+            "anyOf": [
+              {
+                "type": "string",
+                "format": "date-time"
+              },
+              {
+                "type": "null"
+              }
+            ],
+            "title": "Responded At"
+          },
+          "handover": {
+            "anyOf": [
+              {
+                "$ref": "#/components/schemas/HandoverOut"
+              },
+              {
+                "type": "null"
+              }
+            ]
+          }
+        },
+        "type": "object",
+        "required": [
+          "match_id",
+          "organization_id",
+          "organization_name",
+          "rank",
+          "offered_by",
+          "offered_at",
+          "expires_at",
+          "response",
+          "reason_code",
+          "note",
+          "responded_at",
+          "handover"
+        ],
+        "title": "OfferHistoryOut"
+      },
+      "OfferOut": {
+        "properties": {
+          "match_id": {
+            "type": "string",
+            "format": "uuid",
+            "title": "Match Id"
+          },
+          "donation_id": {
+            "type": "string",
+            "format": "uuid",
+            "title": "Donation Id"
+          },
+          "category": {
+            "$ref": "#/components/schemas/Category"
+          },
+          "quantity": {
+            "type": "integer",
+            "title": "Quantity",
+            "description": "A count of items."
+          },
+          "condition": {
+            "$ref": "#/components/schemas/Condition"
+          },
+          "note": {
+            "anyOf": [
+              {
+                "type": "string"
+              },
+              {
+                "type": "null"
+              }
+            ],
+            "title": "Note"
+          },
+          "is_priority": {
+            "type": "boolean",
+            "title": "Is Priority"
+          },
+          "distance_km": {
+            "type": "number",
+            "title": "Distance Km",
+            "description": "Approximate: rounded to the nearest 0.5 km."
+          },
+          "pickup_window_start": {
+            "type": "string",
+            "format": "date-time",
+            "title": "Pickup Window Start"
+          },
+          "pickup_window_end": {
+            "type": "string",
+            "format": "date-time",
+            "title": "Pickup Window End"
+          },
+          "image_ids": {
+            "items": {
+              "type": "string",
+              "format": "uuid"
+            },
+            "type": "array",
+            "title": "Image Ids",
+            "description": "Fetch with GET /donations/{donation_id}/images/{image_id}."
+          },
+          "offered_at": {
+            "type": "string",
+            "format": "date-time",
+            "title": "Offered At"
+          },
+          "expires_at": {
+            "type": "string",
+            "format": "date-time",
+            "title": "Expires At"
+          },
+          "response": {
+            "anyOf": [
+              {
+                "$ref": "#/components/schemas/OfferResponse"
+              },
+              {
+                "type": "null"
+              }
+            ]
+          },
+          "reason_code": {
+            "anyOf": [
+              {
+                "$ref": "#/components/schemas/RejectReason"
+              },
+              {
+                "type": "null"
+              }
+            ]
+          },
+          "allowed_actions": {
+            "items": {
+              "$ref": "#/components/schemas/DonationAction"
+            },
+            "type": "array",
+            "title": "Allowed Actions"
+          }
+        },
+        "type": "object",
+        "required": [
+          "match_id",
+          "donation_id",
+          "category",
+          "quantity",
+          "condition",
+          "note",
+          "is_priority",
+          "distance_km",
+          "pickup_window_start",
+          "pickup_window_end",
+          "image_ids",
+          "offered_at",
+          "expires_at",
+          "response",
+          "reason_code",
+          "allowed_actions"
+        ],
+        "title": "OfferOut"
+      },
+      "OfferResponse": {
+        "type": "string",
+        "enum": [
+          "ACCEPTED",
+          "REJECTED",
+          "EXPIRED",
+          "RETRACTED"
+        ],
+        "title": "OfferResponse",
+        "description": "The single, write-once response to an offer (a Match row)."
+      },
+      "OfferSource": {
+        "type": "string",
+        "enum": [
+          "DONOR",
+          "SYSTEM"
+        ],
+        "title": "OfferSource",
+        "description": "Whether an offer was the donor's choice or made by the system (re-offers)."
+      },
+      "OrganizationCreate": {
+        "properties": {
+          "name": {
+            "type": "string",
+            "maxLength": 200,
+            "minLength": 1,
+            "title": "Name"
+          },
+          "registration_id": {
+            "type": "string",
+            "maxLength": 64,
+            "minLength": 1,
+            "title": "Registration Id"
+          },
+          "contact_person": {
+            "type": "string",
+            "maxLength": 200,
+            "minLength": 1,
+            "title": "Contact Person"
+          },
+          "phone": {
+            "type": "string",
+            "pattern": "^\\+?[0-9][0-9 ()-]{6,19}$",
+            "title": "Phone"
+          },
+          "address_text": {
+            "type": "string",
+            "maxLength": 300,
+            "minLength": 1,
+            "title": "Address Text"
+          },
+          "latitude": {
+            "type": "number",
+            "maximum": 90.0,
+            "minimum": -90.0,
+            "title": "Latitude"
+          },
+          "longitude": {
+            "type": "number",
+            "maximum": 180.0,
+            "minimum": -180.0,
+            "title": "Longitude"
+          },
+          "pickup_capable": {
+            "type": "boolean",
+            "title": "Pickup Capable"
+          },
+          "storage_capacity": {
+            "type": "integer",
+            "maximum": 1000000.0,
+            "minimum": 0.0,
+            "title": "Storage Capacity",
+            "description": "A count of items."
+          },
+          "categories_accepted": {
+            "items": {
+              "$ref": "#/components/schemas/Category"
+            },
+            "type": "array",
+            "minItems": 1,
+            "title": "Categories Accepted"
+          }
+        },
+        "additionalProperties": false,
+        "type": "object",
+        "required": [
+          "name",
+          "registration_id",
+          "contact_person",
+          "phone",
+          "address_text",
+          "latitude",
+          "longitude",
+          "pickup_capable",
+          "storage_capacity",
+          "categories_accepted"
+        ],
+        "title": "OrganizationCreate"
+      },
+      "OrganizationOut": {
+        "properties": {
+          "id": {
+            "type": "string",
+            "format": "uuid",
+            "title": "Id"
+          },
+          "name": {
+            "type": "string",
+            "title": "Name"
+          },
+          "registration_id": {
+            "type": "string",
+            "title": "Registration Id"
+          },
+          "contact_person": {
+            "type": "string",
+            "title": "Contact Person"
+          },
+          "phone": {
+            "type": "string",
+            "title": "Phone"
+          },
+          "address_text": {
+            "type": "string",
+            "title": "Address Text"
+          },
+          "latitude": {
+            "type": "number",
+            "title": "Latitude"
+          },
+          "longitude": {
+            "type": "number",
+            "title": "Longitude"
+          },
+          "pickup_capable": {
+            "type": "boolean",
+            "title": "Pickup Capable"
+          },
+          "storage_capacity": {
+            "type": "integer",
+            "title": "Storage Capacity",
+            "description": "A count of items."
+          },
+          "categories_accepted": {
+            "items": {
+              "$ref": "#/components/schemas/Category"
+            },
+            "type": "array",
+            "title": "Categories Accepted"
+          },
+          "verification_status": {
+            "$ref": "#/components/schemas/VerificationStatus"
+          },
+          "verification_note": {
+            "anyOf": [
+              {
+                "type": "string"
+              },
+              {
+                "type": "null"
+              }
+            ],
+            "title": "Verification Note"
+          },
+          "verification_updated_at": {
+            "anyOf": [
+              {
+                "type": "string",
+                "format": "date-time"
+              },
+              {
+                "type": "null"
+              }
+            ],
+            "title": "Verification Updated At"
+          },
+          "created_at": {
+            "type": "string",
+            "format": "date-time",
+            "title": "Created At"
+          },
+          "updated_at": {
+            "type": "string",
+            "format": "date-time",
+            "title": "Updated At"
+          }
+        },
+        "type": "object",
+        "required": [
+          "id",
+          "name",
+          "registration_id",
+          "contact_person",
+          "phone",
+          "address_text",
+          "latitude",
+          "longitude",
+          "pickup_capable",
+          "storage_capacity",
+          "categories_accepted",
+          "verification_status",
+          "verification_note",
+          "verification_updated_at",
+          "created_at",
+          "updated_at"
+        ],
+        "title": "OrganizationOut"
+      },
+      "OrganizationUpdate": {
+        "properties": {
+          "contact_person": {
+            "anyOf": [
+              {
+                "type": "string",
+                "maxLength": 200,
+                "minLength": 1
+              },
+              {
+                "type": "null"
+              }
+            ],
+            "title": "Contact Person"
+          },
+          "phone": {
+            "anyOf": [
+              {
+                "type": "string",
+                "pattern": "^\\+?[0-9][0-9 ()-]{6,19}$"
+              },
+              {
+                "type": "null"
+              }
+            ],
+            "title": "Phone"
+          },
+          "address_text": {
+            "anyOf": [
+              {
+                "type": "string",
+                "maxLength": 300,
+                "minLength": 1
+              },
+              {
+                "type": "null"
+              }
+            ],
+            "title": "Address Text"
+          },
+          "latitude": {
+            "anyOf": [
+              {
+                "type": "number",
+                "maximum": 90.0,
+                "minimum": -90.0
+              },
+              {
+                "type": "null"
+              }
+            ],
+            "title": "Latitude"
+          },
+          "longitude": {
+            "anyOf": [
+              {
+                "type": "number",
+                "maximum": 180.0,
+                "minimum": -180.0
+              },
+              {
+                "type": "null"
+              }
+            ],
+            "title": "Longitude"
+          },
+          "pickup_capable": {
+            "anyOf": [
+              {
+                "type": "boolean"
+              },
+              {
+                "type": "null"
+              }
+            ],
+            "title": "Pickup Capable"
+          },
+          "storage_capacity": {
+            "anyOf": [
+              {
+                "type": "integer",
+                "maximum": 1000000.0,
+                "minimum": 0.0,
+                "description": "A count of items."
+              },
+              {
+                "type": "null"
+              }
+            ],
+            "title": "Storage Capacity"
+          },
+          "categories_accepted": {
+            "anyOf": [
+              {
+                "items": {
+                  "$ref": "#/components/schemas/Category"
+                },
+                "type": "array",
+                "minItems": 1
+              },
+              {
+                "type": "null"
+              }
+            ],
+            "title": "Categories Accepted"
+          }
+        },
+        "additionalProperties": false,
+        "type": "object",
+        "title": "OrganizationUpdate",
+        "description": "Operational fields only. name and registration_id cannot change after\nregistration (unknown fields are rejected), so a verified organisation cannot\nbecome a different one."
+      },
+      "QueueItemOut": {
+        "properties": {
+          "donation": {
+            "$ref": "#/components/schemas/DonationSummaryOut"
+          },
+          "entered_at": {
+            "type": "string",
+            "format": "date-time",
+            "title": "Entered At"
+          },
+          "from_state": {
+            "$ref": "#/components/schemas/DonationStatus"
+          },
+          "via": {
+            "$ref": "#/components/schemas/DonationAction"
+          },
+          "allowed_actions": {
+            "items": {
+              "$ref": "#/components/schemas/DonationAction"
+            },
+            "type": "array",
+            "title": "Allowed Actions"
+          }
+        },
+        "type": "object",
+        "required": [
+          "donation",
+          "entered_at",
+          "from_state",
+          "via",
+          "allowed_actions"
+        ],
+        "title": "QueueItemOut",
+        "description": "A donation in NEEDS_ADMIN, with the transition that put it there."
+      },
+      "RankingRunOut": {
+        "properties": {
+          "id": {
+            "type": "string",
+            "format": "uuid",
+            "title": "Id"
+          },
+          "trigger": {
+            "$ref": "#/components/schemas/RankingTrigger"
+          },
+          "radius_km": {
+            "type": "number",
+            "title": "Radius Km"
+          },
+          "declines": {
+            "type": "integer",
+            "title": "Declines"
+          },
+          "config_version": {
+            "type": "string",
+            "title": "Config Version"
+          },
+          "config": {
+            "additionalProperties": true,
+            "type": "object",
+            "title": "Config"
+          },
+          "slate": {
+            "items": {
+              "additionalProperties": true,
+              "type": "object"
+            },
+            "type": "array",
+            "title": "Slate"
+          },
+          "filtered_out": {
+            "additionalProperties": {
+              "type": "integer"
+            },
+            "type": "object",
+            "title": "Filtered Out"
+          },
+          "created_at": {
+            "type": "string",
+            "format": "date-time",
+            "title": "Created At"
+          }
+        },
+        "type": "object",
+        "required": [
+          "id",
+          "trigger",
+          "radius_km",
+          "declines",
+          "config_version",
+          "config",
+          "slate",
+          "filtered_out",
+          "created_at"
+        ],
+        "title": "RankingRunOut"
+      },
+      "RankingTrigger": {
+        "type": "string",
+        "enum": [
+          "DONOR_OFFER",
+          "RE_MATCHING"
+        ],
+        "title": "RankingTrigger",
+        "description": "What caused a stored ranking run."
+      },
+      "ReasonIn": {
+        "properties": {
+          "reason": {
+            "type": "string",
+            "maxLength": 1000,
+            "minLength": 1,
+            "title": "Reason"
+          }
+        },
+        "additionalProperties": false,
+        "type": "object",
+        "required": [
+          "reason"
+        ],
+        "title": "ReasonIn",
+        "description": "Every admin action records why."
+      },
+      "RecyclerOut": {
+        "properties": {
+          "id": {
+            "type": "string",
+            "format": "uuid",
+            "title": "Id"
+          },
+          "name": {
+            "type": "string",
+            "title": "Name"
+          },
+          "address_text": {
+            "type": "string",
+            "title": "Address Text"
+          },
+          "latitude": {
+            "type": "number",
+            "title": "Latitude"
+          },
+          "longitude": {
+            "type": "number",
+            "title": "Longitude"
+          },
+          "categories_accepted": {
+            "items": {
+              "$ref": "#/components/schemas/Category"
+            },
+            "type": "array",
+            "title": "Categories Accepted"
+          },
+          "rate_per_kg": {
+            "type": "string",
+            "title": "Rate Per Kg"
+          },
+          "is_active": {
+            "type": "boolean",
+            "title": "Is Active"
+          }
+        },
+        "type": "object",
+        "required": [
+          "id",
+          "name",
+          "address_text",
+          "latitude",
+          "longitude",
+          "categories_accepted",
+          "rate_per_kg",
+          "is_active"
+        ],
+        "title": "RecyclerOut"
+      },
+      "RecyclingOut": {
+        "properties": {
+          "collector_id": {
+            "type": "string",
+            "format": "uuid",
+            "title": "Collector Id"
+          },
+          "collector_name": {
+            "type": "string",
+            "title": "Collector Name"
+          },
+          "distance_km": {
+            "type": "number",
+            "title": "Distance Km"
+          },
+          "rate_per_kg": {
+            "type": "string",
+            "title": "Rate Per Kg"
+          },
+          "assigned_at": {
+            "type": "string",
+            "format": "date-time",
+            "title": "Assigned At"
+          },
+          "settlement": {
+            "anyOf": [
+              {
+                "$ref": "#/components/schemas/SettlementOut"
+              },
+              {
+                "type": "null"
+              }
+            ],
+            "description": "Set once the recycling is confirmed."
+          },
+          "currency": {
+            "type": "string",
+            "title": "Currency",
+            "default": "INR"
+          },
+          "simulated": {
+            "type": "boolean",
+            "const": true,
+            "title": "Simulated",
+            "default": true
+          },
+          "mass_is_estimate": {
+            "type": "boolean",
+            "const": true,
+            "title": "Mass Is Estimate",
+            "default": true
+          },
+          "weights_are_placeholders": {
+            "type": "boolean",
+            "title": "Weights Are Placeholders",
+            "description": "The per-category weights are placeholders pending a cited source.",
+            "default": true
+          }
+        },
+        "type": "object",
+        "required": [
+          "collector_id",
+          "collector_name",
+          "distance_km",
+          "rate_per_kg",
+          "assigned_at",
+          "settlement"
+        ],
+        "title": "RecyclingOut",
+        "description": "SIMULATED settlement over ESTIMATED mass. No money moves; Phase 4 adds wallets."
+      },
+      "RefreshRequest": {
+        "properties": {
+          "refresh_token": {
+            "type": "string",
+            "title": "Refresh Token"
+          }
+        },
+        "additionalProperties": false,
+        "type": "object",
+        "required": [
+          "refresh_token"
+        ],
+        "title": "RefreshRequest"
+      },
+      "RejectIn": {
+        "properties": {
+          "reason_code": {
+            "$ref": "#/components/schemas/RejectReason"
+          },
+          "note": {
+            "anyOf": [
+              {
+                "type": "string",
+                "maxLength": 1000
+              },
+              {
+                "type": "null"
+              }
+            ],
+            "title": "Note"
+          }
+        },
+        "additionalProperties": false,
+        "type": "object",
+        "required": [
+          "reason_code"
+        ],
+        "title": "RejectIn"
+      },
+      "RejectReason": {
+        "type": "string",
+        "enum": [
+          "NO_CAPACITY",
+          "NOT_NEEDED",
+          "CONDITION",
+          "TOO_FAR",
+          "OTHER"
+        ],
+        "title": "RejectReason"
+      },
+      "Role": {
+        "type": "string",
+        "enum": [
+          "DONOR",
+          "ACCEPTOR",
+          "ADMIN"
+        ],
+        "title": "Role"
+      },
+      "ScheduleIn": {
+        "properties": {
+          "scheduled_for": {
+            "type": "string",
+            "format": "date-time",
+            "title": "Scheduled For"
+          }
+        },
+        "additionalProperties": false,
+        "type": "object",
+        "required": [
+          "scheduled_for"
+        ],
+        "title": "ScheduleIn"
+      },
+      "ScoreFactor": {
+        "type": "string",
+        "enum": [
+          "PROXIMITY",
+          "NEED_MATCH",
+          "URGENCY",
+          "CAPACITY_HEADROOM",
+          "ACCEPTANCE_RATE"
+        ],
+        "title": "ScoreFactor",
+        "description": "Ranking factors. Donor rating is deliberately absent until reviews exist."
+      },
+      "SettlementOut": {
+        "properties": {
+          "weight_per_item_kg": {
+            "type": "string",
+            "title": "Weight Per Item Kg"
+          },
+          "estimated_mass_kg": {
+            "type": "string",
+            "title": "Estimated Mass Kg"
+          },
+          "rate_per_kg": {
+            "type": "string",
+            "title": "Rate Per Kg"
+          },
+          "gross_value": {
+            "type": "string",
+            "title": "Gross Value"
+          },
+          "platform_fee_pct": {
+            "type": "string",
+            "title": "Platform Fee Pct"
+          },
+          "platform_fee": {
+            "type": "string",
+            "title": "Platform Fee"
+          },
+          "donor_credit": {
+            "type": "string",
+            "title": "Donor Credit"
+          },
+          "confirmed_at": {
+            "type": "string",
+            "format": "date-time",
+            "title": "Confirmed At"
+          }
+        },
+        "type": "object",
+        "required": [
+          "weight_per_item_kg",
+          "estimated_mass_kg",
+          "rate_per_kg",
+          "gross_value",
+          "platform_fee_pct",
+          "platform_fee",
+          "donor_credit",
+          "confirmed_at"
+        ],
+        "title": "SettlementOut"
+      },
+      "SlateOut": {
+        "properties": {
+          "radius_km": {
+            "type": "number",
+            "title": "Radius Km",
+            "description": "Search radius; widens with each decline (capped)."
+          },
+          "declines": {
+            "type": "integer",
+            "title": "Declines"
+          },
+          "config_version": {
+            "type": "string",
+            "title": "Config Version"
+          },
+          "candidates": {
+            "items": {
+              "$ref": "#/components/schemas/CandidateOut"
+            },
+            "type": "array",
+            "title": "Candidates"
+          },
+          "filtered_out": {
+            "additionalProperties": {
+              "type": "integer"
+            },
+            "propertyNames": {
+              "$ref": "#/components/schemas/FilterReason"
+            },
+            "type": "object",
+            "title": "Filtered Out",
+            "description": "Organisations accepting this category that the hard filters removed, by reason."
+          }
+        },
+        "type": "object",
+        "required": [
+          "radius_km",
+          "declines",
+          "config_version",
+          "candidates",
+          "filtered_out"
+        ],
+        "title": "SlateOut",
+        "description": "The donation's eligible organisations, best first. A preview: nothing is stored\nuntil an offer is made, which re-ranks and stores the slate it was made against."
+      },
+      "SweepItemOut": {
+        "properties": {
+          "donation_id": {
+            "type": "string",
+            "format": "uuid",
+            "title": "Donation Id"
+          },
+          "from_state": {
+            "$ref": "#/components/schemas/DonationStatus"
+          },
+          "action": {
+            "$ref": "#/components/schemas/DonationAction"
+          },
+          "to_state": {
+            "$ref": "#/components/schemas/DonationStatus"
+          }
+        },
+        "type": "object",
+        "required": [
+          "donation_id",
+          "from_state",
+          "action",
+          "to_state"
+        ],
+        "title": "SweepItemOut"
+      },
+      "SweepReportOut": {
+        "properties": {
+          "now": {
+            "type": "string",
+            "format": "date-time",
+            "title": "Now"
+          },
+          "examined": {
+            "type": "integer",
+            "title": "Examined"
+          },
+          "skipped_locked": {
+            "type": "integer",
+            "title": "Skipped Locked"
+          },
+          "applied": {
+            "items": {
+              "$ref": "#/components/schemas/SweepItemOut"
+            },
+            "type": "array",
+            "title": "Applied"
+          },
+          "errors": {
+            "items": {
+              "type": "string"
+            },
+            "type": "array",
+            "title": "Errors"
+          }
+        },
+        "type": "object",
+        "required": [
+          "now",
+          "examined",
+          "skipped_locked",
+          "applied",
+          "errors"
+        ],
+        "title": "SweepReportOut"
+      },
+      "TimelineOut": {
+        "properties": {
+          "events": {
+            "items": {
+              "$ref": "#/components/schemas/EventOut"
+            },
+            "type": "array",
+            "title": "Events"
+          },
+          "offers": {
+            "items": {
+              "$ref": "#/components/schemas/OfferHistoryOut"
+            },
+            "type": "array",
+            "title": "Offers"
+          },
+          "recyclings": {
+            "items": {
+              "$ref": "#/components/schemas/RecyclingOut"
+            },
+            "type": "array",
+            "title": "Recyclings"
+          }
+        },
+        "type": "object",
+        "required": [
+          "events",
+          "offers",
+          "recyclings"
+        ],
+        "title": "TimelineOut"
+      },
+      "TokenPair": {
+        "properties": {
+          "access_token": {
+            "type": "string",
+            "title": "Access Token"
+          },
+          "refresh_token": {
+            "type": "string",
+            "title": "Refresh Token"
+          },
+          "token_type": {
+            "type": "string",
+            "title": "Token Type",
+            "default": "bearer"
+          }
+        },
+        "type": "object",
+        "required": [
+          "access_token",
+          "refresh_token"
+        ],
+        "title": "TokenPair"
+      },
+      "Urgency": {
+        "type": "string",
+        "enum": [
+          "LOW",
+          "MEDIUM",
+          "HIGH"
+        ],
+        "title": "Urgency"
+      },
+      "UserOut": {
+        "properties": {
+          "id": {
+            "type": "string",
+            "format": "uuid",
+            "title": "Id"
+          },
+          "email": {
+            "type": "string",
+            "title": "Email"
+          },
+          "role": {
+            "$ref": "#/components/schemas/Role"
+          },
+          "full_name": {
+            "type": "string",
+            "title": "Full Name"
+          },
+          "phone": {
+            "anyOf": [
+              {
+                "type": "string"
+              },
+              {
+                "type": "null"
+              }
+            ],
+            "title": "Phone"
+          },
+          "created_at": {
+            "type": "string",
+            "format": "date-time",
+            "title": "Created At"
+          }
+        },
+        "type": "object",
+        "required": [
+          "id",
+          "email",
+          "role",
+          "full_name",
+          "phone",
+          "created_at"
+        ],
+        "title": "UserOut"
+      },
+      "ValidationError": {
+        "properties": {
+          "loc": {
+            "items": {
+              "anyOf": [
+                {
+                  "type": "string"
+                },
+                {
+                  "type": "integer"
+                }
+              ]
+            },
+            "type": "array",
+            "title": "Location"
+          },
+          "msg": {
+            "type": "string",
+            "title": "Message"
+          },
+          "type": {
+            "type": "string",
+            "title": "Error Type"
+          },
+          "input": {
+            "title": "Input"
+          },
+          "ctx": {
+            "type": "object",
+            "title": "Context"
+          }
+        },
+        "type": "object",
+        "required": [
+          "loc",
+          "msg",
+          "type"
+        ],
+        "title": "ValidationError"
+      },
+      "VerificationStatus": {
+        "type": "string",
+        "enum": [
+          "PENDING",
+          "VERIFIED",
+          "REJECTED"
+        ],
+        "title": "VerificationStatus",
+        "description": "Only VERIFIED organisations enter matching."
+      },
+      "VerificationUpdate": {
+        "properties": {
+          "status": {
+            "$ref": "#/components/schemas/VerificationStatus"
+          },
+          "note": {
+            "anyOf": [
+              {
+                "type": "string",
+                "maxLength": 1000
+              },
+              {
+                "type": "null"
+              }
+            ],
+            "title": "Note"
+          }
+        },
+        "additionalProperties": false,
+        "type": "object",
+        "required": [
+          "status"
+        ],
+        "title": "VerificationUpdate"
+      }
+    },
+    "securitySchemes": {
+      "OAuth2PasswordBearer": {
+        "type": "oauth2",
+        "flows": {
+          "password": {
+            "scopes": {},
+            "tokenUrl": "/auth/login"
+          }
+        }
+      }
+    }
+  }
+}

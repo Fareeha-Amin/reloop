@@ -1,0 +1,504 @@
+{
+  "_meta": { "locale": "en-IN", "name": "English" },
+
+  "app": { "name": "ReLoop" },
+
+  "common": {
+    "loading": "Loading…",
+    "retry": "Try again",
+    "close": "Close",
+    "back": "Back",
+    "continue": "Continue",
+    "seeAll": "See all",
+    "yes": "Yes",
+    "km": "{km} km",
+    "range": "{from} – {to}",
+    "items": { "one": "1 item", "other": "{count} items" }
+  },
+
+  "nav": {
+    "main": "Main",
+    "myDonations": "My donations",
+    "newDonation": "New donation",
+    "map": "Map",
+    "acceptorHome": "Dashboard",
+    "adminHome": "Admin",
+    "login": "Log in",
+    "logout": "Log out",
+    "getStarted": "Get started",
+    "toDark": "Switch to dark theme",
+    "toLight": "Switch to light theme",
+    "notificationsUnread": { "one": "Notifications, 1 unread", "other": "Notifications, {count} unread" }
+  },
+
+  "footer": {
+    "tagline": "ReLoop — no donation reaches a dead end.",
+    "honesty": "Recycling settlements are simulated and masses are estimates."
+  },
+
+  "errors": {
+    "generic": "Something went wrong.",
+    "validation": "Please check the highlighted fields.",
+    "unreachableTitle": "Can't reach ReLoop",
+    "unreachable": "The server didn't answer. Check that the backend is running, then try again."
+  },
+
+  "honesty": {
+    "simulated": "Simulated",
+    "estimatedMass": "Estimated mass",
+    "placeholderWeights": "Placeholder weights",
+    "approximate": "Approximate"
+  },
+
+  "map": {
+    "attribution": "&copy; <a href=\"https://www.openstreetmap.org/copyright\">OpenStreetMap</a> contributors"
+  },
+
+  "location": {
+    "tapToPlace": "Tap the map to drop a pin",
+    "pinned": "Pin at {lat}, {lng} — drag it to adjust",
+    "noPin": "No pin yet.",
+    "useMine": "Use my location",
+    "geoFailed": "Your browser couldn't share your location. Drop the pin by hand instead."
+  },
+
+  "landing": {
+    "eyebrow": "Circular giving · clothes, toys & books",
+    "titleA": "Your old things.",
+    "titleB": "Someone's next chapter.",
+    "subtitle": "The jacket your child outgrew can keep another warm this winter. The books on your shelf can fill a classroom. ReLoop finds the people who need what you no longer use — and if no one can use it, sees that it's recycled, not binned.",
+    "toDashboard": "Go to your dashboard",
+    "ctaDonate": "Start giving",
+    "ctaOrganisation": "Register your organisation",
+    "exploreMap": "See who's near you",
+    "haveAccount": "Already with us?",
+    "orbitCore": "Second life",
+    "chips": {
+      "need": "Matched to real need",
+      "landfill": "Recycled, never binned",
+      "private": "Your address stays private"
+    },
+    "trust": {
+      "verified": "Verified organisations only",
+      "private": "Address shared only after a yes",
+      "tracked": "Follow every step"
+    },
+    "promises": {
+      "need": {
+        "title": "It goes where it's needed",
+        "text": "Organisations are ranked by what they've actually asked for, how urgently, and how close they are — so your gift lands where it matters most."
+      },
+      "deadEnd": {
+        "title": "A “no” is never the end",
+        "text": "If one place can't take it, the next best one is asked. If no one can, it's recycled — your donation still counts."
+      },
+      "journey": {
+        "title": "You see where it goes",
+        "text": "From the moment you list it to the moment it's received, every step is recorded and shown to you."
+      }
+    },
+    "becomesEyebrow": "What your donation becomes",
+    "becomesTitle": "Small things, given well, change someone's day.",
+    "becomes": {
+      "clothes": {
+        "from": "Clothes you've outgrown",
+        "to": "A warm winter for a child",
+        "text": "Coats, uniforms and everyday wear go to homes and shelters that have listed them as a need."
+      },
+      "toys": {
+        "from": "Toys gathering dust",
+        "to": "Playtime in a children's home",
+        "text": "Games and toys in good shape find their way to the children who'll love them next."
+      },
+      "books": {
+        "from": "Books you've finished",
+        "to": "A fuller shelf in a classroom",
+        "text": "Schools and reading rooms in your city put them back into readers' hands."
+      }
+    },
+    "statement": "The most sustainable thing you own is the thing that already exists.",
+    "statementText": "Every item reused is one less made and one less thrown away. ReLoop keeps good things in use for as long as they last — and recovers the material when they can't be.",
+    "whyEyebrow": "Why it matters",
+    "stats": {
+      "textile": {
+        "value": "70.73 lakh t",
+        "text": "of textile waste is generated in India every year. 58% of it is post-consumer: the clothes households finish with.",
+        "source": "Ministry of Textiles, Mapping of Textile Waste Value Chain in India, 2026"
+      },
+      "postConsumer": {
+        "value": "~45%",
+        "text": "of post-consumer textile waste is not diverted from landfill.",
+        "source": "Ministry of Textiles, 2026"
+      },
+      "unaccounted": {
+        "value": "22%",
+        "text": "of India's municipal solid waste is unaccounted — neither processed nor landfilled.",
+        "source": "CPCB, MSW Annual Report 2021–22"
+      }
+    },
+    "stepsEyebrow": "Giving, made simple",
+    "stepsTitle": "Three steps. A few minutes.",
+    "steps": {
+      "list": { "title": "Snap and list", "text": "Tell us what it is, add a photo, and drop a pin for pickup." },
+      "choose": { "title": "Choose who receives it", "text": "See the organisations that need it most, and why — then pick one." },
+      "handover": { "title": "Hand it over", "text": "They collect, or you drop it off. Then watch it reach its next home." }
+    },
+    "orgEyebrow": "For NGOs, schools and shelters",
+    "orgTitle": "Tell us what you need. We'll bring it to you.",
+    "orgText": "List what your organisation needs and how urgently. You'll receive offers that match — nearby, and yours to accept or decline. A donor's address is shared with you only once you accept.",
+    "ctaTitle": "Give your things a second life.",
+    "ctaText": "List your first donation in a few minutes. Someone nearby could use exactly what you're about to give away."
+  },
+
+  "auth": {
+    "asideQuote": "A rejection is a transition, not an ending.",
+    "asidePoints": {
+      "one": "Ranked matches with reasons you can read",
+      "two": "Your address is shared only after an organisation accepts",
+      "three": "Every item ends in reuse or recovery"
+    },
+    "loginTitle": "Welcome back",
+    "noAccount": "New to ReLoop?",
+    "registerLink": "Create an account",
+    "loginButton": "Log in",
+    "badCredentials": "That email and password don't match an account.",
+    "chooseTitle": "Join ReLoop",
+    "haveAccount": "Already registered?",
+    "loginLink": "Log in",
+    "donorCardTitle": "I have things to donate",
+    "donorCardText": "Clothes, toys or books in good shape. We'll find who needs them.",
+    "orgCardTitle": "We're an organisation",
+    "orgCardText": "NGOs, shelters, schools and homes: receive offers that match your needs.",
+    "adminNote": "Admin accounts are created by the platform operator, not here.",
+    "donorTitle": "Create a donor account",
+    "donorSubtitle": "You'll be able to list your first item straight away.",
+    "donorPrivacy": "Your pickup address is shown to an organisation only after it accepts your donation, and every release is recorded.",
+    "createAccount": "Create account",
+    "orgTitle": "Register your organisation",
+    "orgSubtitle": "One login per organisation. You'll receive offers once an admin verifies you.",
+    "orgSectionAccount": "Your login",
+    "orgSectionOrg": "Organisation",
+    "orgFixedNote": "Name and registration ID can't be changed after registration.",
+    "orgSectionLocation": "Location",
+    "orgLocationNote": "Drop a pin where donations should go. Donors see only an approximate position until you accept their donation.",
+    "orgPendingNote": "New organisations start as pending. Only verified organisations receive offers.",
+    "registerOrg": "Register organisation"
+  },
+
+  "fields": {
+    "email": "Email",
+    "password": "Password",
+    "passwordHint": "At least 10 characters.",
+    "fullName": "Your name",
+    "phone": "Phone",
+    "phoneHint": "Digits, spaces and + only.",
+    "orgName": "Organisation name",
+    "registrationId": "Registration ID",
+    "contactPerson": "Contact person",
+    "orgPhone": "Organisation phone",
+    "categoriesAccepted": "Categories you accept",
+    "storageCapacity": "Storage capacity (items)",
+    "storageCapacityHint": "How many items you can hold at once — a count, not kilograms.",
+    "pickupCapable": "We can collect donations",
+    "pickupCapableHint": "Turn off if donors must bring items to you.",
+    "address": "Address",
+    "addressHint": "As you'd write it for a visitor. The pin, not this text, sets the location.",
+    "category": "What are you donating?",
+    "condition": "Condition",
+    "quantity": "How many items?",
+    "quantityHint": "A count of items, e.g. 12 shirts.",
+    "note": "Note for the organisation (optional)",
+    "noteHint": "Sizes, age range, anything that helps them decide.",
+    "priority": "Priority donation",
+    "priorityHint": "Moves your offer up in organisations' inboxes. It doesn't change who is ranked first.",
+    "pickupAddress": "Pickup address",
+    "windowStart": "Available from",
+    "windowEnd": "Available until",
+    "window": "Pickup window",
+    "item": "Item"
+  },
+
+  "donor": {
+    "eyebrow": "Your donations",
+    "greeting": "Hello, {name}",
+    "intro": "Every item you list is followed until it is reused or recycled.",
+    "newDonation": "New donation",
+    "myDonations": "My donations",
+    "emptyTitle": "Nothing listed yet",
+    "emptyText": "List clothes, toys or books, and ReLoop will rank the organisations that need them.",
+    "back": "My donations"
+  },
+
+  "donation": {
+    "title": { "one": "{category} · 1 item", "other": "{category} · {count} items" },
+    "listedOn": "listed {date}",
+    "priority": "Priority",
+    "needsDecision": "Needs your decision",
+    "awaitingAnswer": "Waiting for {org} to answer — the offer expires {when}.",
+    "photoFailed": "Your donation was listed, but the photos weren't uploaded",
+    "escalatedTitle": "Your decision is needed",
+    "escalatedText": "Choose what happens next with the buttons above.",
+    "details": "Details",
+    "quantity": "Quantity",
+    "created": "Listed",
+    "windowAdvisory": "The pickup window is a preference shown to organisations, not a deadline.",
+    "photos": "Photos",
+    "pickupPoint": "Pickup point",
+    "addressPrivacy": "Only you can see this. An organisation sees it only after accepting, and each release is recorded.",
+    "timeline": "Journey"
+  },
+
+  "holder": {
+    "title": "Who's receiving it",
+    "accepted": "Accepted",
+    "collects": "They can collect from you.",
+    "dropoffOnly": "They don't collect: please drop it off.",
+    "address": "Address",
+    "contact": "Contact",
+    "phone": "Phone",
+    "privacy": "Shared with you while this organisation holds your donation."
+  },
+
+  "newDonation": {
+    "eyebrow": "New donation",
+    "title": "List an item",
+    "stepWhat": "What",
+    "stepWhere": "Where & when",
+    "stepReview": "Photos & review",
+    "conditionHelp": {
+      "NEW": "Unused, tags or packaging may be on.",
+      "GENTLY_USED": "Worn or read a little, no damage.",
+      "USED": "Visible wear, still fully usable."
+    },
+    "whereTitle": "Where should it be picked up?",
+    "whereText": "Drop a pin on the map. Organisations see only a rounded distance until one accepts.",
+    "whenTitle": "When is it available?",
+    "whenText": "A preference shown to organisations; the exact time is agreed after acceptance.",
+    "photosTitle": "Photos (optional)",
+    "photosText": "Organisations decide on condition, so a clear photo helps. Location data is removed on upload.",
+    "reviewTitle": "Review",
+    "nextHint": "Next you'll see a ranked list of organisations, with the reasons behind each ranking.",
+    "submit": "List and find matches"
+  },
+
+  "images": {
+    "none": "No photos.",
+    "alt": "Photo {n}",
+    "add": "Add photos",
+    "remove": "Remove photo",
+    "hint": "JPEG, PNG or WebP. Metadata such as GPS is stripped when uploaded."
+  },
+
+  "candidates": {
+    "ranking": "Ranking organisations…",
+    "title": "Choose who gets the first offer",
+    "subtitle": "Ranked by distance, declared need, urgency, storage space and reliability. Open a card to see why.",
+    "backToDonation": "Donation",
+    "alreadyOffered": "This donation has already been offered. This list is a preview only.",
+    "viewDonation": "View donation",
+    "radius": "Searching within {km} km",
+    "declines": { "one": "1 decline so far: the search has widened", "other": "{count} declines so far: the search has widened" },
+    "filteredOut": "Left out:",
+    "assignedWeights": "Weights assigned, not learned yet",
+    "best": "Best match",
+    "collects": "Collects",
+    "dropoffOnly": "Drop-off only",
+    "matchScore": "match score",
+    "offerTo": "Offer",
+    "why": "Why this ranking",
+    "emptyTitle": "No organisation in range right now",
+    "emptyText": "Continuing will bring the decision back to you: you can redirect it to recycling or cancel.",
+    "continueEmpty": "Continue",
+    "howScored": "Each score is a weighted sum of the factors shown. The weights are set by the platform for now; they will be calibrated once enough accept and decline history exists."
+  },
+
+  "score": {
+    "contribution": "{points} / {max}",
+    "contributionHint": "Points this factor adds, out of its weight",
+    "reason": {
+      "proximity": "{km} km away",
+      "need": { "one": "has asked for 1 item", "other": "has asked for {count} items" },
+      "noNeed": "no declared need for this category",
+      "urgency": "{urgency} urgency",
+      "noUrgency": "no urgent need",
+      "capacity": { "one": "room for 1 more item", "other": "room for {count} more items" },
+      "acceptance": "accepts {pct} of offers",
+      "noHistory": "no offer history yet — neutral score"
+    }
+  },
+
+  "actions": {
+    "when": "When",
+    "whenHint": "Must be in the future.",
+    "reason": "Reason",
+    "reasonHint": "Recorded in the donation's audit trail.",
+    "rejectReason": "Why are you declining?",
+    "rejectNote": "Note (optional)",
+    "rejectNoteHint": "Seen by platform admins only.",
+    "offer": { "label": "Choose who to offer to" },
+    "rematch": { "label": "Re-match", "confirm": "Offer it to the next best organisation." },
+    "upgradePriority": { "label": "Upgrade to priority", "confirm": "Mark it as priority and offer it to the next best organisation. Priority donations rise in organisations' inboxes." },
+    "recycle": { "label": "Send to recycling", "confirm": "Route it to the nearest recycling partner for this category. If none is in range, it goes to the admin queue." },
+    "dropoff": { "label": "I'll drop it off", "confirm": "Choose when you'll take it to the organisation." },
+    "handedOver": { "label": "I've handed it over", "confirm": "Confirm that the organisation now has your items." },
+    "cancel": { "label": "Cancel donation", "confirm": "The donation is withdrawn (it is kept in your history). Any open offer is withdrawn too." },
+    "accept": { "label": "Accept", "confirm": "Accepting releases the donor's exact pickup address to you, and the release is recorded." },
+    "reject": { "label": "Decline", "confirm": "You won't be offered this donation again. It moves on to the next organisation." },
+    "schedulePickup": { "label": "Schedule pickup", "confirm": "Choose when you'll collect it." },
+    "confirmReceipt": { "label": "Confirm receipt", "confirm": "Confirm you've received the items. This completes the donation." },
+    "requeue": { "label": "Re-queue", "confirm": "Send it back into matching: it is offered to the next eligible organisation." },
+    "adminRecycle": { "confirm": "Route it to the nearest recycling partner for this category." },
+    "confirmRecycled": { "label": "Confirm recycled", "confirm": "Confirm on the recycler's behalf (simulated). A simulated settlement over estimated mass is recorded." },
+    "adminCancel": { "confirm": "Withdraw this donation for good." }
+  },
+
+  "timeline": {
+    "history": "Status history",
+    "noEvents": "Nothing has happened yet.",
+    "byAt": "{actor} · {at}",
+    "reason": "Reason: {reason}",
+    "offers": "Offers",
+    "noOffers": "No offers yet.",
+    "offerMeta": "Rank #{rank} · {source} · {at}",
+    "awaiting": "Awaiting answer",
+    "expires": "Expires {when}",
+    "declineReason": "Reason: {reason}",
+    "note": "Note: {note}",
+    "handover": "{mode} · {at}",
+    "recycling": "Recycling"
+  },
+
+  "recycling": {
+    "distance": "Distance",
+    "rate": "Rate",
+    "perKg": "{amount} per kg",
+    "assigned": "Assigned",
+    "mass": "Mass (estimated)",
+    "massValue": "{kg} kg ({per} kg per item)",
+    "gross": "Recovered value",
+    "fee": "Platform fee",
+    "feeValue": "{amount} ({pct}%)",
+    "credit": "Your credit",
+    "settlement": "Settlement",
+    "awaitingConfirmation": "Calculated once the recycler confirms.",
+    "simulatedNote": "Simulated: no money moves yet. Wallet credit arrives in a later phase."
+  },
+
+  "notifications": {
+    "eyebrow": "In-app",
+    "title": "Notifications",
+    "subtitle": "Updates on donations you're part of. Checked every {seconds} seconds while ReLoop is open.",
+    "recent": "Recent activity",
+    "empty": "No notifications yet",
+    "emptyText": "You'll see offers, answers and status changes here.",
+    "unread": "Unread",
+    "anOrganisation": "an organisation"
+  },
+
+  "notify": {
+    "generic": "{item}: {from} → {to}",
+    "OFFER": "{item} offered to {org}",
+    "ESCALATE": "{item} needs a decision",
+    "CANCEL": "{item} was cancelled",
+    "ACCEPT": "{org} accepted {item}",
+    "REJECT": "{org} declined {item}",
+    "EXPIRE": "The offer of {item} to {org} expired",
+    "REOFFER": "{item} re-offered to {org}",
+    "REMATCH": "{item} is being re-matched",
+    "UPGRADE_PRIORITY": "{item} upgraded to priority",
+    "REDIRECT_TO_RECYCLING": "{item} sent to recycling",
+    "STALL": "{item} moved to the admin queue after no progress",
+    "SCHEDULE_PICKUP": "Pickup scheduled for {item}",
+    "CHOOSE_DROPOFF": "Drop-off scheduled for {item}",
+    "MARK_HANDED_OVER": "{item} handed over",
+    "CONFIRM_RECEIPT": "{org} received {item} — it will be reused",
+    "CONFIRM_RECYCLED": "{item} was recycled",
+    "NO_RECYCLER": "No recycler can take {item}; it's in the admin queue",
+    "REQUEUE": "{item} returned to matching by an admin"
+  },
+
+  "placeholder": {
+    "title": "Coming in the next part of this phase",
+    "text": "This area (the organisation dashboard, admin panel and discovery map) is not built yet. It is a labelled stub until the second half of Phase 3.",
+    "notifications": "Notifications"
+  },
+
+  "notFound": {
+    "title": "Page not found",
+    "text": "That address doesn't lead anywhere in ReLoop.",
+    "home": "Back to home"
+  },
+
+  "vocab": {
+    "Actor": { "DONOR": "Donor", "ACCEPTOR": "Organisation", "ADMIN": "Admin", "SYSTEM": "ReLoop (automatic)" },
+    "Category": { "CLOTHES": "Clothes", "TOYS": "Toys", "BOOKS": "Books" },
+    "Condition": { "NEW": "New", "GENTLY_USED": "Gently used", "USED": "Used" },
+    "DonationAction": {
+      "OFFER": "Offered",
+      "ESCALATE": "Escalated to the donor",
+      "CANCEL": "Cancelled",
+      "ACCEPT": "Accepted",
+      "REJECT": "Declined",
+      "EXPIRE": "Offer expired",
+      "REOFFER": "Re-offered",
+      "REMATCH": "Re-match chosen",
+      "UPGRADE_PRIORITY": "Upgraded to priority",
+      "REDIRECT_TO_RECYCLING": "Sent to recycling",
+      "STALL": "No progress: sent to admin",
+      "SCHEDULE_PICKUP": "Pickup scheduled",
+      "CHOOSE_DROPOFF": "Drop-off chosen",
+      "MARK_HANDED_OVER": "Handed over",
+      "CONFIRM_RECEIPT": "Receipt confirmed",
+      "CONFIRM_RECYCLED": "Recycling confirmed",
+      "NO_RECYCLER": "No recycler in range",
+      "REQUEUE": "Re-queued by admin"
+    },
+    "DonationStatus": {
+      "LISTED": "Listed",
+      "MATCHED": "Offered",
+      "RE_MATCHING": "Re-matching",
+      "ESCALATED": "Decision needed",
+      "ACCEPTED": "Accepted",
+      "PICKUP_SCHEDULED": "Handover scheduled",
+      "IN_TRANSIT": "In transit",
+      "COMPLETED": "Completed · reused",
+      "WASTE_REDIRECTED": "Going to recycling",
+      "RECYCLED": "Recycled",
+      "NEEDS_ADMIN": "Admin review",
+      "CANCELLED": "Cancelled"
+    },
+    "EscalationCause": {
+      "THRESHOLD_REACHED": "Several organisations in a row declined it.",
+      "NO_CANDIDATES": "No eligible organisation is in range right now.",
+      "NOT_OFFERED": "It was listed for a while without being offered."
+    },
+    "FilterReason": {
+      "NOT_VERIFIED": "not yet verified",
+      "CATEGORY_NOT_ACCEPTED": "category not accepted",
+      "EXCLUDED": "already offered",
+      "OUT_OF_RADIUS": "outside the search radius",
+      "INSUFFICIENT_CAPACITY": "not enough storage"
+    },
+    "HandoverMode": { "ACCEPTOR_PICKUP": "Organisation collects", "DONOR_DROPOFF": "Donor drops off" },
+    "OfferResponse": { "ACCEPTED": "Accepted", "REJECTED": "Declined", "EXPIRED": "Expired", "RETRACTED": "Withdrawn" },
+    "OfferSource": { "DONOR": "donor's choice", "SYSTEM": "automatic re-offer" },
+    "RankingTrigger": { "DONOR_OFFER": "Donor's offer", "RE_MATCHING": "Re-matching" },
+    "RejectReason": {
+      "NO_CAPACITY": "No storage space",
+      "NOT_NEEDED": "Not needed right now",
+      "CONDITION": "Condition not suitable",
+      "TOO_FAR": "Too far away",
+      "OTHER": "Other"
+    },
+    "Role": { "DONOR": "Donor", "ACCEPTOR": "Organisation", "ADMIN": "Admin" },
+    "ScoreFactor": {
+      "PROXIMITY": "Distance",
+      "NEED_MATCH": "Declared need",
+      "URGENCY": "Urgency",
+      "CAPACITY_HEADROOM": "Storage space",
+      "ACCEPTANCE_RATE": "Reliability"
+    },
+    "Urgency": { "LOW": "Low", "MEDIUM": "Medium", "HIGH": "High" },
+    "VerificationStatus": { "PENDING": "Pending verification", "VERIFIED": "Verified", "REJECTED": "Rejected" }
+  }
+}

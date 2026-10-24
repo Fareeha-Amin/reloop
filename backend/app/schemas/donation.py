@@ -15,6 +15,7 @@ from app.schemas.common import (
     check_location_update,
     reject_explicit_nulls,
 )
+from app.schemas.timeline import HandoverOut
 from app.domain import lifecycle
 
 
@@ -110,6 +111,37 @@ class DonationSummaryOut(OutputModel):
     updated_at: datetime
 
 
+class HolderOut(OutputModel):
+    """The organisation holding the donation (lifecycle.HELD_STATES), shown to its donor
+    with the organisation's address and contact for the handover. Present only while
+    held; once the donation leaves those states the donor no longer sees them."""
+
+    organization_id: uuid.UUID
+    organization_name: str
+    contact_person: str
+    phone: str
+    address_text: str
+    latitude: float
+    longitude: float
+    pickup_capable: bool
+    handover: HandoverOut | None = Field(description="Set once a pickup or drop-off is scheduled.")
+
+    @classmethod
+    def from_match(cls, match) -> "HolderOut":
+        org = match.organization
+        return cls(
+            organization_id=org.id,
+            organization_name=org.name,
+            contact_person=org.contact_person,
+            phone=org.phone,
+            address_text=org.address_text,
+            latitude=org.latitude,
+            longitude=org.longitude,
+            pickup_capable=org.pickup_capable,
+            handover=HandoverOut.model_validate(match.handover) if match.handover else None,
+        )
+
+
 class DonationOut(OutputModel):
     id: uuid.UUID
     donor_id: uuid.UUID
@@ -131,6 +163,9 @@ class DonationOut(OutputModel):
     editable: bool
     allowed_actions: list[DonationAction]
     images: list[DonationImageOut]
+    # The organisation holding the donation, with its address and contact; null unless
+    # the donation is ACCEPTED, PICKUP_SCHEDULED or IN_TRANSIT.
+    holder: HolderOut | None = None
     created_at: datetime
     updated_at: datetime
 
@@ -140,9 +175,11 @@ class DonationOut(OutputModel):
         donation,
         allowed_actions: frozenset[DonationAction],
         escalation_cause: EscalationCause | None = None,
+        holder: HolderOut | None = None,
     ) -> "DonationOut":
         data = {name: getattr(donation, name) for name in cls.model_fields if hasattr(donation, name)}
         data["editable"] = lifecycle.is_editable(donation.status)
         data["allowed_actions"] = sorted(allowed_actions)
         data["escalation_cause"] = escalation_cause
+        data["holder"] = holder
         return cls.model_validate(data)

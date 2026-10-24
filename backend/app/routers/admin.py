@@ -103,8 +103,8 @@ def get_donation_detail(donation_id: uuid.UUID, admin: AdminUser, db: DbSession)
 
 @router.post("/donations/{donation_id}/requeue", response_model=DonationOut)
 def requeue(donation_id: uuid.UUID, data: ReasonIn, admin: AdminUser, db: DbSession):
-    """NEEDS_ADMIN → back into matching (re-offered at once, or escalated to the donor if
-    the pickup window has ended). Offered only while the slate is non-empty."""
+    """NEEDS_ADMIN → back into matching: re-offered at once, or escalated to the donor if
+    the decline threshold is still reached. Offered only while the slate is non-empty."""
     return donation_out(db, actions.admin_requeue(db, donation_id, admin, data.reason, _now()), admin)
 
 
@@ -137,8 +137,8 @@ def confirm_recycled(donation_id: uuid.UUID, data: ReasonIn, admin: AdminUser, d
 
 @router.post("/sweep", response_model=SweepReportOut)
 def run_sweep(admin: AdminUser, db: DbSession):
-    """Apply every due deadline now: expired offers, lapsed pickup windows, silent donors
-    and stalled handovers. Safe to run repeatedly. Also: python -m app.cli sweep."""
+    """Apply every due deadline now: expired offers, donations never offered, silent
+    donors and stalled handovers. Safe to run repeatedly. Also: python -m app.cli sweep."""
     return sweeper.sweep(db, _now())
 
 

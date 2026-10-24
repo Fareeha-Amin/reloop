@@ -7,7 +7,27 @@ recycling, so every donation ends in reuse or material recovery.
 Background: [docs/ReLoop_Project_Context.pdf](docs/ReLoop_Project_Context.pdf) ·
 Build brief: [PROMPT.md](PROMPT.md) · Decision log: [CLAUDE.md](CLAUDE.md)
 
-## Status: Phase 2 (the core loop)
+## Status: Phase 3, first half (the React frontend)
+
+**What exists (Phase 3, first half)**
+
+- **A React frontend** (`frontend/`): landing page, registration for donors and
+  organisations (organisations drop a map pin for their location), login, the donor
+  dashboard, a three-step donation flow (what → where & when → photos & review), the
+  ranked list of organisations with each score broken into readable reasons, the
+  donation page (actions, the organisation holding it, a timeline of status events,
+  offers and recycling), and in-app notifications.
+- **The UI decides nothing.** Buttons are drawn from the API's `allowed_actions`.
+  Vocabulary values (statuses, actions, categories, …) appear only in
+  `frontend/src/vocab/`, which a test enforces. API types are generated from the
+  backend's OpenAPI schema.
+- **Honest labels.** Whatever the API marks as simulated, estimated or placeholder is
+  labelled the same way on screen.
+- **Backend additions:** `GET /notifications` (a per-user feed derived from the audit
+  log, with no new table), and `holder` on a donation: the organisation holding it,
+  with its address and phone, shown to the donor while it holds the donation.
+- **Not yet built (second half of Phase 3):** the organisation dashboard, the admin
+  panel and the discovery map. Their routes show a page that says so.
 
 **What exists (Phase 2)**
 
@@ -74,8 +94,8 @@ Build brief: [PROMPT.md](PROMPT.md) · Decision log: [CLAUDE.md](CLAUDE.md)
   migrations.
 
 **What does not exist yet.** Platform-arranged logistics, payments, wallets (the
-recycling settlement is recorded but credits nothing), reviews, notifications, the
-frontend. Anything not listed above is not built.
+recycling settlement is recorded but credits nothing), reviews, push and email
+notifications. Anything not listed above is not built.
 
 ### Stubs and simulations
 
@@ -87,6 +107,8 @@ frontend. Anything not listed above is not built.
 | **Per-category weights** (`CATEGORY_WEIGHT_KG`) | **PLACEHOLDERS** (clothes 0.5 kg, toys 0.3 kg, books 0.4 kg per item) pending a cited source. Responses carry `weights_are_placeholders: true`. |
 | **Recycler confirmation** | **SIMULATED.** There is no recycler login. An admin confirms recycling on the recycler's behalf, with a recorded reason. |
 | **Distances** | Haversine in Python over every organisation that accepts the category. No PostGIS. Fine at seed scale; revisit when the instant-pickup module needs fast geo-queries. |
+| **Map tiles** (frontend) | OpenStreetMap's public tile servers, no API key. Their usage policy suits development and demos, not production traffic: a deployment needs a tile provider. Locations are the pins people drop; nothing is geocoded. |
+| **Notifications** | In-app only, polled (`POLL_MS` in `frontend/src/config.ts`). **Push (Firebase Cloud Messaging) and email are deferred**, not built. Read/unread state is kept in each browser, so it does not follow you to another device. |
 
 ### Deferred (not built, by decision)
 
@@ -122,6 +144,14 @@ frontend. Anything not listed above is not built.
   does not extend the refresh token, so a session ends when its refresh token expires.
 - **Tokens contain only the user id.** The role is read from the database on every
   request, so a role change takes effect immediately.
+- **Where the browser keeps tokens (XSS trade-off).** The access token is kept in memory
+  only. The refresh token is in `localStorage`, so a session survives a page reload.
+  Any script that runs on the app's origin (an XSS bug, a compromised dependency) could
+  read the refresh token and use it until it expires, up to 7 days, because refresh tokens
+  cannot be revoked. An `HttpOnly` cookie would close that gap, at the cost of CSRF
+  handling and a cookie flow that a future mobile client would not share.
+- **Server error messages are in English.** The UI's own text comes from the locale
+  file, but messages from the API are shown as sent.
 
 ### Units
 
@@ -134,7 +164,9 @@ kilograms or bags.
 | Tool | Version |
 |---|---|
 | Python | **3.12** |
-| Node | **22 LTS** (not used until Phase 3) |
+| Node | **24 LTS** (developed on 24.22.1) |
+| React / Vite / Tailwind | 19.3 / 8.3 / 4.3 (exact versions in `frontend/package.json`) |
+| TypeScript | **5.9** (openapi-typescript does not support 7 yet) |
 | PostgreSQL | **15+** (developed against 17) |
 
 ## Layout
@@ -155,7 +187,18 @@ backend/
     cli.py            operator commands (create-admin, seed, sweep)
   alembic/            migrations
   tests/              unit/, api/, test_migrations.py
-frontend/   React app (Phase 3); empty for now
+frontend/
+  src/
+    api/              openapi.json (exported from the backend), schema.ts (generated),
+                      the client, token refresh, error parsing
+    vocab/            the only place API vocabulary values appear: tones, labels,
+                      action → endpoint map, role → home page
+    i18n/             en.json (every user-facing string) and the t() helper
+    styles/theme.css  design tokens: the one place to restyle
+    ui/               shared, token-only components (buttons, cards, tags, forms, ...)
+    components/       ReLoop components (timeline, action bar, map picker, ...)
+    pages/            routes, built from ui/ and components/
+  tests/              Vitest: API client, token refresh, no-literals guard, locale
 docs/       project context document
 ```
 
@@ -186,6 +229,18 @@ pytest                              # DB tests are skipped if TEST_DATABASE_URL 
 # 6. Deadlines: the sweeper runs inside the API every 15 minutes (SWEEPER_ENABLED).
 #    To run it now (safe to repeat):
 python -m app.cli sweep
+```
+
+```powershell
+# 7. Frontend (second terminal; Node 24 LTS). The backend must be running on port 8000.
+cd frontend
+npm install
+npm run dev                         # http://localhost:5173 (calls the API through /api)
+npm test                            # API client, token refresh, no-literals guard, locale
+
+# After changing the API: re-export the schema and regenerate the client types
+cd backend; python -m app.cli export-openapi
+cd ../frontend; npm run gen:api
 ```
 
 `pytest` sets `SWEEPER_ENABLED=false` for itself, so tests never sweep the real database.

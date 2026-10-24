@@ -8,7 +8,7 @@ from fastapi.responses import JSONResponse
 
 from app.config import get_settings
 from app.constants import SWEEP_INTERVAL
-from app.routers import admin, auth, donations, offers, organizations
+from app.routers import admin, auth, donations, notifications, offers, organizations
 from app.services import sweeper
 from app.services.errors import ServiceError
 from app.services.geocoding import GeocodingUnavailable
@@ -35,12 +35,12 @@ async def lifespan(app: FastAPI):
 app = FastAPI(
     lifespan=lifespan,
     title="ReLoop API",
-    version="0.2.0-phase2",
+    version="0.3.0-phase3",
     description=(
-        "Phase 2 — the core loop: explainable matching, the full donation lifecycle, "
+        "The core loop: explainable matching, the full donation lifecycle, "
         "rejection handling, escalation, a recycling fallback and the deadline sweeper "
         f"(in-process every {SWEEP_INTERVAL.total_seconds() / 60:g} minutes; POST /admin/sweep "
-        "runs it now). "
+        "runs it now). Phase 3 adds an in-app notification feed (polled; no push or email). "
         "**Stubs and simulations:** geocoding is a stub (coordinates are accepted as "
         "supplied); recycling settlements are **simulated** over **estimated** mass "
         "(per-category weights are placeholders), and an admin confirms recycling on the "
@@ -64,6 +64,7 @@ app.include_router(organizations.router)
 app.include_router(offers.router)
 app.include_router(donations.router)
 app.include_router(admin.router)
+app.include_router(notifications.router)
 
 
 def _mark_binary_strings(node) -> None:

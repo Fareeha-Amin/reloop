@@ -3,6 +3,7 @@
     python -m app.cli create-admin --email admin@example.org --name "Platform Admin"
     python -m app.cli seed
     python -m app.cli sweep
+    python -m app.cli export-openapi
 
 Admins cannot self-register; create-admin is the only way to create one. Passwords are
 prompted for (twice) and never passed on the command line, where they would end up in
@@ -10,12 +11,17 @@ shell history.
 
 `sweep` applies every due deadline once and exits, so Windows Task Scheduler (or cron)
 can run it on a schedule. It always uses the real clock.
+
+`export-openapi` writes the API schema the frontend generates its types from. A test
+fails if the committed copy is out of date.
 """
 
 import argparse
 import getpass
+import json
 import sys
 from datetime import UTC, datetime
+from pathlib import Path
 
 from pydantic import ValidationError
 from sqlalchemy.orm import Session
@@ -93,6 +99,24 @@ def _sweep(args) -> int:
     return 1 if report.errors else 0
 
 
+FRONTEND_OPENAPI = Path(__file__).resolve().parents[2] / "frontend" / "src" / "api" / "openapi.json"
+
+
+def openapi_json() -> str:
+    """The OpenAPI document, as committed for the frontend (stable formatting)."""
+    from app.main import app
+
+    return json.dumps(app.openapi(), indent=2, ensure_ascii=False) + "\n"
+
+
+def _export_openapi(args) -> int:
+    out = Path(args.out)
+    out.parent.mkdir(parents=True, exist_ok=True)
+    out.write_text(openapi_json(), encoding="utf-8", newline="\n")
+    print(f"Wrote {out}")
+    return 0
+
+
 def main(argv: list[str] | None = None) -> int:
     parser = argparse.ArgumentParser(prog="python -m app.cli")
     sub = parser.add_subparsers(dest="command", required=True)
@@ -102,6 +126,9 @@ def main(argv: list[str] | None = None) -> int:
     admin.set_defaults(handler=_create_admin)
     sub.add_parser("seed", help="Add Bengaluru seed organisations, recyclers and a demo donor (idempotent).").set_defaults(handler=_seed)
     sub.add_parser("sweep", help="Apply every due deadline once (for a scheduler).").set_defaults(handler=_sweep)
+    export = sub.add_parser("export-openapi", help="Write the OpenAPI schema for the frontend's generated types.")
+    export.add_argument("--out", default=str(FRONTEND_OPENAPI))
+    export.set_defaults(handler=_export_openapi)
     args = parser.parse_args(argv)
     return args.handler(args)
 

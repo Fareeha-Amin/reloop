@@ -1,0 +1,197 @@
+/*
+ * Design tokens: the one place colours, type, radii, shadows and motion are defined.
+ * Components in src/ui use only these tokens (as Tailwind utilities such as bg-surface,
+ * text-ink, bg-brand-600, rounded-card, shadow-card). To restyle the app, change values
+ * here; pages and components need no edits.
+ *
+ * LIGHT AND DARK. Every colour that differs between themes is written once as
+ * light-dark(<light>, <dark>), so the two sets sit side by side. Which one applies is
+ * the CSS color-scheme:
+ *   - by default it follows the system (color-scheme: light dark);
+ *   - the header toggle sets <html data-theme="light|dark"> to force one, and
+ *     remembers it (src/ui/theme.ts).
+ *
+ * BRAND PANELS. Deep green panels (bg-brand-900 / bg-brand-950: the landing hero, the
+ * dashboard banner, the active nav pill) look the same in both themes, and whatever sits
+ * on them uses the light palette (light text on dark green). That rule is at the bottom.
+ */
+
+/* Light values that brand panels use in both themes (see "Brand panels" below). */
+:root {
+  --light-surface: #fffdf8;
+  --light-brand-50: #eef7f0;
+  --light-brand-100: #d5ecda;
+  --light-brand-200: #acd9b7;
+  --light-brand-400: #4fa266;
+  --light-brand-700: #1a5530;
+}
+
+@theme {
+  /* Type */
+  --font-sans: "Inter", ui-sans-serif, system-ui, -apple-system, "Segoe UI", sans-serif;
+  --font-display: "Fraunces", ui-serif, Georgia, serif;
+
+  /* Surfaces and text                         light      dark */
+  --color-canvas: light-dark(#f5f2ea, #0c1310);
+  --color-surface: light-dark(var(--light-surface), #131c18);
+  --color-surface-muted: light-dark(#eee8db, #1a2520);
+  --color-surface-sunk: light-dark(#e6dfcf, #080e0b);
+  --color-ink: light-dark(#17251f, #e8eee9);
+  --color-ink-soft: light-dark(#3c4c44, #c3cec6);
+  --color-ink-muted: light-dark(#6b7a71, #8d9b92);
+  --color-line: light-dark(#e0d8c6, #24322b);
+  --color-line-strong: light-dark(#c9bfa8, #34473e);
+  /* Switch knobs and similar always-light details */
+  --color-knob: light-dark(#ffffff, #e8eee9);
+
+  /* Brand: forest green. Light tints become dark tints, deep greens become light
+     greens in dark mode, so tint/text pairs (bg-brand-50 text-brand-700) keep their
+     contrast. 800-950 are the brand panels and stay the same. */
+  --color-brand-50: light-dark(var(--light-brand-50), #0f2219);
+  --color-brand-100: light-dark(var(--light-brand-100), #143021);
+  --color-brand-200: light-dark(var(--light-brand-200), #1d4630);
+  --color-brand-300: light-dark(#7cc08e, #2d6a47);
+  --color-brand-400: light-dark(var(--light-brand-400), #3e8f5b);
+  --color-brand-500: light-dark(#2f854a, #52b272);
+  --color-brand-600: light-dark(#216b3a, #72c98d);
+  --color-brand-700: light-dark(var(--light-brand-700), #94dcaa);
+  --color-brand-800: #154427;
+  --color-brand-900: #123d2e;
+  --color-brand-950: #0b261c;
+
+  /* Accents: leaf, clay, ochre, sky */
+  --color-leaf: #a7e3a1;
+  --color-mint: #5ee0a0;
+  --color-clay-100: light-dark(#f6e2d6, #38221a);
+  --color-clay-500: light-dark(#c0673f, #dc8a62);
+  --color-clay-700: light-dark(#8f4626, #f1b79b);
+  --color-ochre-100: light-dark(#f8ebc8, #332a12);
+  --color-ochre-500: light-dark(#c99a2e, #dbb24e);
+  --color-ochre-700: light-dark(#8a6514, #edd38f);
+  --color-sky-100: light-dark(#dcecf1, #122e38);
+  --color-sky-600: light-dark(#2f6f86, #83c3d9);
+
+  /* Status tones (src/vocab/display.ts picks a tone per value; src/ui/Tag.tsx draws it) */
+  --color-tone-neutral-bg: light-dark(#ece7dc, #222d28);
+  --color-tone-neutral-fg: light-dark(#4a554f, #c3cec6);
+  --color-tone-info-bg: light-dark(#dcecf1, #122e38);
+  --color-tone-info-fg: light-dark(#255b6e, #8fcbe0);
+  --color-tone-progress-bg: light-dark(#d7efe9, #0f322c);
+  --color-tone-progress-fg: light-dark(#1e6457, #80d6c2);
+  --color-tone-attention-bg: light-dark(#f8ebc8, #382d10);
+  --color-tone-attention-fg: light-dark(#7a5810, #edd38f);
+  --color-tone-active-bg: light-dark(#d5ecda, #143021);
+  --color-tone-active-fg: light-dark(#1a5530, #94dcaa);
+  --color-tone-reuse-bg: light-dark(#1a5530, #94dcaa);
+  --color-tone-reuse-fg: light-dark(#eef7f0, #0b261c);
+  --color-tone-recovery-bg: light-dark(#f6e2d6, #38221a);
+  --color-tone-recovery-fg: light-dark(#8f4626, #f1b79b);
+  --color-tone-recovered-bg: light-dark(#5d6b2c, #b9c672);
+  --color-tone-recovered-fg: light-dark(#f4f6e6, #1c2208);
+  --color-tone-danger-bg: light-dark(#f7dcd8, #3b1813);
+  --color-tone-danger-fg: light-dark(#9b2c1f, #f29d90);
+  --color-tone-muted-bg: light-dark(#e7e3da, #1d2622);
+  --color-tone-muted-fg: light-dark(#7b827d, #8d9b92);
+
+  /* Feedback */
+  --color-danger-500: light-dark(#c2412f, #e2654f);
+  --color-danger-700: light-dark(#9b2c1f, #f29d90);
+
+  /* Shape and depth */
+  --radius-card: 1.25rem;
+  --radius-control: 0.75rem;
+  --radius-pill: 999px;
+  --shadow-card: 0 1px 2px light-dark(rgb(23 37 31 / 0.04), rgb(0 0 0 / 0.3)),
+    0 8px 24px -12px light-dark(rgb(23 37 31 / 0.18), rgb(0 0 0 / 0.55));
+  --shadow-lift: 0 2px 4px light-dark(rgb(23 37 31 / 0.06), rgb(0 0 0 / 0.35)),
+    0 18px 40px -16px light-dark(rgb(23 37 31 / 0.28), rgb(0 0 0 / 0.7));
+  --shadow-glow: 0 10px 40px -8px rgb(94 224 160 / 0.45);
+  --shadow-focus: 0 0 0 3px rgb(79 162 102 / 0.4);
+
+  /* Motion */
+  --animate-rise: rise 520ms cubic-bezier(0.2, 0.8, 0.2, 1) both;
+  --animate-spin-slow: spin 40s linear infinite;
+  --animate-spin-slow-reverse: spin-reverse 40s linear infinite;
+  --animate-float: float 6s ease-in-out infinite;
+  --animate-pulse-soft: pulse-soft 2.4s ease-in-out infinite;
+
+  @keyframes rise {
+    from {
+      opacity: 0;
+      transform: translateY(12px);
+    }
+    to {
+      opacity: 1;
+      transform: translateY(0);
+    }
+  }
+  @keyframes spin-reverse {
+    to {
+      transform: rotate(-360deg);
+    }
+  }
+  @keyframes float {
+    0%,
+    100% {
+      transform: translateY(0);
+    }
+    50% {
+      transform: translateY(-10px);
+    }
+  }
+  @keyframes pulse-soft {
+    0%,
+    100% {
+      opacity: 1;
+    }
+    50% {
+      opacity: 0.55;
+    }
+  }
+}
+
+/* Which palette applies: the system's, unless the toggle chose one. */
+:root {
+  color-scheme: light dark;
+  /* Map tiles have no dark version; this filter darkens them in dark mode. */
+  --map-tiles-dark: invert(1) hue-rotate(180deg) brightness(0.92) contrast(0.88) saturate(0.6);
+}
+:root[data-theme="light"] {
+  color-scheme: light;
+}
+:root[data-theme="dark"] {
+  color-scheme: dark;
+}
+
+/* Brand panels: the same deep green in both themes, with light-palette content. The
+   tokens used on panels are reset to their light values here (resetting color-scheme
+   alone is not enough once light-dark() is compiled for older browsers). */
+.bg-brand-900,
+.bg-brand-950 {
+  color-scheme: light;
+  --color-surface: var(--light-surface);
+  --color-brand-50: var(--light-brand-50);
+  --color-brand-100: var(--light-brand-100);
+  --color-brand-200: var(--light-brand-200);
+  --color-brand-400: var(--light-brand-400);
+  --color-brand-700: var(--light-brand-700);
+}
+
+/* Maps */
+:root[data-theme="dark"] .leaflet-tile-pane {
+  filter: var(--map-tiles-dark);
+}
+@media (prefers-color-scheme: dark) {
+  :root:not([data-theme="light"]) .leaflet-tile-pane {
+    filter: var(--map-tiles-dark);
+  }
+}
+.leaflet-bar a,
+.leaflet-control-attribution {
+  background: var(--color-surface) !important;
+  color: var(--color-ink-soft) !important;
+  border-color: var(--color-line) !important;
+}
+.leaflet-control-attribution a {
+  color: var(--color-brand-600) !important;
+}
