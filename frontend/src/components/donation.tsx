@@ -6,6 +6,7 @@ import { Card, CardTitle, Facts, LinkCard } from '../ui/Card';
 import { Icon } from '../ui/icons';
 import { Tag } from '../ui/Tag';
 import { categoryIcon, vocabLabel } from '../vocab/display';
+import { UnreadMessagesTag } from './chat';
 import { PointMap } from './maps';
 import { StatusTag } from './StatusTag';
 
@@ -52,6 +53,7 @@ export function DonationCard({ donation }: { donation: DonationOut }) {
                 {t('donation.needsDecision')}
               </Tag>
             )}
+            <UnreadMessagesTag summary={donation.chat} />
           </div>
         </div>
       </div>

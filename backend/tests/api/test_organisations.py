@@ -85,3 +85,20 @@ def test_cannot_drop_a_category_that_has_an_active_need(client):
     resp = client.patch("/organisations/me", headers=headers, json={"categories_accepted": ["CLOTHES"]})
     assert resp.status_code == 409
     assert "BOOKS" in resp.json()["detail"]
+
+
+def test_admin_organisation_counts(client, db):
+    admin = h.admin(client, db)
+    before = client.get("/admin/organisations/counts", headers=admin).json()
+    assert set(before["by_status"]) == {"PENDING", "VERIFIED", "REJECTED"}
+    assert before["awaiting_verification"] == before["by_status"]["PENDING"]
+
+    h.acceptor(client)
+    h.verified_acceptor(client, db)
+    after = client.get("/admin/organisations/counts", headers=admin).json()
+    assert after["by_status"]["PENDING"] == before["by_status"]["PENDING"] + 1
+    assert after["by_status"]["VERIFIED"] == before["by_status"]["VERIFIED"] + 1
+    assert after["awaiting_verification"] == before["awaiting_verification"] + 1
+
+    donor = h.donor(client)
+    assert client.get("/admin/organisations/counts", headers=donor).status_code == 403

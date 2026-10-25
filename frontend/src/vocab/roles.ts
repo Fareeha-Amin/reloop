@@ -23,6 +23,7 @@ const NAV: Record<Role, NavItem[]> = {
   ],
   ACCEPTOR: [
     { to: paths.acceptor, labelKey: 'nav.acceptorHome', icon: 'building', end: true },
+    { to: paths.acceptorProfile, labelKey: 'nav.profile', icon: 'user' },
     { to: paths.map, labelKey: 'nav.map', icon: 'map' },
   ],
   ADMIN: [
@@ -49,16 +50,4 @@ const HOMES: Record<Role, string> = {
 
 export function homeFor(role: string): string {
   return (HOMES as Record<string, string>)[role] ?? paths.home;
-}
-
-/** Where a notification about a donation takes this user. */
-export function notificationLink(role: string, donationId: string): string {
-  switch (role) {
-    case 'DONOR':
-      return paths.donation(donationId);
-    case 'ADMIN':
-      return paths.adminDonation(donationId);
-    default:
-      return homeFor(role);
-  }
 }

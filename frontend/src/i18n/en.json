@@ -22,6 +22,7 @@
     "newDonation": "New donation",
     "map": "Map",
     "acceptorHome": "Dashboard",
+    "profile": "Profile",
     "adminHome": "Admin",
     "login": "Log in",
     "logout": "Log out",
@@ -151,11 +152,14 @@
   },
 
   "auth": {
-    "asideQuote": "A rejection is a transition, not an ending.",
-    "asidePoints": {
-      "one": "Ranked matches with reasons you can read",
-      "two": "Your address is shared only after an organisation accepts",
-      "three": "Every item ends in reuse or recovery"
+    "aside": {
+      "eyebrow": "How ReLoop works",
+      "title": "No donation reaches a dead end.",
+      "list": { "title": "Listed", "text": "People list the clothes, toys and books they no longer use." },
+      "match": { "title": "Matched to need", "text": "Verified organisations are ranked by what they have asked for, with the reasons shown." },
+      "reroute": { "title": "Re-routed, not dropped", "text": "If one organisation declines, the item goes to the next best fit." },
+      "recover": { "title": "Reused or recovered", "text": "What can't be reused is recycled, not binned." },
+      "footer": "Every step is recorded, so the outcome of each item is known."
     },
     "loginTitle": "Welcome back",
     "noAccount": "New to ReLoop?",
@@ -176,12 +180,22 @@
     "createAccount": "Create account",
     "orgTitle": "Register your organisation",
     "orgSubtitle": "One login per organisation. You'll receive offers once an admin verifies you.",
+    "orgStepDetails": "Your organisation",
+    "orgStepLocation": "Location & review",
+    "orgAccountNote": "One login per organisation: the person who will answer offers.",
     "orgSectionAccount": "Your login",
     "orgSectionOrg": "Organisation",
     "orgFixedNote": "Name and registration ID can't be changed after registration.",
+    "orgSectionAccepting": "What you can take",
+    "orgAcceptingNote": "Donors are matched only with organisations that accept the category and have room for it. You can change this later.",
+    "orgPickCategory": "Choose at least one category to continue.",
+    "orgNextIsLocation": "Next: where donations should go.",
     "orgSectionLocation": "Location",
-    "orgLocationNote": "Drop a pin where donations should go. Donors see only an approximate position until you accept their donation.",
-    "orgPendingNote": "New organisations start as pending. Only verified organisations receive offers.",
+    "orgReview": "Check your details",
+    "orgEditDetails": "Edit",
+    "orgNextTitle": "What happens next",
+    "orgLocationNote": "Drop a pin where donations should go. The public map shows only your neighbourhood; a donor sees your address once you accept their donation.",
+    "orgPendingNote": "Your organisation starts as pending. An admin reviews it, and once you're verified you start receiving offers that match your needs. Meanwhile you can set up your needs list.",
     "registerOrg": "Register organisation"
   },
 
@@ -394,7 +408,10 @@
     "empty": "No notifications yet",
     "emptyText": "You'll see offers, answers and status changes here.",
     "unread": "Unread",
-    "anOrganisation": "an organisation"
+    "anOrganisation": "an organisation",
+    "markAllRead": "Mark all as read",
+    "unreadCount": { "one": "1 unread. Open an item to mark it read.", "other": "{count} unread. Open an item to mark it read." },
+    "allRead": "You're all caught up."
   },
 
   "notify": {
@@ -416,7 +433,13 @@
     "CONFIRM_RECEIPT": "{org} received {item} — it will be reused",
     "CONFIRM_RECYCLED": "{item} was recycled",
     "NO_RECYCLER": "No recycler can take {item}; it's in the admin queue",
-    "REQUEUE": "{item} returned to matching by an admin"
+    "REQUEUE": "{item} returned to matching by an admin",
+    "unknown": "Something changed",
+    "kind": {
+      "DONATION_EVENT": "{item}: {from} → {to}",
+      "ORGANISATION_REGISTERED": "{org} registered as an organisation",
+      "CHAT_MESSAGE": "{sender} sent a message about {item}"
+    }
   },
 
   "discover": {
@@ -454,7 +477,25 @@
     "earlier": { "one": "1 earlier donation", "other": "{count} earlier donations" },
     "profile": "Organisation profile",
     "capacity": "Storage capacity",
-    "handover": "Handover"
+    "handover": "Handover",
+    "editProfile": "Edit"
+  },
+
+  "profile": {
+    "title": "Organisation profile",
+    "subtitle": "Keep these details current: matching reads them as soon as you save.",
+    "done": "Back to dashboard",
+    "identity": "Registered as",
+    "lockedNote": "Your name and registration ID are fixed after registration, so a verified organisation can't become a different one. Contact the platform team if they're wrong.",
+    "contact": "Contact",
+    "accepting": "What you can take",
+    "acceptingNote": "Donors are only matched with organisations that accept the category and have room for the items.",
+    "locationNote": "Drag the pin to your exact location: distance to donors is measured from it. The public map shows only your neighbourhood.",
+    "noChanges": "No unsaved changes.",
+    "discard": "Discard changes",
+    "save": "Save changes",
+    "savedTitle": "Saved",
+    "savedText": "Your profile is updated, and new rankings already use it."
   },
 
   "offer": {
@@ -560,7 +601,32 @@
     "verificationSave": "Save verification",
     "verificationSaved": "Saved. Only verified organisations receive offers.",
     "verificationUpdated": "Last changed {at}",
-    "verificationNever": "Not reviewed yet."
+    "verificationNever": "Not reviewed yet.",
+    "awaitingVerification": { "one": "1 organisation awaiting verification", "other": "{count} organisations awaiting verification" },
+    "awaitingVerificationText": "New organisations can't receive offers until an admin verifies them. Filter by status to review them."
+  },
+
+  "chat": {
+    "eyebrow": "Messages",
+    "title": "Conversation",
+    "about": "About {item}",
+    "theDonor": "The donor",
+    "you": "You",
+    "button": "Messages",
+    "buttonShort": "Messages",
+    "buttonUnread": { "one": "Messages, 1 unread", "other": "Messages, {count} unread" },
+    "newMessages": { "one": "1 new message", "other": "{count} new messages" },
+    "empty": "No messages yet. Say hello and agree on the handover.",
+    "closedTitle": "This conversation is closed",
+    "closedGeneric": "You can read it, but no longer reply.",
+    "messageLabel": "Your message",
+    "placeholder": "Write a message…",
+    "messageHint": "Enter sends, Shift+Enter starts a new line. Messages can't be edited or deleted.",
+    "send": "Send",
+    "threads": "Conversations",
+    "threadsNote": "This donation was accepted more than once. Earlier conversations are read-only.",
+    "threadCurrent": "{org}",
+    "threadEarlier": "{org} (earlier)"
   },
 
   "notFound": {
@@ -572,6 +638,9 @@
   "vocab": {
     "Actor": { "DONOR": "Donor", "ACCEPTOR": "Organisation", "ADMIN": "Admin", "SYSTEM": "ReLoop (automatic)" },
     "Category": { "CLOTHES": "Clothes", "TOYS": "Toys", "BOOKS": "Books" },
+    "ChatClosure": {
+      "NO_LONGER_HELD": "The organisation no longer holds this donation, so the conversation is read-only."
+    },
     "Condition": { "NEW": "New", "GENTLY_USED": "Gently used", "USED": "Used" },
     "DonationAction": {
       "OFFER": "Offered",
@@ -620,6 +689,11 @@
       "INSUFFICIENT_CAPACITY": "not enough storage"
     },
     "HandoverMode": { "ACCEPTOR_PICKUP": "Organisation collects", "DONOR_DROPOFF": "Donor drops off" },
+    "NotificationKind": {
+      "DONATION_EVENT": "Donation update",
+      "ORGANISATION_REGISTERED": "New organisation",
+      "CHAT_MESSAGE": "Message"
+    },
     "OfferResponse": { "ACCEPTED": "Accepted", "REJECTED": "Declined", "EXPIRED": "Expired", "RETRACTED": "Withdrawn" },
     "OfferSource": { "DONOR": "donor's choice", "SYSTEM": "automatic re-offer" },
     "RankingTrigger": { "DONOR_OFFER": "Donor's offer", "RE_MATCHING": "Re-matching" },

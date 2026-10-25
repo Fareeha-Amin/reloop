@@ -6,6 +6,7 @@ import { LinkCard } from '../ui/Card';
 import { Icon } from '../ui/icons';
 import { Tag } from '../ui/Tag';
 import { vocabLabel } from '../vocab/display';
+import { UnreadMessagesTag } from './chat';
 import { CategoryBadge, donationTitle } from './donation';
 import { StatusTag } from './StatusTag';
 
@@ -69,11 +70,14 @@ export function HeldCard({ held }: { held: AcceptedDonationOut }) {
               })}
             </p>
           )}
-          {held.allowed_actions.length > 0 && (
-            <div className="mt-3">
-              <Tag tone="attention" icon="alert">
-                {t('held.yourMove')}
-              </Tag>
+          {(held.allowed_actions.length > 0 || (held.chat?.unread ?? 0) > 0) && (
+            <div className="mt-3 flex flex-wrap gap-2">
+              {held.allowed_actions.length > 0 && (
+                <Tag tone="attention" icon="alert">
+                  {t('held.yourMove')}
+                </Tag>
+              )}
+              <UnreadMessagesTag summary={held.chat} />
             </div>
           )}
         </div>

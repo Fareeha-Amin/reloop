@@ -11,7 +11,7 @@ from app.schemas.donation import DonationCreate, DonationImageOut, DonationOut, 
 from app.schemas.matching import OfferCreate, ScheduleIn, SlateOut
 from app.schemas.timeline import TimelineOut
 from app.security.deps import CurrentUser, DbSession, DonorOrAdminUser, DonorUser
-from app.services import actions, donations, matching, timeline
+from app.services import actions, chat, donations, matching, timeline
 from app.services.donations import Upload
 
 router = APIRouter(prefix="/donations", tags=["donor: donations"])
@@ -29,6 +29,7 @@ def donation_out(db, donation: Donation, viewer: User) -> DonationOut:
         actions.available(db, donation, actor),
         actions.escalation_cause(db, donation),
         HolderOut.from_match(held) if held is not None else None,
+        chat.summary(db, viewer, donation),
     )
 
 

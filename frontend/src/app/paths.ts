@@ -1,5 +1,10 @@
 /** Page URLs, built in one place. */
 
+/** A donation page with this query parameter opens its chat panel (components/chat.tsx). */
+export const CHAT_PARAM = 'chat';
+export const CHAT_PARAM_OPEN = 'open';
+export const withChatOpen = (path: string) => `${path}?${CHAT_PARAM}=${CHAT_PARAM_OPEN}`;
+
 export const paths = {
   home: '/',
   login: '/login',
@@ -15,6 +20,7 @@ export const paths = {
   candidates: (id: string) => `/donor/donations/${id}/candidates`,
 
   acceptor: '/acceptor',
+  acceptorProfile: '/acceptor/profile',
   offer: (matchId: string) => `/acceptor/offers/${matchId}`,
   heldDonation: (id: string) => `/acceptor/donations/${id}`,
 

@@ -2,8 +2,8 @@
   "openapi": "3.1.0",
   "info": {
     "title": "ReLoop API",
-    "description": "The core loop: explainable matching, the full donation lifecycle, rejection handling, escalation, a recycling fallback and the deadline sweeper (in-process every 15 minutes; POST /admin/sweep runs it now). Phase 3 adds an in-app notification feed (polled; no push or email) and a public discovery map of verified organisations at approximate positions. **Stubs and simulations:** geocoding is a stub (coordinates are accepted as supplied); recycling settlements are **simulated** over **estimated** mass (per-category weights are placeholders), and an admin confirms recycling on the recycler's behalf. No money moves.",
-    "version": "0.3.0-phase3"
+    "description": "The core loop: explainable matching, the full donation lifecycle, rejection handling, escalation, a recycling fallback and the deadline sweeper (in-process every 15 minutes; POST /admin/sweep runs it now). Phase 3 adds an in-app notification feed (polled; no push or email), a public discovery map of verified organisations at approximate positions, and a chat between a donor and the organisation that accepted their donation (polled). **Stubs and simulations:** geocoding is a stub (coordinates are accepted as supplied); recycling settlements are **simulated** over **estimated** mass (per-category weights are placeholders), and an admin confirms recycling on the recycler's behalf. No money moves.",
+    "version": "0.3.3-phase3"
   },
   "paths": {
     "/auth/register/donor": {
@@ -1730,6 +1730,33 @@
         }
       }
     },
+    "/admin/organisations/counts": {
+      "get": {
+        "tags": [
+          "admin"
+        ],
+        "summary": "Organisation Counts",
+        "description": "How many organisations are in each verification status, and how many await an\nadmin's decision (every organisation starts PENDING).",
+        "operationId": "organisation_counts_admin_organisations_counts_get",
+        "responses": {
+          "200": {
+            "description": "Successful Response",
+            "content": {
+              "application/json": {
+                "schema": {
+                  "$ref": "#/components/schemas/OrganizationCountsOut"
+                }
+              }
+            }
+          }
+        },
+        "security": [
+          {
+            "OAuth2PasswordBearer": []
+          }
+        ]
+      }
+    },
     "/admin/organisations/{org_id}": {
       "get": {
         "tags": [
@@ -2329,7 +2356,7 @@
           "notifications"
         ],
         "summary": "List Notifications",
-        "description": "Status events on donations you are party to, newest first. In-app only: derived\nfrom the audit log on each request, with no push or email (see README). Poll it.",
+        "description": "Newest first: status events on donations you are party to, chat messages from the\nother party in threads you can read, and (admins) organisation registrations. In-app\nonly: derived on each request, with no push or email and no server-side read state\n(see README). Poll it, and track read items by `key`.",
         "operationId": "list_notifications_notifications_get",
         "security": [
           {
@@ -2372,6 +2399,177 @@
                     "$ref": "#/components/schemas/NotificationOut"
                   },
                   "title": "Response List Notifications Notifications Get"
+                }
+              }
+            }
+          },
+          "422": {
+            "description": "Validation Error",
+            "content": {
+              "application/json": {
+                "schema": {
+                  "$ref": "#/components/schemas/HTTPValidationError"
+                }
+              }
+            }
+          }
+        }
+      }
+    },
+    "/chats": {
+      "get": {
+        "tags": [
+          "chat"
+        ],
+        "summary": "List Threads",
+        "description": "The chat threads on a donation that you can read, newest acceptance first, each\nwith its messages. A thread is one accepted offer: the donor reads every thread on\ntheir donation; the organisation reads its own while its acceptance is the latest.\nBoth can write from acceptance onward, including after completion; a thread closes\n(closed_reason) only when the organisation stops holding the donation without\ncompleting it. Admins have no access to chats. Poll it: there is no push.",
+        "operationId": "list_threads_chats_get",
+        "security": [
+          {
+            "OAuth2PasswordBearer": []
+          }
+        ],
+        "parameters": [
+          {
+            "name": "donation_id",
+            "in": "query",
+            "required": true,
+            "schema": {
+              "type": "string",
+              "format": "uuid",
+              "title": "Donation Id"
+            }
+          }
+        ],
+        "responses": {
+          "200": {
+            "description": "Successful Response",
+            "content": {
+              "application/json": {
+                "schema": {
+                  "type": "array",
+                  "items": {
+                    "$ref": "#/components/schemas/ChatThreadOut"
+                  },
+                  "title": "Response List Threads Chats Get"
+                }
+              }
+            }
+          },
+          "422": {
+            "description": "Validation Error",
+            "content": {
+              "application/json": {
+                "schema": {
+                  "$ref": "#/components/schemas/HTTPValidationError"
+                }
+              }
+            }
+          }
+        }
+      }
+    },
+    "/chats/{thread_id}/messages": {
+      "post": {
+        "tags": [
+          "chat"
+        ],
+        "summary": "Post Message",
+        "description": "Append a message (messages are never edited or deleted). 409 if the thread is\nclosed. Returns the whole thread.",
+        "operationId": "post_message_chats__thread_id__messages_post",
+        "security": [
+          {
+            "OAuth2PasswordBearer": []
+          }
+        ],
+        "parameters": [
+          {
+            "name": "thread_id",
+            "in": "path",
+            "required": true,
+            "schema": {
+              "type": "string",
+              "format": "uuid",
+              "title": "Thread Id"
+            }
+          }
+        ],
+        "requestBody": {
+          "required": true,
+          "content": {
+            "application/json": {
+              "schema": {
+                "$ref": "#/components/schemas/ChatMessageIn"
+              }
+            }
+          }
+        },
+        "responses": {
+          "201": {
+            "description": "Successful Response",
+            "content": {
+              "application/json": {
+                "schema": {
+                  "$ref": "#/components/schemas/ChatThreadOut"
+                }
+              }
+            }
+          },
+          "422": {
+            "description": "Validation Error",
+            "content": {
+              "application/json": {
+                "schema": {
+                  "$ref": "#/components/schemas/HTTPValidationError"
+                }
+              }
+            }
+          }
+        }
+      }
+    },
+    "/chats/{thread_id}/read": {
+      "post": {
+        "tags": [
+          "chat"
+        ],
+        "summary": "Mark Read",
+        "description": "You have been shown the thread up to `up_to_message_id`: messages from the other\nparty up to it stop counting as unread (`unread` here, and `chat.unread` on the\ndonation). Read state is kept per user on the server; it never moves backward.\nWorks on closed threads too.",
+        "operationId": "mark_read_chats__thread_id__read_post",
+        "security": [
+          {
+            "OAuth2PasswordBearer": []
+          }
+        ],
+        "parameters": [
+          {
+            "name": "thread_id",
+            "in": "path",
+            "required": true,
+            "schema": {
+              "type": "string",
+              "format": "uuid",
+              "title": "Thread Id"
+            }
+          }
+        ],
+        "requestBody": {
+          "required": true,
+          "content": {
+            "application/json": {
+              "schema": {
+                "$ref": "#/components/schemas/ChatReadIn"
+              }
+            }
+          }
+        },
+        "responses": {
+          "200": {
+            "description": "Successful Response",
+            "content": {
+              "application/json": {
+                "schema": {
+                  "$ref": "#/components/schemas/ChatThreadOut"
                 }
               }
             }
@@ -2580,6 +2778,17 @@
             },
             "type": "array",
             "title": "Allowed Actions"
+          },
+          "chat": {
+            "anyOf": [
+              {
+                "$ref": "#/components/schemas/ChatSummaryOut"
+              },
+              {
+                "type": "null"
+              }
+            ],
+            "description": "This organisation's chat with the donor; null when it can no longer read the thread."
           }
         },
         "type": "object",
@@ -2600,7 +2809,8 @@
           "pickup_longitude",
           "image_ids",
           "handover",
-          "allowed_actions"
+          "allowed_actions",
+          "chat"
         ],
         "title": "AcceptedDonationOut",
         "description": "A donation this organisation accepted. The precise address is present only while\nthe organisation holds it (ACCEPTED, PICKUP_SCHEDULED, IN_TRANSIT)."
@@ -2995,6 +3205,198 @@
         ],
         "title": "Category",
         "description": "MVP categories. Food is deliberately out of scope (no cold-chain handling)."
+      },
+      "ChatClosure": {
+        "type": "string",
+        "enum": [
+          "NO_LONGER_HELD"
+        ],
+        "title": "ChatClosure",
+        "description": "Why a donor-organisation chat thread no longer takes messages (it stays readable)."
+      },
+      "ChatMessageIn": {
+        "properties": {
+          "body": {
+            "type": "string",
+            "maxLength": 2000,
+            "minLength": 1,
+            "title": "Body"
+          }
+        },
+        "additionalProperties": false,
+        "type": "object",
+        "required": [
+          "body"
+        ],
+        "title": "ChatMessageIn"
+      },
+      "ChatMessageOut": {
+        "properties": {
+          "id": {
+            "type": "integer",
+            "title": "Id",
+            "description": "Increases within a thread."
+          },
+          "at": {
+            "type": "string",
+            "format": "date-time",
+            "title": "At"
+          },
+          "sender": {
+            "$ref": "#/components/schemas/Actor",
+            "description": "DONOR or ACCEPTOR: which side of the thread wrote it."
+          },
+          "sender_name": {
+            "anyOf": [
+              {
+                "type": "string"
+              },
+              {
+                "type": "null"
+              }
+            ],
+            "title": "Sender Name",
+            "description": "The organisation's name for its messages. Null for the donor's: the donor's name is not disclosed to the organisation."
+          },
+          "mine": {
+            "type": "boolean",
+            "title": "Mine",
+            "description": "Written by the user reading the thread."
+          },
+          "body": {
+            "type": "string",
+            "title": "Body"
+          },
+          "notification_key": {
+            "anyOf": [
+              {
+                "type": "string"
+              },
+              {
+                "type": "null"
+              }
+            ],
+            "title": "Notification Key",
+            "description": "The key of the notification this message produced for the reader (messages from the other party only), so a client can mark it read when the thread is shown."
+          }
+        },
+        "type": "object",
+        "required": [
+          "id",
+          "at",
+          "sender",
+          "sender_name",
+          "mine",
+          "body",
+          "notification_key"
+        ],
+        "title": "ChatMessageOut"
+      },
+      "ChatReadIn": {
+        "properties": {
+          "up_to_message_id": {
+            "type": "integer",
+            "title": "Up To Message Id",
+            "description": "The newest message the reader has been shown, in this thread."
+          }
+        },
+        "additionalProperties": false,
+        "type": "object",
+        "required": [
+          "up_to_message_id"
+        ],
+        "title": "ChatReadIn"
+      },
+      "ChatSummaryOut": {
+        "properties": {
+          "threads": {
+            "type": "integer",
+            "title": "Threads",
+            "description": "Threads the viewer can read (more than one after an admin requeue)."
+          },
+          "unread": {
+            "type": "integer",
+            "title": "Unread",
+            "description": "Unread messages from the other party, across those threads."
+          },
+          "can_write": {
+            "type": "boolean",
+            "title": "Can Write",
+            "description": "Whether one of them still takes messages."
+          }
+        },
+        "type": "object",
+        "required": [
+          "threads",
+          "unread",
+          "can_write"
+        ],
+        "title": "ChatSummaryOut",
+        "description": "On a donation, for its donor or the organisation that accepted it: present only\nwhen the viewer can read at least one chat thread on it."
+      },
+      "ChatThreadOut": {
+        "properties": {
+          "id": {
+            "type": "string",
+            "format": "uuid",
+            "title": "Id",
+            "description": "The thread: the accepted offer's id. Post to /chats/{id}/messages."
+          },
+          "donation_id": {
+            "type": "string",
+            "format": "uuid",
+            "title": "Donation Id"
+          },
+          "organization_name": {
+            "type": "string",
+            "title": "Organization Name"
+          },
+          "accepted_at": {
+            "type": "string",
+            "format": "date-time",
+            "title": "Accepted At"
+          },
+          "can_write": {
+            "type": "boolean",
+            "title": "Can Write"
+          },
+          "closed_reason": {
+            "anyOf": [
+              {
+                "$ref": "#/components/schemas/ChatClosure"
+              },
+              {
+                "type": "null"
+              }
+            ],
+            "description": "Why the thread no longer takes messages, when can_write is false."
+          },
+          "unread": {
+            "type": "integer",
+            "title": "Unread",
+            "description": "Messages from the other party the reader has not marked read."
+          },
+          "messages": {
+            "items": {
+              "$ref": "#/components/schemas/ChatMessageOut"
+            },
+            "type": "array",
+            "title": "Messages",
+            "description": "Oldest first."
+          }
+        },
+        "type": "object",
+        "required": [
+          "id",
+          "donation_id",
+          "organization_name",
+          "accepted_at",
+          "can_write",
+          "closed_reason",
+          "unread",
+          "messages"
+        ],
+        "title": "ChatThreadOut"
       },
       "ComponentOut": {
         "properties": {
@@ -3398,6 +3800,17 @@
                 "type": "null"
               }
             ]
+          },
+          "chat": {
+            "anyOf": [
+              {
+                "$ref": "#/components/schemas/ChatSummaryOut"
+              },
+              {
+                "type": "null"
+              }
+            ],
+            "description": "The donor's chat with the accepting organisation; null until there is a thread, and for admins."
           },
           "created_at": {
             "type": "string",
@@ -3974,12 +4387,25 @@
         "title": "NeedUpdate",
         "description": "A need's category is fixed; to need something else, add a new need. Needs are\nnever deleted: set is_active to false instead."
       },
+      "NotificationKind": {
+        "type": "string",
+        "enum": [
+          "DONATION_EVENT",
+          "ORGANISATION_REGISTERED",
+          "CHAT_MESSAGE"
+        ],
+        "title": "NotificationKind",
+        "description": "What an item in the in-app notification feed is about."
+      },
       "NotificationOut": {
         "properties": {
-          "id": {
-            "type": "integer",
-            "title": "Id",
-            "description": "The status event's id. Increases over time; use it to track what has been seen."
+          "kind": {
+            "$ref": "#/components/schemas/NotificationKind"
+          },
+          "key": {
+            "type": "string",
+            "title": "Key",
+            "description": "Unique and stable; use it to remember which items have been read."
           },
           "at": {
             "type": "string",
@@ -3987,29 +4413,78 @@
             "title": "At"
           },
           "donation_id": {
-            "type": "string",
-            "format": "uuid",
+            "anyOf": [
+              {
+                "type": "string",
+                "format": "uuid"
+              },
+              {
+                "type": "null"
+              }
+            ],
             "title": "Donation Id"
           },
           "category": {
-            "$ref": "#/components/schemas/Category"
+            "anyOf": [
+              {
+                "$ref": "#/components/schemas/Category"
+              },
+              {
+                "type": "null"
+              }
+            ]
           },
           "quantity": {
-            "type": "integer",
+            "anyOf": [
+              {
+                "type": "integer"
+              },
+              {
+                "type": "null"
+              }
+            ],
             "title": "Quantity",
             "description": "A count of items."
           },
           "action": {
-            "$ref": "#/components/schemas/DonationAction"
+            "anyOf": [
+              {
+                "$ref": "#/components/schemas/DonationAction"
+              },
+              {
+                "type": "null"
+              }
+            ]
           },
           "actor": {
-            "$ref": "#/components/schemas/Actor"
+            "anyOf": [
+              {
+                "$ref": "#/components/schemas/Actor"
+              },
+              {
+                "type": "null"
+              }
+            ]
           },
           "from_state": {
-            "$ref": "#/components/schemas/DonationStatus"
+            "anyOf": [
+              {
+                "$ref": "#/components/schemas/DonationStatus"
+              },
+              {
+                "type": "null"
+              }
+            ]
           },
           "to_state": {
-            "$ref": "#/components/schemas/DonationStatus"
+            "anyOf": [
+              {
+                "$ref": "#/components/schemas/DonationStatus"
+              },
+              {
+                "type": "null"
+              }
+            ]
           },
           "cause": {
             "anyOf": [
@@ -4021,6 +4496,18 @@
               }
             ]
           },
+          "organization_id": {
+            "anyOf": [
+              {
+                "type": "string",
+                "format": "uuid"
+              },
+              {
+                "type": "null"
+              }
+            ],
+            "title": "Organization Id"
+          },
           "organization_name": {
             "anyOf": [
               {
@@ -4030,26 +4517,28 @@
                 "type": "null"
               }
             ],
-            "title": "Organization Name",
-            "description": "The organisation of the offer this event concerns, if any."
+            "title": "Organization Name"
+          },
+          "verification_status": {
+            "anyOf": [
+              {
+                "$ref": "#/components/schemas/VerificationStatus"
+              },
+              {
+                "type": "null"
+              }
+            ],
+            "description": "ORGANISATION_REGISTERED only: the organisation's status now."
           }
         },
         "type": "object",
         "required": [
-          "id",
-          "at",
-          "donation_id",
-          "category",
-          "quantity",
-          "action",
-          "actor",
-          "from_state",
-          "to_state",
-          "cause",
-          "organization_name"
+          "kind",
+          "key",
+          "at"
         ],
         "title": "NotificationOut",
-        "description": "One status event. Admin reasons and acceptors' rejection notes are never included;\nthey stay in the admin detail view."
+        "description": "One feed item. Which fields are set depends on `kind`:\n\n- DONATION_EVENT: the donation fields and the transition (action, actor, states, cause);\n  organization_name is the organisation of the offer the event concerns, if any.\n- ORGANISATION_REGISTERED (admins): organization_id, organization_name and the\n  organisation's current verification_status.\n- CHAT_MESSAGE: the donation fields, and organization_name of the thread. Never the\n  message text.\n\nAdmin reasons, acceptors' rejection notes and chat text are never included."
       },
       "OfferCreate": {
         "properties": {
@@ -4318,6 +4807,32 @@
         ],
         "title": "OfferSource",
         "description": "Whether an offer was the donor's choice or made by the system (re-offers)."
+      },
+      "OrganizationCountsOut": {
+        "properties": {
+          "by_status": {
+            "additionalProperties": {
+              "type": "integer"
+            },
+            "propertyNames": {
+              "$ref": "#/components/schemas/VerificationStatus"
+            },
+            "type": "object",
+            "title": "By Status",
+            "description": "Every verification status, zero included."
+          },
+          "awaiting_verification": {
+            "type": "integer",
+            "title": "Awaiting Verification",
+            "description": "Organisations an admin has yet to verify or reject."
+          }
+        },
+        "type": "object",
+        "required": [
+          "by_status",
+          "awaiting_verification"
+        ],
+        "title": "OrganizationCountsOut"
       },
       "OrganizationCreate": {
         "properties": {

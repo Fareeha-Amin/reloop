@@ -3,7 +3,7 @@ import { Link, NavLink, Outlet, useNavigate } from 'react-router';
 import { paths } from '../app/paths';
 import { useNotifications } from '../app/queries';
 import { useSession } from '../app/session';
-import { useSeenMarker } from '../app/unread';
+import { useReadState } from '../app/unread';
 import { UNREAD_BADGE_MAX } from '../config';
 import { t } from '../i18n';
 import { Button, LinkButton } from '../ui/Button';
@@ -15,8 +15,8 @@ import { vocabLabel } from '../vocab/display';
 
 function NotificationBell({ userId }: { userId: string }) {
   const { data } = useNotifications(true);
-  const { seen } = useSeenMarker(userId);
-  const unread = (data ?? []).filter((n) => n.id > seen).length;
+  const { unreadCount } = useReadState(userId);
+  const unread = unreadCount(data ?? []);
   const label = unread > UNREAD_BADGE_MAX ? `${UNREAD_BADGE_MAX}+` : String(unread);
   return (
     <Link

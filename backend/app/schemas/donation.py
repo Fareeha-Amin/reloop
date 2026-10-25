@@ -15,6 +15,7 @@ from app.schemas.common import (
     check_location_update,
     reject_explicit_nulls,
 )
+from app.schemas.chat import ChatSummaryOut
 from app.schemas.timeline import HandoverOut
 from app.domain import lifecycle
 
@@ -166,6 +167,9 @@ class DonationOut(OutputModel):
     # The organisation holding the donation, with its address and contact; null unless
     # the donation is ACCEPTED, PICKUP_SCHEDULED or IN_TRANSIT.
     holder: HolderOut | None = None
+    chat: ChatSummaryOut | None = Field(
+        default=None, description="The donor's chat with the accepting organisation; null until there is a thread, and for admins."
+    )
     created_at: datetime
     updated_at: datetime
 
@@ -176,10 +180,12 @@ class DonationOut(OutputModel):
         allowed_actions: frozenset[DonationAction],
         escalation_cause: EscalationCause | None = None,
         holder: HolderOut | None = None,
+        chat: ChatSummaryOut | None = None,
     ) -> "DonationOut":
         data = {name: getattr(donation, name) for name in cls.model_fields if hasattr(donation, name)}
         data["editable"] = lifecycle.is_editable(donation.status)
         data["allowed_actions"] = sorted(allowed_actions)
         data["escalation_cause"] = escalation_cause
         data["holder"] = holder
+        data["chat"] = chat
         return cls.model_validate(data)

@@ -43,6 +43,8 @@ def test_vocabularies_found():
         "ScoreFactor",
         "FilterReason",
         "RankingTrigger",
+        "ChatClosure",
+        "NotificationKind",
     } <= names
 
 

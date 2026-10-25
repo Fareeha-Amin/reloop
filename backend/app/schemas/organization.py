@@ -157,6 +157,11 @@ class AdminOrganizationDetail(OrganizationOut):
     needs: list[NeedOut]
 
 
+class OrganizationCountsOut(OutputModel):
+    by_status: dict[VerificationStatus, int] = Field(description="Every verification status, zero included.")
+    awaiting_verification: int = Field(description="Organisations an admin has yet to verify or reject.")
+
+
 class VerificationUpdate(InputModel):
     status: VerificationStatus
     note: Note | None = None

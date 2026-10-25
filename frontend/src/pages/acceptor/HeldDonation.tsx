@@ -4,6 +4,7 @@ import { paths } from '../../app/paths';
 import { useHeldDonation } from '../../app/queries';
 import { ActionBar } from '../../components/ActionBar';
 import { ApiErrorAlert } from '../../components/ApiErrorAlert';
+import { ChatButton } from '../../components/chat';
 import { CategoryBadge, donationTitle } from '../../components/donation';
 import { ImageGallery } from '../../components/images';
 import { PointMap } from '../../components/maps';
@@ -49,7 +50,12 @@ export function HeldDonation() {
             <StatusTag status={d.status} size="md" />
           </span>
         }
-        actions={<ActionBar surface="held" id={d.donation_id} allowed={d.allowed_actions} size="lg" />}
+        actions={
+          <>
+            {d.chat && <ChatButton donationId={d.donation_id} summary={d.chat} audience="organisation" about={donationTitle(d)} size="lg" />}
+            <ActionBar surface="held" id={d.donation_id} allowed={d.allowed_actions} size="lg" />
+          </>
+        }
       />
 
       <div className="space-y-6">

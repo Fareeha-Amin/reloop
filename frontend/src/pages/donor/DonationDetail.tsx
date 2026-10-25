@@ -4,6 +4,7 @@ import { paths } from '../../app/paths';
 import { useDonation, useTimeline } from '../../app/queries';
 import { ActionBar } from '../../components/ActionBar';
 import { ApiErrorAlert } from '../../components/ApiErrorAlert';
+import { ChatButton } from '../../components/chat';
 import { CategoryBadge, donationTitle, HolderCard } from '../../components/donation';
 import { ImageGallery } from '../../components/images';
 import { PointMap } from '../../components/maps';
@@ -60,7 +61,10 @@ export function DonationDetail() {
               </div>
             </div>
           </div>
-          <ActionBar surface="donor" id={d.id} allowed={d.allowed_actions} size="lg" />
+          <div className="flex flex-wrap items-center gap-2">
+            {d.chat && <ChatButton donationId={d.id} summary={d.chat} audience="donor" about={donationTitle(d)} size="lg" />}
+            <ActionBar surface="donor" id={d.id} allowed={d.allowed_actions} size="lg" />
+          </div>
         </div>
         {openOffer && (
           <p className="mt-4 flex items-center gap-2 text-sm text-ink-soft">

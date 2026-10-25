@@ -602,6 +602,27 @@ export interface paths {
         patch?: never;
         trace?: never;
     };
+    "/admin/organisations/counts": {
+        parameters: {
+            query?: never;
+            header?: never;
+            path?: never;
+            cookie?: never;
+        };
+        /**
+         * Organisation Counts
+         * @description How many organisations are in each verification status, and how many await an
+         *     admin's decision (every organisation starts PENDING).
+         */
+        get: operations["organisation_counts_admin_organisations_counts_get"];
+        put?: never;
+        post?: never;
+        delete?: never;
+        options?: never;
+        head?: never;
+        patch?: never;
+        trace?: never;
+    };
     "/admin/organisations/{org_id}": {
         parameters: {
             query?: never;
@@ -854,12 +875,83 @@ export interface paths {
         };
         /**
          * List Notifications
-         * @description Status events on donations you are party to, newest first. In-app only: derived
-         *     from the audit log on each request, with no push or email (see README). Poll it.
+         * @description Newest first: status events on donations you are party to, chat messages from the
+         *     other party in threads you can read, and (admins) organisation registrations. In-app
+         *     only: derived on each request, with no push or email and no server-side read state
+         *     (see README). Poll it, and track read items by `key`.
          */
         get: operations["list_notifications_notifications_get"];
         put?: never;
         post?: never;
+        delete?: never;
+        options?: never;
+        head?: never;
+        patch?: never;
+        trace?: never;
+    };
+    "/chats": {
+        parameters: {
+            query?: never;
+            header?: never;
+            path?: never;
+            cookie?: never;
+        };
+        /**
+         * List Threads
+         * @description The chat threads on a donation that you can read, newest acceptance first, each
+         *     with its messages. A thread is one accepted offer: the donor reads every thread on
+         *     their donation; the organisation reads its own while its acceptance is the latest.
+         *     Both can write from acceptance onward, including after completion; a thread closes
+         *     (closed_reason) only when the organisation stops holding the donation without
+         *     completing it. Admins have no access to chats. Poll it: there is no push.
+         */
+        get: operations["list_threads_chats_get"];
+        put?: never;
+        post?: never;
+        delete?: never;
+        options?: never;
+        head?: never;
+        patch?: never;
+        trace?: never;
+    };
+    "/chats/{thread_id}/messages": {
+        parameters: {
+            query?: never;
+            header?: never;
+            path?: never;
+            cookie?: never;
+        };
+        get?: never;
+        put?: never;
+        /**
+         * Post Message
+         * @description Append a message (messages are never edited or deleted). 409 if the thread is
+         *     closed. Returns the whole thread.
+         */
+        post: operations["post_message_chats__thread_id__messages_post"];
+        delete?: never;
+        options?: never;
+        head?: never;
+        patch?: never;
+        trace?: never;
+    };
+    "/chats/{thread_id}/read": {
+        parameters: {
+            query?: never;
+            header?: never;
+            path?: never;
+            cookie?: never;
+        };
+        get?: never;
+        put?: never;
+        /**
+         * Mark Read
+         * @description You have been shown the thread up to `up_to_message_id`: messages from the other
+         *     party up to it stop counting as unread (`unread` here, and `chat.unread` on the
+         *     donation). Read state is kept per user on the server; it never moves backward.
+         *     Works on closed threads too.
+         */
+        post: operations["mark_read_chats__thread_id__read_post"];
         delete?: never;
         options?: never;
         head?: never;
@@ -962,6 +1054,8 @@ export interface components {
             handover: components["schemas"]["HandoverOut"] | null;
             /** Allowed Actions */
             allowed_actions: components["schemas"]["DonationAction"][];
+            /** @description This organisation's chat with the donor; null when it can no longer read the thread. */
+            chat: components["schemas"]["ChatSummaryOut"] | null;
         };
         /**
          * AcceptorRegister
@@ -1147,6 +1241,114 @@ export interface components {
          * @enum {string}
          */
         Category: "CLOTHES" | "TOYS" | "BOOKS";
+        /**
+         * ChatClosure
+         * @description Why a donor-organisation chat thread no longer takes messages (it stays readable).
+         * @enum {string}
+         */
+        ChatClosure: "NO_LONGER_HELD";
+        /** ChatMessageIn */
+        ChatMessageIn: {
+            /** Body */
+            body: string;
+        };
+        /** ChatMessageOut */
+        ChatMessageOut: {
+            /**
+             * Id
+             * @description Increases within a thread.
+             */
+            id: number;
+            /**
+             * At
+             * Format: date-time
+             */
+            at: string;
+            /** @description DONOR or ACCEPTOR: which side of the thread wrote it. */
+            sender: components["schemas"]["Actor"];
+            /**
+             * Sender Name
+             * @description The organisation's name for its messages. Null for the donor's: the donor's name is not disclosed to the organisation.
+             */
+            sender_name: string | null;
+            /**
+             * Mine
+             * @description Written by the user reading the thread.
+             */
+            mine: boolean;
+            /** Body */
+            body: string;
+            /**
+             * Notification Key
+             * @description The key of the notification this message produced for the reader (messages from the other party only), so a client can mark it read when the thread is shown.
+             */
+            notification_key: string | null;
+        };
+        /** ChatReadIn */
+        ChatReadIn: {
+            /**
+             * Up To Message Id
+             * @description The newest message the reader has been shown, in this thread.
+             */
+            up_to_message_id: number;
+        };
+        /**
+         * ChatSummaryOut
+         * @description On a donation, for its donor or the organisation that accepted it: present only
+         *     when the viewer can read at least one chat thread on it.
+         */
+        ChatSummaryOut: {
+            /**
+             * Threads
+             * @description Threads the viewer can read (more than one after an admin requeue).
+             */
+            threads: number;
+            /**
+             * Unread
+             * @description Unread messages from the other party, across those threads.
+             */
+            unread: number;
+            /**
+             * Can Write
+             * @description Whether one of them still takes messages.
+             */
+            can_write: boolean;
+        };
+        /** ChatThreadOut */
+        ChatThreadOut: {
+            /**
+             * Id
+             * Format: uuid
+             * @description The thread: the accepted offer's id. Post to /chats/{id}/messages.
+             */
+            id: string;
+            /**
+             * Donation Id
+             * Format: uuid
+             */
+            donation_id: string;
+            /** Organization Name */
+            organization_name: string;
+            /**
+             * Accepted At
+             * Format: date-time
+             */
+            accepted_at: string;
+            /** Can Write */
+            can_write: boolean;
+            /** @description Why the thread no longer takes messages, when can_write is false. */
+            closed_reason: components["schemas"]["ChatClosure"] | null;
+            /**
+             * Unread
+             * @description Messages from the other party the reader has not marked read.
+             */
+            unread: number;
+            /**
+             * Messages
+             * @description Oldest first.
+             */
+            messages: components["schemas"]["ChatMessageOut"][];
+        };
         /**
          * ComponentOut
          * @description One factor of a score. Structured, not a sentence, so a client can render or
@@ -1351,6 +1553,8 @@ export interface components {
             /** Images */
             images: components["schemas"]["DonationImageOut"][];
             holder?: components["schemas"]["HolderOut"] | null;
+            /** @description The donor's chat with the accepting organisation; null until there is a thread, and for admins. */
+            chat?: components["schemas"]["ChatSummaryOut"] | null;
             /**
              * Created At
              * Format: date-time
@@ -1583,42 +1787,55 @@ export interface components {
             is_active?: boolean | null;
         };
         /**
+         * NotificationKind
+         * @description What an item in the in-app notification feed is about.
+         * @enum {string}
+         */
+        NotificationKind: "DONATION_EVENT" | "ORGANISATION_REGISTERED" | "CHAT_MESSAGE";
+        /**
          * NotificationOut
-         * @description One status event. Admin reasons and acceptors' rejection notes are never included;
-         *     they stay in the admin detail view.
+         * @description One feed item. Which fields are set depends on `kind`:
+         *
+         *     - DONATION_EVENT: the donation fields and the transition (action, actor, states, cause);
+         *       organization_name is the organisation of the offer the event concerns, if any.
+         *     - ORGANISATION_REGISTERED (admins): organization_id, organization_name and the
+         *       organisation's current verification_status.
+         *     - CHAT_MESSAGE: the donation fields, and organization_name of the thread. Never the
+         *       message text.
+         *
+         *     Admin reasons, acceptors' rejection notes and chat text are never included.
          */
         NotificationOut: {
+            kind: components["schemas"]["NotificationKind"];
             /**
-             * Id
-             * @description The status event's id. Increases over time; use it to track what has been seen.
+             * Key
+             * @description Unique and stable; use it to remember which items have been read.
              */
-            id: number;
+            key: string;
             /**
              * At
              * Format: date-time
              */
             at: string;
-            /**
-             * Donation Id
-             * Format: uuid
-             */
-            donation_id: string;
-            category: components["schemas"]["Category"];
+            /** Donation Id */
+            donation_id?: string | null;
+            category?: components["schemas"]["Category"] | null;
             /**
              * Quantity
              * @description A count of items.
              */
-            quantity: number;
-            action: components["schemas"]["DonationAction"];
-            actor: components["schemas"]["Actor"];
-            from_state: components["schemas"]["DonationStatus"];
-            to_state: components["schemas"]["DonationStatus"];
-            cause: components["schemas"]["EscalationCause"] | null;
-            /**
-             * Organization Name
-             * @description The organisation of the offer this event concerns, if any.
-             */
-            organization_name: string | null;
+            quantity?: number | null;
+            action?: components["schemas"]["DonationAction"] | null;
+            actor?: components["schemas"]["Actor"] | null;
+            from_state?: components["schemas"]["DonationStatus"] | null;
+            to_state?: components["schemas"]["DonationStatus"] | null;
+            cause?: components["schemas"]["EscalationCause"] | null;
+            /** Organization Id */
+            organization_id?: string | null;
+            /** Organization Name */
+            organization_name?: string | null;
+            /** @description ORGANISATION_REGISTERED only: the organisation's status now. */
+            verification_status?: components["schemas"]["VerificationStatus"] | null;
         };
         /** OfferCreate */
         OfferCreate: {
@@ -1740,6 +1957,21 @@ export interface components {
          * @enum {string}
          */
         OfferSource: "DONOR" | "SYSTEM";
+        /** OrganizationCountsOut */
+        OrganizationCountsOut: {
+            /**
+             * By Status
+             * @description Every verification status, zero included.
+             */
+            by_status: {
+                [key: string]: number;
+            };
+            /**
+             * Awaiting Verification
+             * @description Organisations an admin has yet to verify or reject.
+             */
+            awaiting_verification: number;
+        };
         /** OrganizationCreate */
         OrganizationCreate: {
             /** Name */
@@ -2171,6 +2403,12 @@ export type BodyLoginAuthLoginPost = components['schemas']['Body_login_auth_logi
 export type BodyUploadImagesDonationsDonationIdImagesPost = components['schemas']['Body_upload_images_donations__donation_id__images_post'];
 export type CandidateOut = components['schemas']['CandidateOut'];
 export type Category = components['schemas']['Category'];
+export type ChatClosure = components['schemas']['ChatClosure'];
+export type ChatMessageIn = components['schemas']['ChatMessageIn'];
+export type ChatMessageOut = components['schemas']['ChatMessageOut'];
+export type ChatReadIn = components['schemas']['ChatReadIn'];
+export type ChatSummaryOut = components['schemas']['ChatSummaryOut'];
+export type ChatThreadOut = components['schemas']['ChatThreadOut'];
 export type ComponentOut = components['schemas']['ComponentOut'];
 export type Condition = components['schemas']['Condition'];
 export type DiscoveryNeedOut = components['schemas']['DiscoveryNeedOut'];
@@ -2194,12 +2432,14 @@ export type HolderOut = components['schemas']['HolderOut'];
 export type NeedCreate = components['schemas']['NeedCreate'];
 export type NeedOut = components['schemas']['NeedOut'];
 export type NeedUpdate = components['schemas']['NeedUpdate'];
+export type NotificationKind = components['schemas']['NotificationKind'];
 export type NotificationOut = components['schemas']['NotificationOut'];
 export type OfferCreate = components['schemas']['OfferCreate'];
 export type OfferHistoryOut = components['schemas']['OfferHistoryOut'];
 export type OfferOut = components['schemas']['OfferOut'];
 export type OfferResponse = components['schemas']['OfferResponse'];
 export type OfferSource = components['schemas']['OfferSource'];
+export type OrganizationCountsOut = components['schemas']['OrganizationCountsOut'];
 export type OrganizationCreate = components['schemas']['OrganizationCreate'];
 export type OrganizationOut = components['schemas']['OrganizationOut'];
 export type OrganizationUpdate = components['schemas']['OrganizationUpdate'];
@@ -3316,6 +3556,26 @@ export interface operations {
             };
         };
     };
+    organisation_counts_admin_organisations_counts_get: {
+        parameters: {
+            query?: never;
+            header?: never;
+            path?: never;
+            cookie?: never;
+        };
+        requestBody?: never;
+        responses: {
+            /** @description Successful Response */
+            200: {
+                headers: {
+                    [name: string]: unknown;
+                };
+                content: {
+                    "application/json": components["schemas"]["OrganizationCountsOut"];
+                };
+            };
+        };
+    };
     get_organisation_admin_organisations__org_id__get: {
         parameters: {
             query?: never;
@@ -3698,6 +3958,107 @@ export interface operations {
             };
         };
     };
+    list_threads_chats_get: {
+        parameters: {
+            query: {
+                donation_id: string;
+            };
+            header?: never;
+            path?: never;
+            cookie?: never;
+        };
+        requestBody?: never;
+        responses: {
+            /** @description Successful Response */
+            200: {
+                headers: {
+                    [name: string]: unknown;
+                };
+                content: {
+                    "application/json": components["schemas"]["ChatThreadOut"][];
+                };
+            };
+            /** @description Validation Error */
+            422: {
+                headers: {
+                    [name: string]: unknown;
+                };
+                content: {
+                    "application/json": components["schemas"]["HTTPValidationError"];
+                };
+            };
+        };
+    };
+    post_message_chats__thread_id__messages_post: {
+        parameters: {
+            query?: never;
+            header?: never;
+            path: {
+                thread_id: string;
+            };
+            cookie?: never;
+        };
+        requestBody: {
+            content: {
+                "application/json": components["schemas"]["ChatMessageIn"];
+            };
+        };
+        responses: {
+            /** @description Successful Response */
+            201: {
+                headers: {
+                    [name: string]: unknown;
+                };
+                content: {
+                    "application/json": components["schemas"]["ChatThreadOut"];
+                };
+            };
+            /** @description Validation Error */
+            422: {
+                headers: {
+                    [name: string]: unknown;
+                };
+                content: {
+                    "application/json": components["schemas"]["HTTPValidationError"];
+                };
+            };
+        };
+    };
+    mark_read_chats__thread_id__read_post: {
+        parameters: {
+            query?: never;
+            header?: never;
+            path: {
+                thread_id: string;
+            };
+            cookie?: never;
+        };
+        requestBody: {
+            content: {
+                "application/json": components["schemas"]["ChatReadIn"];
+            };
+        };
+        responses: {
+            /** @description Successful Response */
+            200: {
+                headers: {
+                    [name: string]: unknown;
+                };
+                content: {
+                    "application/json": components["schemas"]["ChatThreadOut"];
+                };
+            };
+            /** @description Validation Error */
+            422: {
+                headers: {
+                    [name: string]: unknown;
+                };
+                content: {
+                    "application/json": components["schemas"]["HTTPValidationError"];
+                };
+            };
+        };
+    };
     discover_organisations_discovery_organisations_get: {
         parameters: {
             query?: {
@@ -3762,12 +4123,14 @@ type ReadonlyArray<T> = [
 ] ? Readonly<Exclude<T, undefined>> : Readonly<Exclude<T, undefined>[]>;
 export const actorValues: ReadonlyArray<FlattenedDeepRequired<components>["schemas"]["Actor"]> = ["DONOR", "ACCEPTOR", "ADMIN", "SYSTEM"];
 export const categoryValues: ReadonlyArray<FlattenedDeepRequired<components>["schemas"]["Category"]> = ["CLOTHES", "TOYS", "BOOKS"];
+export const chatClosureValues: ReadonlyArray<FlattenedDeepRequired<components>["schemas"]["ChatClosure"]> = ["NO_LONGER_HELD"];
 export const conditionValues: ReadonlyArray<FlattenedDeepRequired<components>["schemas"]["Condition"]> = ["NEW", "GENTLY_USED", "USED"];
 export const donationActionValues: ReadonlyArray<FlattenedDeepRequired<components>["schemas"]["DonationAction"]> = ["OFFER", "ESCALATE", "CANCEL", "ACCEPT", "REJECT", "EXPIRE", "REOFFER", "REMATCH", "UPGRADE_PRIORITY", "REDIRECT_TO_RECYCLING", "STALL", "SCHEDULE_PICKUP", "CHOOSE_DROPOFF", "MARK_HANDED_OVER", "CONFIRM_RECEIPT", "CONFIRM_RECYCLED", "NO_RECYCLER", "REQUEUE"];
 export const donationStatusValues: ReadonlyArray<FlattenedDeepRequired<components>["schemas"]["DonationStatus"]> = ["LISTED", "MATCHED", "RE_MATCHING", "ESCALATED", "ACCEPTED", "PICKUP_SCHEDULED", "IN_TRANSIT", "COMPLETED", "WASTE_REDIRECTED", "RECYCLED", "NEEDS_ADMIN", "CANCELLED"];
 export const escalationCauseValues: ReadonlyArray<FlattenedDeepRequired<components>["schemas"]["EscalationCause"]> = ["THRESHOLD_REACHED", "NO_CANDIDATES", "NOT_OFFERED"];
 export const filterReasonValues: ReadonlyArray<FlattenedDeepRequired<components>["schemas"]["FilterReason"]> = ["NOT_VERIFIED", "CATEGORY_NOT_ACCEPTED", "EXCLUDED", "OUT_OF_RADIUS", "INSUFFICIENT_CAPACITY"];
 export const handoverModeValues: ReadonlyArray<FlattenedDeepRequired<components>["schemas"]["HandoverMode"]> = ["ACCEPTOR_PICKUP", "DONOR_DROPOFF"];
+export const notificationKindValues: ReadonlyArray<FlattenedDeepRequired<components>["schemas"]["NotificationKind"]> = ["DONATION_EVENT", "ORGANISATION_REGISTERED", "CHAT_MESSAGE"];
 export const offerResponseValues: ReadonlyArray<FlattenedDeepRequired<components>["schemas"]["OfferResponse"]> = ["ACCEPTED", "REJECTED", "EXPIRED", "RETRACTED"];
 export const offerSourceValues: ReadonlyArray<FlattenedDeepRequired<components>["schemas"]["OfferSource"]> = ["DONOR", "SYSTEM"];
 export const rankingTriggerValues: ReadonlyArray<FlattenedDeepRequired<components>["schemas"]["RankingTrigger"]> = ["DONOR_OFFER", "RE_MATCHING"];

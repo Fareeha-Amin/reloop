@@ -9,6 +9,47 @@ Build brief: [PROMPT.md](PROMPT.md) · Decision log: [CLAUDE.md](CLAUDE.md)
 
 ## Status: Phase 3 (the React frontend)
 
+**What exists (Phase 3, part 3)**
+
+- **Chat between a donor and the organisation that accepted their donation.** A
+  **Messages** button on the donor's donation page and the organisation's
+  held-donation page, shown only when the API reports a thread for the viewer
+  (`chat` on the donation). It carries an unread count; clicking it opens the
+  conversation in a side panel (full screen on a phone), which marks the messages
+  read. Dashboard lists show a *N new messages* tag on the donation. After an admin
+  requeue, earlier read-only threads are reachable inside the panel. Unread counts
+  are kept **on the server** per user (`chat_reads`, migration `0004`; `POST
+  /chats/{id}/read`), so they follow you across devices. The open panel is polled
+  every 10 seconds (`POLL_MS.chat`); a notification about a message opens the panel. Both sides can write
+  from acceptance onward, including after the donation is completed. The thread
+  becomes read-only only if the organisation stops holding the donation without
+  completing it (a stall to the admin queue, then a requeue, cancellation or
+  recycling). After an admin requeue another organisation may accept: it gets a new
+  thread, the donor keeps the old one read-only, and the first organisation loses
+  access to it. Messages are append-only. The organisation never sees the donor's
+  name: donor messages are labelled "Donor". **Admins cannot read chats** (by
+  decision, in this phase): no endpoint and no transcript on the admin donation page.
+- **Organisation profile editing** at `/acceptor/profile`: contact person, phone,
+  storage capacity, categories accepted, pickup capability and location (map pin and
+  address). Name and registration ID are shown locked. Only changed fields are sent to
+  `PATCH /organisations/me`, and matching reads the profile live.
+- **Admins hear about new organisations.** Every registration appears in the admin's
+  notification feed with its current verification status. The **Organisations** tab
+  shows how many await verification, and each filter chip shows its count
+  (`GET /admin/organisations/counts`).
+- **Notifications are read one at a time.** Opening an item marks only that item as
+  read; **Mark all as read** marks everything up to the newest item. Opening a chat
+  thread marks its message notifications as read. Read state is kept per user in the
+  browser (see Stubs and simulations).
+- **Organisation registration is two steps** (your organisation, then location and a
+  review), like the donation flow. The green side panel now explains the platform in
+  general terms (list, match, re-route, reuse or recover) instead of making
+  promises to donors, and stays in view beside the form.
+- **Backend additions:** `GET /chats?donation_id=`, `POST /chats/{thread_id}/messages`,
+  the `chat_messages` table (migration `0003`), `GET /admin/organisations/counts`.
+  `GET /notifications` items now carry a `kind` (`DONATION_EVENT`,
+  `ORGANISATION_REGISTERED`, `CHAT_MESSAGE`) and a unique `key`. The bare `id` is gone.
+
 **What exists (Phase 3)**
 
 - **A React frontend** (`frontend/`) for all three roles, in light and dark themes (a
@@ -133,7 +174,8 @@ notifications. Anything not listed above is not built.
 | **Distances** | Haversine in Python over every organisation that accepts the category. No PostGIS. Fine at seed scale; revisit when the instant-pickup module needs fast geo-queries. |
 | **Map tiles** (frontend) | OpenStreetMap's public tile servers, no API key. Their usage policy suits development and demos, not production traffic: a deployment needs a tile provider. Locations are the pins people drop; nothing is geocoded. |
 | **Discovery map positions** | **APPROXIMATE.** Rounded to 2 decimal places of a degree before they leave the API (`positions_are_approximate`, `position_error_km`), and drawn as shaded areas, not pins. Matching uses the precise positions. |
-| **Notifications** | In-app only, polled (`POLL_MS` in `frontend/src/config.ts`). **Push (Firebase Cloud Messaging) and email are deferred**, not built. Read/unread state is kept in each browser, so it does not follow you to another device. |
+| **Notifications** | In-app only, polled (`POLL_MS` in `frontend/src/config.ts`). **Push (Firebase Cloud Messaging) and email are deferred**, not built. The feed is derived on each request from status events, organisation registrations and chat messages; there is no notifications table. Read state is kept **in each browser's localStorage**, per user (the keys read one by one, at most `READ_KEYS_MAX`, plus a "mark all as read" time), so it does not follow you to another device or another browser. |
+| **Chat** | Polled every 10 s (`POLL_MS.chat`), not pushed: no websockets. Messages appear in the other party's notification feed (without their text). |
 
 ### Deferred (not built, by decision)
 
@@ -177,11 +219,19 @@ notifications. Anything not listed above is not built.
   handling and a cookie flow that a future mobile client would not share.
 - **Server error messages are in English.** The UI's own text comes from the locale
   file, but messages from the API are shown as sent.
-- **No profile editing in the UI.** Organisations can change their profile through
-  `PATCH /organisations/me`, but the dashboard only shows it. Donors have no profile
-  page.
-- **Organisations see the donor's address, not their phone.** The API releases the
-  pickup address on acceptance; contact beyond that happens at the handover.
+- **Donors have no profile page.** Organisations edit theirs at `/acceptor/profile`.
+- **Organisations see the donor's address, not their name or phone.** The API releases
+  the pickup address on acceptance. Anything more is up to the donor, in the chat.
+- **Chat has no moderation, rate limiting or deletion.** Admins cannot read chats in
+  this phase, so abuse in a thread cannot be reviewed on the platform. Messages are
+  append-only: no edits, and no deletion on request (the DPDP retention question is
+  still open, as for addresses).
+- **A requeued organisation loses its thread.** Once another organisation accepts the
+  donation, the first one can no longer read what it wrote there; the donor still can.
+- **Notification read state is per browser.** After this update every existing
+  notification shows as unread once (the old "newest id seen" marker is discarded);
+  **Mark all as read** clears them. A notification committed slightly later than a
+  newer one may count as read after "mark all".
 - **The admin organisation list shows the first 25** for each filter, without paging.
 - **Dark mode needs a 2024-or-later browser** (Chrome 123, Safari 17.5, Firefox 120):
   the colour tokens use CSS `light-dark()`. Older browsers get the light theme.
@@ -225,14 +275,16 @@ frontend/
     api/              openapi.json (exported from the backend), schema.ts (generated),
                       the client, token refresh, error parsing
     vocab/            the only place API vocabulary values appear: tones, labels,
-                      action → endpoint map, role → home page
+                      action → endpoint map, role → home page, notification
+                      sentences and links
     i18n/             en.json (every user-facing string) and the t() helper
     styles/theme.css  design tokens: the one place to restyle
     ui/               shared, token-only components (buttons, cards, tags, forms, ...)
     components/       ReLoop components (timeline, action bar, maps, needs, ...)
     pages/            routes, built from ui/ and components/: auth/, donor/,
                       acceptor/, admin/, the landing page and the discovery map
-  tests/              Vitest: API client, token refresh, no-literals guard, locale
+  tests/              Vitest: API client, token refresh, no-literals guard, locale,
+                      notification read state, profile form changes
 docs/       project context document
 ```
 
@@ -270,7 +322,8 @@ python -m app.cli sweep
 cd frontend
 npm install
 npm run dev                         # http://localhost:5173 (calls the API through /api)
-npm test                            # API client, token refresh, no-literals guard, locale
+npm test                            # API client, token refresh, no-literals guard, locale,
+                                    # read state, profile form
 
 # After changing the API: re-export the schema and regenerate the client types
 cd backend; python -m app.cli export-openapi
@@ -423,3 +476,72 @@ them. No address or phone appears anywhere on the page.
    Verified**, add a note → **Save verification**. The organisation's dashboard now
    says it is verified and shows the note, and it appears on `/map`.
 3. **Run the sweep now** reports what it checked and changed (usually nothing).
+
+## Acceptance test (Phase 3, part 3, in the browser)
+
+Apply the new migrations first (`alembic upgrade head` from `backend/`: they add the
+`chat_messages` and `chat_reads` tables and change nothing else), then restart the API and the frontend.
+The setup is the same as above: seed data, three browser windows (donor, admin,
+organisation).
+
+**A, with chat: an exchange before and after completion.** Run path A above up to
+step 5 (the organisation accepts). Then:
+1. Before acceptance there is no **Messages** button anywhere. After the organisation
+   accepts, a **Messages** button appears on its donation page. Click it: a panel
+   opens (full screen on a phone) saying *No messages yet*. Type a message → send
+   (Enter also sends; Shift+Enter makes a new line). It appears on the right, labelled
+   **You**. Close the panel with the × or Escape.
+2. In the donor's window, within about 30 seconds, the **My donations** list shows a
+   *1 new message* tag on that donation, the donation page's **Messages** button has a
+   count, and the bell shows an item. Click the button: the panel shows the message
+   labelled with the organisation's name, and the count, tag and notification clear.
+   Reply. The organisation sees the reply labelled **Donor**, never the donor's name.
+3. Finish path A (steps 6–7): schedule the handover, **I've handed it over**,
+   **Confirm receipt**. The donor sees **Completed · reused**.
+4. After completion, send another message from each side. Both go through: the thread
+   stays open after completion.
+5. As admin, open the donation record: there is **no** conversation on it (admins
+   cannot read chats).
+
+*(Optional, the closed case.)* Accept another donation as an organisation and leave it
+in *Accepted*. As admin, nothing can be done until it stalls (72 h); the API tests cover
+this (`tests/api/test_chat.py`): after a stall the thread shows **This conversation is
+closed** and the message box is gone.
+
+**A profile edit that changes matching.**
+1. As the donor, **New donation** → Toys, 5, pin in Indiranagar → **List and find
+   matches**. Note the list: *Koramangala Community Shelter* is not on it (it does not
+   accept toys).
+2. Log in as `seed.koramangala-shelter@example.org`. **Profile** (in the navigation, or
+   **Edit** on the dashboard's profile card). Name and registration ID show a lock. Tick
+   **Toys** → **Save changes** → *Saved*.
+3. As the donor, reload the ranked list: *Koramangala Community Shelter* now appears,
+   with its score broken into reasons.
+4. As the organisation, set **Storage capacity** to 0 → **Save changes**. Reload the
+   donor's list: it is gone again (not enough storage). Try to untick **Clothes**: the
+   API refuses with *Active needs exist for CLOTHES…*, shown on the page.
+5. Put the profile back (capacity 200, untick Toys) and save: seed rows are never
+   updated by `seed`, so the edit would otherwise stay.
+6. Move the map pin and change the address, then **Discard changes**: the form returns
+   to the saved values.
+
+**A new organisation shows up for the admin.**
+1. Logged out, register a new organisation at `/register`.
+2. As admin (refresh, or wait up to 30 s): the bell has an unread item *“<name>
+   registered as an organisation”*. The **Organisations** tab has a clay-coloured count
+   (organisations awaiting verification; the seed data alone has two), and the tab
+   opens with *N organisations awaiting verification* and a count on each filter chip.
+3. Click the notification: it opens that organisation's admin page. Verify it. Back on
+   **Notifications**, the item now shows the **Verified** tag, and the tab count has
+   dropped by one.
+
+**Reading one notification at a time.**
+1. As the donor with several unread notifications, open **Notifications**. The page
+   says *N unread*; nothing is marked read just by opening it.
+2. Click one item. It opens its page. Go back: only that item lost its bold text and
+   dot, and the count is one lower. The bell agrees.
+3. **Mark all as read**: every item is read and the button is disabled. Trigger a new
+   event (for example, an organisation sends a chat message): only the new item is
+   unread.
+4. Reload the page: read state is kept. In a different browser it is not (by design,
+   it's stored in the browser).

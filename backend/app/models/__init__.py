@@ -1,5 +1,6 @@
 """ORM models. Tables arrive with the code that first uses them."""
 
+from app.models.chat import ChatMessage, ChatRead
 from app.models.donation import Donation, DonationImage
 from app.models.events import AddressAccessEvent, StatusEvent
 from app.models.matching import Handover, Match, RankingRun
@@ -9,6 +10,8 @@ from app.models.user import User
 
 __all__ = [
     "AddressAccessEvent",
+    "ChatMessage",
+    "ChatRead",
     "CurrentNeed",
     "Donation",
     "DonationImage",

@@ -7,6 +7,8 @@ const CONTROL =
 
 interface FieldProps {
   label: ReactNode;
+  /** Keep the label for screen readers only (e.g. a chat composer). */
+  hideLabel?: boolean;
   hint?: ReactNode;
   error?: string;
   children: (id: string, describedBy: string | undefined) => ReactNode;
@@ -14,12 +16,12 @@ interface FieldProps {
 }
 
 /** A labelled control with an optional hint and an error from the API. */
-export function Field({ label, hint, error, children, className = '' }: FieldProps) {
+export function Field({ label, hideLabel = false, hint, error, children, className = '' }: FieldProps) {
   const id = useId();
   const describedBy = error ? `${id}-error` : hint ? `${id}-hint` : undefined;
   return (
     <div className={className}>
-      <label htmlFor={id} className="mb-1.5 block text-sm font-semibold text-ink-soft">
+      <label htmlFor={id} className={hideLabel ? 'sr-only' : 'mb-1.5 block text-sm font-semibold text-ink-soft'}>
         {label}
       </label>
       {children(id, describedBy)}
@@ -50,11 +52,16 @@ export function TextInput({ label, hint, error, className, ...rest }: InputProps
   );
 }
 
-type TextareaProps = TextareaHTMLAttributes<HTMLTextAreaElement> & { label: ReactNode; hint?: ReactNode; error?: string };
+type TextareaProps = TextareaHTMLAttributes<HTMLTextAreaElement> & {
+  label: ReactNode;
+  hideLabel?: boolean;
+  hint?: ReactNode;
+  error?: string;
+};
 
-export function TextArea({ label, hint, error, className, ...rest }: TextareaProps) {
+export function TextArea({ label, hideLabel, hint, error, className, ...rest }: TextareaProps) {
   return (
-    <Field label={label} hint={hint} error={error} className={className}>
+    <Field label={label} hideLabel={hideLabel} hint={hint} error={error} className={className}>
       {(id, describedBy) => (
         <textarea
           id={id}

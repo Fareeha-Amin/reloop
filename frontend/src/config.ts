@@ -11,11 +11,14 @@ export const POLL_MS = {
   notifications: 30_000,
   donation: 15_000,
   list: 30_000,
+  chat: 10_000,
 };
 
 /** The notification feed page size, and where the unread badge stops counting. */
 export const FEED_PAGE_SIZE = 30;
 export const UNREAD_BADGE_MAX = 9;
+/** How many individually-read notification keys a browser remembers per user (src/app/readState.ts). */
+export const READ_KEYS_MAX = 500;
 
 /** Rows per page in the admin panel's lists. */
 export const ADMIN_PAGE_SIZE = 25;

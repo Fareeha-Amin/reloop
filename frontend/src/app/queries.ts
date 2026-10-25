@@ -58,6 +58,20 @@ export function useNotifications(enabled: boolean) {
   });
 }
 
+// --- Chat (donor and accepting organisation) -------------------------------------------------
+
+export const chatKey = (donationId: string) => ['chats', donationId] as const;
+
+/** Fetched only while the chat panel is open. */
+export function useChats(donationId: string, enabled: boolean) {
+  return useQuery({
+    queryKey: chatKey(donationId),
+    queryFn: () => unwrap(client.GET('/chats', { params: { query: { donation_id: donationId } } })),
+    refetchInterval: POLL_MS.chat,
+    enabled,
+  });
+}
+
 // --- Public discovery map --------------------------------------------------------------------
 
 export function useDiscovery(category: string | null) {
@@ -131,6 +145,15 @@ export function useAdminOrganisations(status: string | null) {
         }),
       ),
     placeholderData: keepPreviousData,
+  });
+}
+
+/** Under ['admin', 'organisations'], so a verification change refreshes it too. */
+export function useOrganisationCounts() {
+  return useQuery({
+    queryKey: ['admin', 'organisations', 'counts'],
+    queryFn: () => unwrap(client.GET('/admin/organisations/counts')),
+    refetchInterval: POLL_MS.list,
   });
 }
 

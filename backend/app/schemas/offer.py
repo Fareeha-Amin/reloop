@@ -14,6 +14,7 @@ from app.constants import (
     OfferResponse,
     RejectReason,
 )
+from app.schemas.chat import ChatSummaryOut
 from app.schemas.common import OutputModel
 from app.schemas.timeline import HandoverOut
 
@@ -80,9 +81,14 @@ class AcceptedDonationOut(OutputModel):
     image_ids: list[uuid.UUID]
     handover: HandoverOut | None
     allowed_actions: list[DonationAction]
+    chat: ChatSummaryOut | None = Field(
+        description="This organisation's chat with the donor; null when it can no longer read the thread."
+    )
 
     @classmethod
-    def build(cls, view, allowed_actions: frozenset[DonationAction]) -> "AcceptedDonationOut":
+    def build(
+        cls, view, allowed_actions: frozenset[DonationAction], chat: ChatSummaryOut | None
+    ) -> "AcceptedDonationOut":
         d, m = view.donation, view.match
         released = view.address_released
         return cls(
@@ -103,4 +109,5 @@ class AcceptedDonationOut(OutputModel):
             image_ids=[i.id for i in d.images],
             handover=HandoverOut.model_validate(m.handover) if m.handover else None,
             allowed_actions=sorted(allowed_actions) if released else [],
+            chat=chat,
         )

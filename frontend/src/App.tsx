@@ -13,6 +13,7 @@ import { NewDonation } from './pages/donor/NewDonation';
 import { AcceptorDashboard } from './pages/acceptor/AcceptorDashboard';
 import { HeldDonation } from './pages/acceptor/HeldDonation';
 import { OfferDetail } from './pages/acceptor/OfferDetail';
+import { OrganisationProfile } from './pages/acceptor/OrganisationProfile';
 import { AdminDonation } from './pages/admin/AdminDonation';
 import { AdminOrganisation } from './pages/admin/AdminOrganisation';
 import { AdminPanel } from './pages/admin/AdminPanel';
@@ -59,6 +60,10 @@ const router = createBrowserRouter([
       {
         path: '/acceptor',
         element: <RequireRole role={ROLE.acceptor}><AcceptorDashboard /></RequireRole>,
+      },
+      {
+        path: '/acceptor/profile',
+        element: <RequireRole role={ROLE.acceptor}><OrganisationProfile /></RequireRole>,
       },
       {
         path: '/acceptor/offers/:matchId',

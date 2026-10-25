@@ -1,9 +1,15 @@
 import { useState } from 'react';
 import { useSearchParams } from 'react-router';
 
-import { donationStatusValues, verificationStatusValues, type OrganizationOut, type QueueItemOut } from '../../api/schema';
+import {
+  donationStatusValues,
+  verificationStatusValues,
+  type OrganizationCountsOut,
+  type OrganizationOut,
+  type QueueItemOut,
+} from '../../api/schema';
 import { paths } from '../../app/paths';
-import { useAdminDonations, useAdminOrganisations, useAwaitingAdmin, useRecyclers } from '../../app/queries';
+import { useAdminDonations, useAdminOrganisations, useAwaitingAdmin, useOrganisationCounts, useRecyclers } from '../../app/queries';
 import { AdminDonationRow, AwaitingCard, SimulatedNote, SweepButton } from '../../components/admin';
 import { ApiErrorAlert } from '../../components/ApiErrorAlert';
 import { RecentActivity } from '../../components/NotificationList';
@@ -13,7 +19,7 @@ import { formatDate, formatMoney } from '../../i18n/format';
 import { t } from '../../i18n';
 import { Button } from '../../ui/Button';
 import { Card, LinkCard } from '../../ui/Card';
-import { EmptyState, Skeleton } from '../../ui/feedback';
+import { Alert, EmptyState, Skeleton } from '../../ui/feedback';
 import { Select } from '../../ui/form';
 import { Icon } from '../../ui/icons';
 import { HeroBanner, Page } from '../../ui/layout';
@@ -90,16 +96,25 @@ function OrganisationRow({ org }: { org: OrganizationOut }) {
   );
 }
 
-function Organisations() {
+function Organisations({ counts }: { counts: OrganizationCountsOut | undefined }) {
   const [status, setStatus] = useState<string | null>(null);
   const orgs = useAdminOrganisations(status);
+  const total = counts ? Object.values(counts.by_status).reduce((sum, n) => sum + (n ?? 0), 0) : undefined;
   return (
     <div className="space-y-5">
+      {counts && counts.awaiting_verification > 0 && (
+        <Alert kind="warning" title={t('admin.awaitingVerification', { count: counts.awaiting_verification })}>
+          {t('admin.awaitingVerificationText')}
+        </Alert>
+      )}
       <Chips
         label={t('admin.filterVerification')}
         value={status}
         onChange={setStatus}
-        items={[{ value: null, label: t('admin.all') }, ...verificationStatusValues.map((v) => ({ value: v, label: vocabLabel('VerificationStatus', v) }))]}
+        items={[
+          { value: null, label: t('admin.all'), count: total },
+          ...verificationStatusValues.map((v) => ({ value: v, label: vocabLabel('VerificationStatus', v), count: counts?.by_status[v] })),
+        ]}
       />
       <ApiErrorAlert error={orgs.error} />
       {orgs.isPending ? (
@@ -217,6 +232,7 @@ export function AdminPanel() {
   const [params, setParams] = useSearchParams();
   const tab: Tab = (TABS as readonly string[]).includes(params.get('tab') ?? '') ? (params.get('tab') as Tab) : 'awaiting';
   const awaiting = useAwaitingAdmin();
+  const counts = useOrganisationCounts();
 
   return (
     <Page>
@@ -230,7 +246,15 @@ export function AdminPanel() {
             onChange={(value) => setParams(value === 'awaiting' ? {} : { tab: value }, { replace: true })}
             items={[
               { value: 'awaiting', label: t('admin.tabAwaiting'), icon: 'flag', count: awaiting.data?.length },
-              { value: 'organisations', label: t('admin.tabOrganisations'), icon: 'building' },
+              {
+                value: 'organisations',
+                label: t('admin.tabOrganisations'),
+                icon: 'building',
+                // Organisations waiting for verification, hidden when there are none.
+                count: counts.data?.awaiting_verification || undefined,
+                countLabel: t('admin.awaitingVerification', { count: counts.data?.awaiting_verification ?? 0 }),
+                urgent: true,
+              },
               { value: 'donations', label: t('admin.tabDonations'), icon: 'box' },
               { value: 'recyclers', label: t('admin.tabRecyclers'), icon: 'recycle' },
             ]}
@@ -241,7 +265,7 @@ export function AdminPanel() {
               {awaiting.isPending ? <Loading /> : <Awaiting items={awaiting.data ?? []} />}
             </>
           )}
-          {tab === 'organisations' && <Organisations />}
+          {tab === 'organisations' && <Organisations counts={counts.data} />}
           {tab === 'donations' && <Donations />}
           {tab === 'recyclers' && <Recyclers />}
         </div>

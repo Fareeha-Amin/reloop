@@ -83,6 +83,12 @@ describe('locale file', () => {
     expect(actions.filter((a) => typeof lookup(`notify.${a}`) !== 'string')).toEqual([]);
   });
 
+  it('has a sentence for every kind of notification', () => {
+    const kinds = VOCABULARIES.find(([name]) => name === 'NotificationKind')![1].enum;
+    expect(kinds.length).toBeGreaterThan(1);
+    expect(kinds.filter((k) => typeof lookup(`notify.kind.${k}`) !== 'string')).toEqual([]);
+  });
+
   it('has a hint for every condition', () => {
     const conditions = VOCABULARIES.find(([name]) => name === 'Condition')![1].enum;
     expect(conditions.filter((c) => typeof lookup(`newDonation.conditionHelp.${c}`) !== 'string')).toEqual([]);

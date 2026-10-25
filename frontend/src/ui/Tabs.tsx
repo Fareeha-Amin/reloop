@@ -8,6 +8,10 @@ export interface TabItem {
   icon?: IconName;
   /** A count shown beside the label, e.g. items waiting. */
   count?: number;
+  /** What the count means, for screen readers. */
+  countLabel?: string;
+  /** Draw the count as needing attention. */
+  urgent?: boolean;
 }
 
 /** A row of page sections; scrolls sideways on narrow screens. */
@@ -46,8 +50,10 @@ export function Tabs({
             {item.count !== undefined && (
               <span
                 className={`grid h-5 min-w-5 place-items-center rounded-pill px-1.5 text-[11px] font-bold ${
-                  active ? 'bg-brand-900 text-leaf' : 'bg-surface-muted text-ink-soft'
+                  item.urgent ? 'bg-clay-500 text-surface' : active ? 'bg-brand-900 text-leaf' : 'bg-surface-muted text-ink-soft'
                 }`}
+                aria-label={item.countLabel}
+                title={item.countLabel}
               >
                 {item.count}
               </span>
@@ -63,6 +69,8 @@ export interface ChipItem {
   value: string | null;
   label: ReactNode;
   icon?: IconName;
+  /** A count shown beside the label. */
+  count?: number;
 }
 
 /** A single-choice filter as pills. `null` is a valid value (e.g. "All"). */
@@ -96,6 +104,9 @@ export function Chips({
           >
             {item.icon && <Icon name={item.icon} className="size-4" />}
             {item.label}
+            {item.count !== undefined && (
+              <span className={`text-xs font-bold tabular-nums ${active ? 'text-leaf/80' : 'text-ink-muted'}`}>{item.count}</span>
+            )}
           </button>
         );
       })}

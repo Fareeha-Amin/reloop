@@ -1,7 +1,7 @@
 import uuid
 from datetime import UTC, datetime
 
-from sqlalchemy import select
+from sqlalchemy import func, select
 from sqlalchemy.orm import Session
 
 from app.constants import VerificationStatus
@@ -122,6 +122,18 @@ def admin_list(
         query = query.where(OrganizationProfile.verification_status == status)
     query = query.order_by(OrganizationProfile.created_at).limit(limit).offset(offset)
     return list(db.scalars(query))
+
+
+def counts_by_status(db: Session) -> dict[VerificationStatus, int]:
+    """Every verification status, with zero for those no organisation has."""
+    rows = db.execute(
+        select(OrganizationProfile.verification_status, func.count()).group_by(
+            OrganizationProfile.verification_status
+        )
+    )
+    counts = {status: 0 for status in VerificationStatus}
+    counts.update(dict(rows.all()))
+    return counts
 
 
 def admin_get(db: Session, org_id: uuid.UUID) -> OrganizationProfile:

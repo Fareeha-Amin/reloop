@@ -183,6 +183,22 @@ class RankingTrigger(StrEnum):
     RE_MATCHING = "RE_MATCHING"
 
 
+class ChatClosure(StrEnum):
+    """Why a donor-organisation chat thread no longer takes messages (it stays readable)."""
+
+    # The organisation stopped holding the donation without completing it: it stalled to
+    # the admin queue, was requeued, cancelled or redirected to recycling.
+    NO_LONGER_HELD = "NO_LONGER_HELD"
+
+
+class NotificationKind(StrEnum):
+    """What an item in the in-app notification feed is about."""
+
+    DONATION_EVENT = "DONATION_EVENT"  # a lifecycle transition (a status_events row)
+    ORGANISATION_REGISTERED = "ORGANISATION_REGISTERED"  # admins: a new organisation to verify
+    CHAT_MESSAGE = "CHAT_MESSAGE"  # a message from the other party in a chat thread
+
+
 # --- Units ---------------------------------------------------------------------------
 # Donation.quantity, OrganizationProfile.storage_capacity and CurrentNeed.quantity_needed
 # are all COUNTS OF ITEMS (e.g. 12 shirts), never kilograms or bags. Mass is estimated
@@ -204,6 +220,7 @@ PASSWORD_MAX_LENGTH = 128  # Argon2 has no length limit; this bounds hashing cos
 NAME_MAX_LENGTH = 200
 ADDRESS_MAX_LENGTH = 300
 NOTE_MAX_LENGTH = 1_000
+CHAT_MESSAGE_MAX_LENGTH = 2_000
 REGISTRATION_ID_MAX_LENGTH = 64
 PHONE_PATTERN = r"^\+?[0-9][0-9 ()-]{6,19}$"
 

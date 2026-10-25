@@ -1,4 +1,6 @@
 import type { OrganizationOut } from '../../api/schema';
+import { paths } from '../../app/paths';
+import { LinkButton } from '../../ui/Button';
 import { useHeldDonations, useMyOrganisation, useOffers } from '../../app/queries';
 import { ApiErrorAlert } from '../../components/ApiErrorAlert';
 import { NeedsCard } from '../../components/needs';
@@ -24,7 +26,15 @@ function Stat({ value, label }: { value: number | string; label: string }) {
 function ProfileCard({ org }: { org: OrganizationOut }) {
   return (
     <Card>
-      <CardTitle>{t('acceptor.profile')}</CardTitle>
+      <CardTitle
+        aside={
+          <LinkButton to={paths.acceptorProfile} variant="ghost" size="sm" icon="pencil">
+            {t('acceptor.editProfile')}
+          </LinkButton>
+        }
+      >
+        {t('acceptor.profile')}
+      </CardTitle>
       <Facts
         items={[
           { label: t('holder.address'), value: org.address_text },

@@ -4,56 +4,49 @@ import type { NotificationOut } from '../api/schema';
 import { paths } from '../app/paths';
 import { useNotifications } from '../app/queries';
 import { useSession } from '../app/session';
-import { useSeenMarker } from '../app/unread';
+import { useReadState } from '../app/unread';
 import { formatRelative } from '../i18n/format';
-import { has, t } from '../i18n';
+import { t } from '../i18n';
 import { LinkButton } from '../ui/Button';
 import { Card, CardTitle } from '../ui/Card';
 import { Icon } from '../ui/icons';
 import { ToneDot } from '../ui/Tag';
-import { statusTone, vocabLabel } from '../vocab/display';
-import { notificationLink } from '../vocab/roles';
-import { donationTitle } from './donation';
+import { vocabLabel } from '../vocab/display';
+import { notificationLink, notificationText, notificationTone } from '../vocab/notifications';
+import { VerificationTag } from './StatusTag';
 
-/** One event as a sentence: notify.<ACTION> in the locale file, or a generic fallback. */
-export function notificationText(n: NotificationOut): string {
-  const params = {
-    item: donationTitle(n),
-    org: n.organization_name ?? t('notifications.anOrganisation'),
-    from: vocabLabel('DonationStatus', n.from_state),
-    to: vocabLabel('DonationStatus', n.to_state),
-  };
-  const key = `notify.${n.action}`;
-  return has(key) ? t(key, params) : t('notify.generic', params);
-}
-
+/** The feed. Opening an item marks that item read, and only that one. */
 export function NotificationList({
   items,
   role,
-  seen,
+  isRead,
+  onOpen,
   compact = false,
 }: {
   items: NotificationOut[];
   role: string;
-  seen: number;
+  isRead: (n: NotificationOut) => boolean;
+  onOpen: (n: NotificationOut) => void;
   compact?: boolean;
 }) {
   return (
     <ul className="divide-y divide-line">
       {items.map((n) => {
-        const unread = n.id > seen;
+        const unread = !isRead(n);
         return (
-          <li key={n.id}>
+          <li key={n.key}>
             <Link
-              to={notificationLink(role, n.donation_id)}
+              to={notificationLink(role, n)}
+              onClick={() => onOpen(n)}
               className={`flex gap-3 rounded-control px-3 transition hover:bg-surface-muted ${compact ? 'py-2.5' : 'py-3.5'}`}
             >
-              <ToneDot tone={statusTone(n.to_state)} className="mt-1.5 size-2.5" />
+              <ToneDot tone={notificationTone(n)} className="mt-1.5 size-2.5" />
               <div className="min-w-0 flex-1">
                 <p className={`text-sm ${unread ? 'font-semibold text-ink' : 'text-ink-soft'}`}>{notificationText(n)}</p>
-                <p className="mt-0.5 text-xs text-ink-muted">
+                <p className="mt-0.5 flex flex-wrap items-center gap-x-2 gap-y-1 text-xs text-ink-muted">
                   {formatRelative(n.at)}
-                  {n.cause && ` · ${vocabLabel('EscalationCause', n.cause)}`}
+                  {n.cause && <span>· {vocabLabel('EscalationCause', n.cause)}</span>}
+                  {n.verification_status && !compact && <VerificationTag status={n.verification_status} />}
                 </p>
               </div>
               {unread && <span className="mt-2 size-2 shrink-0 rounded-full bg-clay-500" aria-label={t('notifications.unread')} />}
@@ -71,7 +64,7 @@ const RECENT_NOTIFICATIONS = 6;
 export function RecentActivity() {
   const { user } = useSession();
   const notifications = useNotifications(true);
-  const { seen } = useSeenMarker(user?.id ?? null);
+  const { isRead, markRead } = useReadState(user?.id ?? null);
   return (
     <Card>
       <CardTitle
@@ -87,7 +80,13 @@ export function RecentActivity() {
         </span>
       </CardTitle>
       {notifications.data && notifications.data.length > 0 && user ? (
-        <NotificationList items={notifications.data.slice(0, RECENT_NOTIFICATIONS)} role={user.role} seen={seen} compact />
+        <NotificationList
+          items={notifications.data.slice(0, RECENT_NOTIFICATIONS)}
+          role={user.role}
+          isRead={isRead}
+          onOpen={(n) => markRead(n)}
+          compact
+        />
       ) : (
         <p className="text-sm text-ink-muted">{notifications.isPending ? t('common.loading') : t('notifications.empty')}</p>
       )}

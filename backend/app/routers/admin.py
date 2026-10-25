@@ -17,7 +17,12 @@ from app.schemas.admin import (
 from app.schemas.donation import DonationOut, DonationSummaryOut
 from app.schemas.matching import ReasonIn
 from app.schemas.need import NeedOut
-from app.schemas.organization import AdminOrganizationDetail, OrganizationOut, VerificationUpdate
+from app.schemas.organization import (
+    AdminOrganizationDetail,
+    OrganizationCountsOut,
+    OrganizationOut,
+    VerificationUpdate,
+)
 from app.security.deps import AdminUser, DbSession
 from app.services import actions, admin as admin_views, donations, organizations, sweeper, timeline
 
@@ -45,6 +50,14 @@ def list_organisations(
     verification_status: VerificationStatus | None = None,
 ):
     return organizations.admin_list(db, verification_status, page.limit, page.offset)
+
+
+@router.get("/organisations/counts", response_model=OrganizationCountsOut)
+def organisation_counts(admin: AdminUser, db: DbSession):
+    """How many organisations are in each verification status, and how many await an
+    admin's decision (every organisation starts PENDING)."""
+    counts = organizations.counts_by_status(db)
+    return OrganizationCountsOut(by_status=counts, awaiting_verification=counts[VerificationStatus.PENDING])
 
 
 @router.get("/organisations/{org_id}", response_model=AdminOrganizationDetail)
