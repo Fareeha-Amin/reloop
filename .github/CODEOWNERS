@@ -1,0 +1,13 @@
+# Code owners for ReLoop. GitHub requests a review from these owners
+# on any pull request that touches a matching path. The last matching
+# pattern wins, so narrower rules go below the catch-all.
+#
+# Owners must be GitHub users or teams with write access to the repo.
+
+# Default owner for everything in the repository.
+*                       @Fareeha-Amin
+
+# Donation lifecycle, scoring and sweeper policy: the pure rules that
+# every donation outcome depends on (see CLAUDE.md, non-negotiables 1-2, 4-5).
+/backend/app/domain/    @Fareeha-Amin
+/backend/app/constants.py @Fareeha-Amin
