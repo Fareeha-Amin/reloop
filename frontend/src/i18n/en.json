@@ -240,7 +240,9 @@
     "myDonations": "My donations",
     "emptyTitle": "Nothing listed yet",
     "emptyText": "List clothes, toys or books, and ReLoop will rank the organisations that need them.",
-    "back": "My donations"
+    "back": "My donations",
+    "walletLink": "Wallet",
+    "walletLinkBalance": "Balance: {amount}"
   },
 
   "donation": {
@@ -358,6 +360,7 @@
     "dropoff": { "label": "I'll drop it off", "confirm": "Choose when you'll take it to the organisation." },
     "handedOver": { "label": "I've handed it over", "confirm": "Confirm that the organisation now has your items." },
     "cancel": { "label": "Cancel donation", "confirm": "The donation is withdrawn (it is kept in your history). Any open offer is withdrawn too." },
+    "bookPickup": { "label": "Book platform pickup" },
     "accept": { "label": "Accept", "confirm": "Accepting releases the donor's exact pickup address to you, and the release is recorded." },
     "reject": { "label": "Decline", "confirm": "You won't be offered this donation again. It moves on to the next organisation." },
     "schedulePickup": { "label": "Schedule pickup", "confirm": "Choose when you'll collect it." },
@@ -381,7 +384,8 @@
     "declineReason": "Reason: {reason}",
     "note": "Note: {note}",
     "handover": "{mode} · {at}",
-    "recycling": "Recycling"
+    "recycling": "Recycling",
+    "booking": "Platform pickup"
   },
 
   "recycling": {
@@ -398,6 +402,53 @@
     "settlement": "Settlement",
     "awaitingConfirmation": "Calculated once the recycler confirms.",
     "simulatedNote": "Simulated: no money moves yet. Wallet credit arrives in a later phase."
+  },
+
+  "booking": {
+    "title": "Platform pickup",
+    "provider": "Courier",
+    "cost": "Cost",
+    "walletApplied": "Paid from wallet",
+    "gatewayAmount": "Paid by card (simulated)",
+    "bookedAt": "Booked",
+    "pickedUpAt": "Picked up",
+    "deliveredAt": "Delivered",
+    "cancelledAt": "Cancelled",
+    "cancelReason": "Reason: {reason}",
+    "transactionId": "Transaction {id}",
+    "refundTransactionId": "Refund {id}",
+    "simulatedNote": "Simulated: no real courier and no real payment gateway are involved."
+  },
+
+  "pickup": {
+    "eyebrow": "Platform pickup",
+    "title": "Book a simulated courier",
+    "subtitle": "ReLoop arranges and bills a simulated pickup from you and delivery to the organisation. You still hand the items over and they still confirm receipt.",
+    "backToDonation": "Donation",
+    "loading": "Getting a quote…",
+    "distance": "About {km} km from you to the organisation.",
+    "chooseCourier": "Choose a courier",
+    "noProviders": "No courier is available right now. Choose another handover option from the donation page.",
+    "when": "When should they collect it?",
+    "whenHint": "Any time in the future — the pickup window is only a preference.",
+    "wallet": "Your wallet balance",
+    "walletAmount": "Use from your wallet",
+    "walletHint": "Up to {amount}, and never more than the cost. Optional — you can pay the full cost without it.",
+    "summaryCost": "Total cost",
+    "summaryWallet": "From your wallet",
+    "summaryGateway": "By simulated checkout",
+    "submit": "Book and pay",
+    "simulatedNote": "SIMULATED: no real courier, and the checkout always succeeds."
+  },
+
+  "wallet": {
+    "eyebrow": "Your wallet",
+    "title": "Wallet",
+    "subtitle": "Credited when a donation of yours is recycled. Spend it, in full or in part, on a platform-arranged pickup. No withdrawals.",
+    "balance": "Balance",
+    "empty": "No wallet activity yet.",
+    "emptyText": "Recycle a donation that can't be reused, and your credit will appear here.",
+    "backToDashboard": "Dashboard"
   },
 
   "notifications": {
@@ -434,6 +485,7 @@
     "CONFIRM_RECYCLED": "{item} was recycled",
     "NO_RECYCLER": "No recycler can take {item}; it's in the admin queue",
     "REQUEUE": "{item} returned to matching by an admin",
+    "BOOK_PICKUP": "A platform pickup was booked for {item}",
     "unknown": "Something changed",
     "kind": {
       "DONATION_EVENT": "{item}: {from} → {to}",
@@ -548,6 +600,7 @@
     "tabOrganisations": "Organisations",
     "tabDonations": "Donations",
     "tabRecyclers": "Recyclers",
+    "tabCommission": "Commission",
     "allClearTitle": "Nothing is waiting on you",
     "allClearText": "Every donation is moving on its own. Stalled ones appear here after the next sweep.",
     "waiting": { "one": "1 waiting", "other": "{count} waiting" },
@@ -603,7 +656,12 @@
     "verificationUpdated": "Last changed {at}",
     "verificationNever": "Not reviewed yet.",
     "awaitingVerification": { "one": "1 organisation awaiting verification", "other": "{count} organisations awaiting verification" },
-    "awaitingVerificationText": "New organisations can't receive offers until an admin verifies them. Filter by status to review them."
+    "awaitingVerificationText": "New organisations can't receive offers until an admin verifies them. Filter by status to review them.",
+    "commissionNote": "Simulated: earnings from logistics fees and recycling fees. A cancelled, undelivered booking's commission is reversed, so the total is always net.",
+    "commissionTotal": "Net commission earned",
+    "commissionEmpty": "No commission earned yet.",
+    "commissionSource": "Source",
+    "commissionAmount": "Amount"
   },
 
   "chat": {
@@ -637,10 +695,17 @@
 
   "vocab": {
     "Actor": { "DONOR": "Donor", "ACCEPTOR": "Organisation", "ADMIN": "Admin", "SYSTEM": "ReLoop (automatic)" },
+    "BookingStatus": {
+      "BOOKED": "Booked",
+      "PICKED_UP": "Picked up",
+      "DELIVERED": "Delivered",
+      "CANCELLED": "Cancelled"
+    },
     "Category": { "CLOTHES": "Clothes", "TOYS": "Toys", "BOOKS": "Books" },
     "ChatClosure": {
       "NO_LONGER_HELD": "The organisation no longer holds this donation, so the conversation is read-only."
     },
+    "CommissionSource": { "LOGISTICS": "Platform pickup", "RECYCLING": "Recycling" },
     "Condition": { "NEW": "New", "GENTLY_USED": "Gently used", "USED": "Used" },
     "DonationAction": {
       "OFFER": "Offered",
@@ -660,7 +725,8 @@
       "CONFIRM_RECEIPT": "Receipt confirmed",
       "CONFIRM_RECYCLED": "Recycling confirmed",
       "NO_RECYCLER": "No recycler in range",
-      "REQUEUE": "Re-queued by admin"
+      "REQUEUE": "Re-queued by admin",
+      "BOOK_PICKUP": "Platform pickup booked"
     },
     "DonationStatus": {
       "LISTED": "Listed",
@@ -688,7 +754,11 @@
       "OUT_OF_RADIUS": "outside the search radius",
       "INSUFFICIENT_CAPACITY": "not enough storage"
     },
-    "HandoverMode": { "ACCEPTOR_PICKUP": "Organisation collects", "DONOR_DROPOFF": "Donor drops off" },
+    "HandoverMode": {
+      "ACCEPTOR_PICKUP": "Organisation collects",
+      "DONOR_DROPOFF": "Donor drops off",
+      "PLATFORM_PICKUP": "Platform pickup (simulated courier)"
+    },
     "NotificationKind": {
       "DONATION_EVENT": "Donation update",
       "ORGANISATION_REGISTERED": "New organisation",
@@ -696,6 +766,7 @@
     },
     "OfferResponse": { "ACCEPTED": "Accepted", "REJECTED": "Declined", "EXPIRED": "Expired", "RETRACTED": "Withdrawn" },
     "OfferSource": { "DONOR": "donor's choice", "SYSTEM": "automatic re-offer" },
+    "PaymentStatus": { "SUCCEEDED": "Paid", "REFUNDED": "Refunded" },
     "RankingTrigger": { "DONOR_OFFER": "Donor's offer", "RE_MATCHING": "Re-matching" },
     "RejectReason": {
       "NO_CAPACITY": "No storage space",
@@ -713,6 +784,11 @@
       "ACCEPTANCE_RATE": "Reliability"
     },
     "Urgency": { "LOW": "Low", "MEDIUM": "Medium", "HIGH": "High" },
-    "VerificationStatus": { "PENDING": "Pending verification", "VERIFIED": "Verified", "REJECTED": "Rejected" }
+    "VerificationStatus": { "PENDING": "Pending verification", "VERIFIED": "Verified", "REJECTED": "Rejected" },
+    "WalletTxnType": {
+      "RECYCLING_CREDIT": "Recycling credit",
+      "PICKUP_DEBIT": "Platform pickup payment",
+      "PICKUP_REFUND": "Platform pickup refund"
+    }
   }
 }

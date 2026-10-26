@@ -21,7 +21,7 @@ from sqlalchemy import select
 from sqlalchemy.orm import Session
 
 from app.constants import Category, Urgency, VerificationStatus
-from app.models import CurrentNeed, OrganizationProfile, WasteCollector
+from app.models import CurrentNeed, LogisticsProvider, OrganizationProfile, WasteCollector
 from app.schemas.organization import AcceptorRegister
 from app.schemas.user import DonorRegister
 from app.services import users
@@ -97,12 +97,30 @@ RECYCLERS: tuple[SeedRecycler, ...] = (
 )  # fmt: skip
 
 
+@dataclass(frozen=True)
+class SeedProvider:
+    name: str
+    base_fee: Decimal
+    per_km_rate: Decimal
+    is_active: bool
+
+
+# Fictional couriers. Pricing is SIMULATED: base fee + per-km rate x distance.
+LOGISTICS_PROVIDERS: tuple[SeedProvider, ...] = (
+    SeedProvider("Swift Wheels Logistics", Decimal("40.00"), Decimal("12.00"), True),
+    SeedProvider("UrbanHop Couriers", Decimal("30.00"), Decimal("15.00"), True),
+    SeedProvider("GreenRoute Carriers", Decimal("50.00"), Decimal("9.00"), False),
+)  # fmt: skip
+
+
 @dataclass
 class SeedReport:
     organisations_created: list[str] = field(default_factory=list)
     organisations_existing: list[str] = field(default_factory=list)
     recyclers_created: list[str] = field(default_factory=list)
     recyclers_existing: list[str] = field(default_factory=list)
+    providers_created: list[str] = field(default_factory=list)
+    providers_existing: list[str] = field(default_factory=list)
     donor_created: bool = False
 
 
@@ -169,6 +187,16 @@ def seed(db: Session, password: str) -> SeedReport:
         )
         db.commit()
         report.recyclers_created.append(r.name)
+
+    for p in LOGISTICS_PROVIDERS:
+        if db.scalar(select(LogisticsProvider.id).where(LogisticsProvider.name == p.name)):
+            report.providers_existing.append(p.name)
+            continue
+        db.add(
+            LogisticsProvider(name=p.name, base_fee=p.base_fee, per_km_rate=p.per_km_rate, is_active=p.is_active)
+        )
+        db.commit()
+        report.providers_created.append(p.name)
 
     if users.get_by_email(db, DEMO_DONOR_EMAIL) is None:
         users.register_donor(

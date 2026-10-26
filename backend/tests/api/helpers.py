@@ -207,6 +207,19 @@ def add_recycler(db: Session, name: str, at=PEENYA, categories=("CLOTHES",), rat
     return collector
 
 
+def add_provider(db: Session, name: str = "Test Couriers", base_fee="30.00", per_km_rate="10.00", active=True):
+    from decimal import Decimal
+
+    from app.models import LogisticsProvider
+
+    provider = LogisticsProvider(
+        name=name, base_fee=Decimal(base_fee), per_km_rate=Decimal(per_km_rate), is_active=active
+    )
+    db.add(provider)
+    db.commit()
+    return provider
+
+
 def image_bytes(fmt: str = "JPEG", size=(32, 24), color=(200, 30, 30), **save_kwargs) -> bytes:
     buf = io.BytesIO()
     Image.new("RGB", size, color).save(buf, format=fmt, **save_kwargs)

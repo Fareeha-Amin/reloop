@@ -6,10 +6,10 @@ from datetime import datetime
 from sqlalchemy import select
 from sqlalchemy.orm import Session
 
-from app.constants import Actor, DonationAction
+from app.constants import Actor, CommissionSource, DonationAction, WalletTxnType
 from app.domain import recycling as rules
 from app.models import Donation, Recycling, User, WasteCollector
-from app.services import transitions
+from app.services import commission, transitions, wallet
 from app.services.errors import Conflict
 
 
@@ -100,6 +100,11 @@ def confirm(db: Session, donation: Donation, admin: User, reason: str, now: date
     assignment.donor_credit = s.donor_credit
     assignment.confirmed_at = now
     assignment.confirmed_by_id = admin.id
+    wallet.record(
+        db, donation.donor_id, WalletTxnType.RECYCLING_CREDIT, s.donor_credit, now,
+        reference_recycling_id=assignment.id, note="Recycling settlement.",
+    )
+    commission.record(db, CommissionSource.RECYCLING, assignment.id, s.platform_fee, now)
     transitions.apply(
         db, donation, DonationAction.CONFIRM_RECYCLED, Actor.ADMIN, now, user=admin, reason=reason
     )

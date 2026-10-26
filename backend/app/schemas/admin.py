@@ -5,7 +5,15 @@ from typing import Any
 
 from pydantic import Field
 
-from app.constants import CURRENCY, Category, DonationAction, DonationStatus, FilterReason, RankingTrigger
+from app.constants import (
+    CURRENCY,
+    Category,
+    CommissionSource,
+    DonationAction,
+    DonationStatus,
+    FilterReason,
+    RankingTrigger,
+)
 from app.schemas.common import OutputModel
 from app.schemas.donation import DonationOut, DonationSummaryOut
 from app.schemas.matching import CandidateOut
@@ -67,3 +75,21 @@ class RecyclerOut(OutputModel):
     rate_per_kg: Decimal
     currency: str = CURRENCY
     is_active: bool
+
+
+class CommissionEntryOut(OutputModel):
+    """One ledger row. A cancelled, undelivered booking's commission is reversed by a
+    second row with the negated amount (never edited or deleted)."""
+
+    id: uuid.UUID
+    source: CommissionSource
+    source_id: uuid.UUID = Field(description="A Booking id (LOGISTICS) or a Recycling id (RECYCLING).")
+    amount: Decimal
+    note: str | None
+    created_at: datetime
+
+
+class CommissionSummaryOut(OutputModel):
+    total: Decimal = Field(description="SUM(amount); net of any reversals.")
+    currency: str = CURRENCY
+    entries: list[CommissionEntryOut]

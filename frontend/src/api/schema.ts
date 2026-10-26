@@ -542,6 +542,49 @@ export interface paths {
         patch?: never;
         trace?: never;
     };
+    "/donations/{donation_id}/pickup-quote": {
+        parameters: {
+            query?: never;
+            header?: never;
+            path?: never;
+            cookie?: never;
+        };
+        /**
+         * Get Pickup Quote
+         * @description ACCEPTED only: a SIMULATED quote per active logistics provider, and the donor's
+         *     current wallet balance. A preview: nothing is stored. Booking re-quotes.
+         */
+        get: operations["get_pickup_quote_donations__donation_id__pickup_quote_get"];
+        put?: never;
+        post?: never;
+        delete?: never;
+        options?: never;
+        head?: never;
+        patch?: never;
+        trace?: never;
+    };
+    "/donations/{donation_id}/book-pickup": {
+        parameters: {
+            query?: never;
+            header?: never;
+            path?: never;
+            cookie?: never;
+        };
+        get?: never;
+        put?: never;
+        /**
+         * Book Pickup
+         * @description ACCEPTED → PICKUP_SCHEDULED: a SIMULATED platform-arranged pickup, paid for by
+         *     the donor (wallet credit first, then a simulated checkout for the rest). The time
+         *     only has to be in the future: the pickup window is advisory.
+         */
+        post: operations["book_pickup_donations__donation_id__book_pickup_post"];
+        delete?: never;
+        options?: never;
+        head?: never;
+        patch?: never;
+        trace?: never;
+    };
     "/donations/{donation_id}/images": {
         parameters: {
             query?: never;
@@ -866,6 +909,28 @@ export interface paths {
         patch?: never;
         trace?: never;
     };
+    "/admin/commission": {
+        parameters: {
+            query?: never;
+            header?: never;
+            path?: never;
+            cookie?: never;
+        };
+        /**
+         * Commission Summary
+         * @description The platform's earnings ledger: logistics fees and recycling fees. A cancelled,
+         *     undelivered booking's commission is reversed by a second, negated row, so `total`
+         *     is always net. SIMULATED: no money actually moves.
+         */
+        get: operations["commission_summary_admin_commission_get"];
+        put?: never;
+        post?: never;
+        delete?: never;
+        options?: never;
+        head?: never;
+        patch?: never;
+        trace?: never;
+    };
     "/notifications": {
         parameters: {
             query?: never;
@@ -971,6 +1036,29 @@ export interface paths {
          *     rounded to about a kilometre. No address, phone, contact person or registration ID.
          */
         get: operations["discover_organisations_discovery_organisations_get"];
+        put?: never;
+        post?: never;
+        delete?: never;
+        options?: never;
+        head?: never;
+        patch?: never;
+        trace?: never;
+    };
+    "/wallet": {
+        parameters: {
+            query?: never;
+            header?: never;
+            path?: never;
+            cookie?: never;
+        };
+        /**
+         * Get Wallet
+         * @description The donor's wallet: an append-only ledger. The balance is SUM(amount), never
+         *     stored. Credited by confirmed recycling settlements; spent, in full or in part, on
+         *     a platform-arranged pickup; refunded if that pickup is cancelled before delivery.
+         *     No withdrawals.
+         */
+        get: operations["get_wallet_wallet_get"];
         put?: never;
         post?: never;
         delete?: never;
@@ -1215,6 +1303,80 @@ export interface components {
              */
             files: string[];
         };
+        /** BookPickupIn */
+        BookPickupIn: {
+            /**
+             * Provider Id
+             * Format: uuid
+             */
+            provider_id: string;
+            /**
+             * Scheduled For
+             * Format: date-time
+             */
+            scheduled_for: string;
+            /**
+             * Wallet Amount
+             * @description How much of the wallet balance to apply; capped at the cost.
+             * @default 0
+             */
+            wallet_amount: number | string;
+        };
+        /**
+         * BookingOut
+         * @description SIMULATED: no real courier, no real payment gateway. Status is derived from
+         *     which of booked_at/picked_up_at/delivered_at/cancelled_at are set.
+         */
+        BookingOut: {
+            /**
+             * Id
+             * Format: uuid
+             */
+            id: string;
+            /** Provider Name */
+            provider_name: string;
+            /** Distance Km */
+            distance_km: number;
+            /** Cost */
+            cost: string;
+            /** Wallet Applied */
+            wallet_applied: string;
+            /** Gateway Amount */
+            gateway_amount: string;
+            /**
+             * Currency
+             * @default INR
+             */
+            currency: string;
+            status: components["schemas"]["BookingStatus"];
+            /**
+             * Booked At
+             * Format: date-time
+             */
+            booked_at: string;
+            /** Picked Up At */
+            picked_up_at: string | null;
+            /** Delivered At */
+            delivered_at: string | null;
+            /** Cancelled At */
+            cancelled_at: string | null;
+            /** Cancel Reason */
+            cancel_reason: string | null;
+            payment: components["schemas"]["PaymentOut"];
+            /**
+             * Simulated
+             * @default true
+             * @constant
+             */
+            simulated: true;
+        };
+        /**
+         * BookingStatus
+         * @description A platform-arranged pickup's own progress. Derived from Booking's nullable
+         *     write-once timestamps (app.models.logistics), never stored as a column.
+         * @enum {string}
+         */
+        BookingStatus: "BOOKED" | "PICKED_UP" | "DELIVERED" | "CANCELLED";
         /** CandidateOut */
         CandidateOut: {
             /** Rank */
@@ -1350,6 +1512,56 @@ export interface components {
             messages: components["schemas"]["ChatMessageOut"][];
         };
         /**
+         * CommissionEntryOut
+         * @description One ledger row. A cancelled, undelivered booking's commission is reversed by a
+         *     second row with the negated amount (never edited or deleted).
+         */
+        CommissionEntryOut: {
+            /**
+             * Id
+             * Format: uuid
+             */
+            id: string;
+            source: components["schemas"]["CommissionSource"];
+            /**
+             * Source Id
+             * Format: uuid
+             * @description A Booking id (LOGISTICS) or a Recycling id (RECYCLING).
+             */
+            source_id: string;
+            /** Amount */
+            amount: string;
+            /** Note */
+            note: string | null;
+            /**
+             * Created At
+             * Format: date-time
+             */
+            created_at: string;
+        };
+        /**
+         * CommissionSource
+         * @description What earned a commission ledger entry. A cancelled booking's commission is
+         *     reversed by a second, negative entry (never edited or deleted).
+         * @enum {string}
+         */
+        CommissionSource: "LOGISTICS" | "RECYCLING";
+        /** CommissionSummaryOut */
+        CommissionSummaryOut: {
+            /**
+             * Total
+             * @description SUM(amount); net of any reversals.
+             */
+            total: string;
+            /**
+             * Currency
+             * @default INR
+             */
+            currency: string;
+            /** Entries */
+            entries: components["schemas"]["CommissionEntryOut"][];
+        };
+        /**
          * ComponentOut
          * @description One factor of a score. Structured, not a sentence, so a client can render or
          *     translate it: e.g. PROXIMITY, raw 2.1 (km), value 0.86, weight 0.3, contribution 0.258.
@@ -1440,7 +1652,7 @@ export interface components {
          *     (state, action) -> next state, and declares who may perform each.
          * @enum {string}
          */
-        DonationAction: "OFFER" | "ESCALATE" | "CANCEL" | "ACCEPT" | "REJECT" | "EXPIRE" | "REOFFER" | "REMATCH" | "UPGRADE_PRIORITY" | "REDIRECT_TO_RECYCLING" | "STALL" | "SCHEDULE_PICKUP" | "CHOOSE_DROPOFF" | "MARK_HANDED_OVER" | "CONFIRM_RECEIPT" | "CONFIRM_RECYCLED" | "NO_RECYCLER" | "REQUEUE";
+        DonationAction: "OFFER" | "ESCALATE" | "CANCEL" | "ACCEPT" | "REJECT" | "EXPIRE" | "REOFFER" | "REMATCH" | "UPGRADE_PRIORITY" | "REDIRECT_TO_RECYCLING" | "STALL" | "SCHEDULE_PICKUP" | "CHOOSE_DROPOFF" | "MARK_HANDED_OVER" | "CONFIRM_RECEIPT" | "CONFIRM_RECYCLED" | "NO_RECYCLER" | "REQUEUE" | "BOOK_PICKUP";
         /**
          * DonationCreate
          * @example {
@@ -1698,7 +1910,7 @@ export interface components {
          * @description Decides who sets the handover time, not who performs the transitions.
          * @enum {string}
          */
-        HandoverMode: "ACCEPTOR_PICKUP" | "DONOR_DROPOFF";
+        HandoverMode: "ACCEPTOR_PICKUP" | "DONOR_DROPOFF" | "PLATFORM_PICKUP";
         /** HandoverOut */
         HandoverOut: {
             mode: components["schemas"]["HandoverMode"];
@@ -2068,6 +2280,67 @@ export interface components {
             /** Categories Accepted */
             categories_accepted?: components["schemas"]["Category"][] | null;
         };
+        /** PaymentOut */
+        PaymentOut: {
+            /**
+             * Amount
+             * @description What the simulated gateway charged (cost minus wallet_applied).
+             */
+            amount: string;
+            /** Transaction Id */
+            transaction_id: string;
+            /**
+             * Paid At
+             * Format: date-time
+             */
+            paid_at: string;
+            /** Refunded At */
+            refunded_at: string | null;
+            /** Refund Transaction Id */
+            refund_transaction_id: string | null;
+            status: components["schemas"]["PaymentStatus"];
+        };
+        /**
+         * PaymentStatus
+         * @description Derived from Payment.refunded_at, never stored as a column.
+         * @enum {string}
+         */
+        PaymentStatus: "SUCCEEDED" | "REFUNDED";
+        /**
+         * PickupQuoteOut
+         * @description A preview: nothing is stored. Booking re-quotes and stores what it quoted.
+         */
+        PickupQuoteOut: {
+            /** Distance Km */
+            distance_km: number;
+            /** Wallet Balance */
+            wallet_balance: string;
+            /**
+             * Currency
+             * @default INR
+             */
+            currency: string;
+            /** Providers */
+            providers: components["schemas"]["ProviderQuoteOut"][];
+            /**
+             * Simulated
+             * @default true
+             * @constant
+             */
+            simulated: true;
+        };
+        /** ProviderQuoteOut */
+        ProviderQuoteOut: {
+            /**
+             * Provider Id
+             * Format: uuid
+             */
+            provider_id: string;
+            /** Provider Name */
+            provider_name: string;
+            /** Cost */
+            cost: string;
+        };
         /**
          * QueueItemOut
          * @description A donation waiting on an admin, with the transition that put it there.
@@ -2322,6 +2595,11 @@ export interface components {
             offers: components["schemas"]["OfferHistoryOut"][];
             /** Recyclings */
             recyclings: components["schemas"]["RecyclingOut"][];
+            /**
+             * Bookings
+             * @description Platform-arranged pickup bookings (SIMULATED). Usually at most one; more than one only if an earlier booking was cancelled and the donation was accepted again.
+             */
+            bookings: components["schemas"]["BookingOut"][];
         };
         /** TokenPair */
         TokenPair: {
@@ -2385,6 +2663,52 @@ export interface components {
             /** Note */
             note?: string | null;
         };
+        /**
+         * WalletOut
+         * @description The balance is derived (SUM of the ledger), never stored. No withdrawals.
+         */
+        WalletOut: {
+            /** Balance */
+            balance: string;
+            /**
+             * Currency
+             * @default INR
+             */
+            currency: string;
+            /** Transactions */
+            transactions: components["schemas"]["WalletTxnOut"][];
+        };
+        /** WalletTxnOut */
+        WalletTxnOut: {
+            /**
+             * Id
+             * Format: uuid
+             */
+            id: string;
+            type: components["schemas"]["WalletTxnType"];
+            /**
+             * Amount
+             * @description Signed: positive credits the donor, negative debits them.
+             */
+            amount: string;
+            /** Reference Recycling Id */
+            reference_recycling_id: string | null;
+            /** Reference Booking Id */
+            reference_booking_id: string | null;
+            /** Note */
+            note: string | null;
+            /**
+             * Created At
+             * Format: date-time
+             */
+            created_at: string;
+        };
+        /**
+         * WalletTxnType
+         * @description One row per ledger entry; the balance is SUM(amount), never stored.
+         * @enum {string}
+         */
+        WalletTxnType: "RECYCLING_CREDIT" | "PICKUP_DEBIT" | "PICKUP_REFUND";
     };
     responses: never;
     parameters: never;
@@ -2401,6 +2725,9 @@ export type AdminDonationDetailOut = components['schemas']['AdminDonationDetailO
 export type AdminOrganizationDetail = components['schemas']['AdminOrganizationDetail'];
 export type BodyLoginAuthLoginPost = components['schemas']['Body_login_auth_login_post'];
 export type BodyUploadImagesDonationsDonationIdImagesPost = components['schemas']['Body_upload_images_donations__donation_id__images_post'];
+export type BookPickupIn = components['schemas']['BookPickupIn'];
+export type BookingOut = components['schemas']['BookingOut'];
+export type BookingStatus = components['schemas']['BookingStatus'];
 export type CandidateOut = components['schemas']['CandidateOut'];
 export type Category = components['schemas']['Category'];
 export type ChatClosure = components['schemas']['ChatClosure'];
@@ -2409,6 +2736,9 @@ export type ChatMessageOut = components['schemas']['ChatMessageOut'];
 export type ChatReadIn = components['schemas']['ChatReadIn'];
 export type ChatSummaryOut = components['schemas']['ChatSummaryOut'];
 export type ChatThreadOut = components['schemas']['ChatThreadOut'];
+export type CommissionEntryOut = components['schemas']['CommissionEntryOut'];
+export type CommissionSource = components['schemas']['CommissionSource'];
+export type CommissionSummaryOut = components['schemas']['CommissionSummaryOut'];
 export type ComponentOut = components['schemas']['ComponentOut'];
 export type Condition = components['schemas']['Condition'];
 export type DiscoveryNeedOut = components['schemas']['DiscoveryNeedOut'];
@@ -2443,6 +2773,10 @@ export type OrganizationCountsOut = components['schemas']['OrganizationCountsOut
 export type OrganizationCreate = components['schemas']['OrganizationCreate'];
 export type OrganizationOut = components['schemas']['OrganizationOut'];
 export type OrganizationUpdate = components['schemas']['OrganizationUpdate'];
+export type PaymentOut = components['schemas']['PaymentOut'];
+export type PaymentStatus = components['schemas']['PaymentStatus'];
+export type PickupQuoteOut = components['schemas']['PickupQuoteOut'];
+export type ProviderQuoteOut = components['schemas']['ProviderQuoteOut'];
 export type QueueItemOut = components['schemas']['QueueItemOut'];
 export type RankingRunOut = components['schemas']['RankingRunOut'];
 export type RankingTrigger = components['schemas']['RankingTrigger'];
@@ -2466,6 +2800,9 @@ export type UserOut = components['schemas']['UserOut'];
 export type ValidationError = components['schemas']['ValidationError'];
 export type VerificationStatus = components['schemas']['VerificationStatus'];
 export type VerificationUpdate = components['schemas']['VerificationUpdate'];
+export type WalletOut = components['schemas']['WalletOut'];
+export type WalletTxnOut = components['schemas']['WalletTxnOut'];
+export type WalletTxnType = components['schemas']['WalletTxnType'];
 export type $defs = Record<string, never>;
 export interface operations {
     register_donor_auth_register_donor_post: {
@@ -3424,6 +3761,72 @@ export interface operations {
             };
         };
     };
+    get_pickup_quote_donations__donation_id__pickup_quote_get: {
+        parameters: {
+            query?: never;
+            header?: never;
+            path: {
+                donation_id: string;
+            };
+            cookie?: never;
+        };
+        requestBody?: never;
+        responses: {
+            /** @description Successful Response */
+            200: {
+                headers: {
+                    [name: string]: unknown;
+                };
+                content: {
+                    "application/json": components["schemas"]["PickupQuoteOut"];
+                };
+            };
+            /** @description Validation Error */
+            422: {
+                headers: {
+                    [name: string]: unknown;
+                };
+                content: {
+                    "application/json": components["schemas"]["HTTPValidationError"];
+                };
+            };
+        };
+    };
+    book_pickup_donations__donation_id__book_pickup_post: {
+        parameters: {
+            query?: never;
+            header?: never;
+            path: {
+                donation_id: string;
+            };
+            cookie?: never;
+        };
+        requestBody: {
+            content: {
+                "application/json": components["schemas"]["BookPickupIn"];
+            };
+        };
+        responses: {
+            /** @description Successful Response */
+            200: {
+                headers: {
+                    [name: string]: unknown;
+                };
+                content: {
+                    "application/json": components["schemas"]["DonationOut"];
+                };
+            };
+            /** @description Validation Error */
+            422: {
+                headers: {
+                    [name: string]: unknown;
+                };
+                content: {
+                    "application/json": components["schemas"]["HTTPValidationError"];
+                };
+            };
+        };
+    };
     upload_images_donations__donation_id__images_post: {
         parameters: {
             query?: never;
@@ -3926,6 +4329,38 @@ export interface operations {
             };
         };
     };
+    commission_summary_admin_commission_get: {
+        parameters: {
+            query?: {
+                limit?: number;
+                offset?: number;
+            };
+            header?: never;
+            path?: never;
+            cookie?: never;
+        };
+        requestBody?: never;
+        responses: {
+            /** @description Successful Response */
+            200: {
+                headers: {
+                    [name: string]: unknown;
+                };
+                content: {
+                    "application/json": components["schemas"]["CommissionSummaryOut"];
+                };
+            };
+            /** @description Validation Error */
+            422: {
+                headers: {
+                    [name: string]: unknown;
+                };
+                content: {
+                    "application/json": components["schemas"]["HTTPValidationError"];
+                };
+            };
+        };
+    };
     list_notifications_notifications_get: {
         parameters: {
             query?: {
@@ -4090,6 +4525,26 @@ export interface operations {
             };
         };
     };
+    get_wallet_wallet_get: {
+        parameters: {
+            query?: never;
+            header?: never;
+            path?: never;
+            cookie?: never;
+        };
+        requestBody?: never;
+        responses: {
+            /** @description Successful Response */
+            200: {
+                headers: {
+                    [name: string]: unknown;
+                };
+                content: {
+                    "application/json": components["schemas"]["WalletOut"];
+                };
+            };
+        };
+    };
     health_health_get: {
         parameters: {
             query?: never;
@@ -4122,20 +4577,24 @@ type ReadonlyArray<T> = [
     unknown[]
 ] ? Readonly<Exclude<T, undefined>> : Readonly<Exclude<T, undefined>[]>;
 export const actorValues: ReadonlyArray<FlattenedDeepRequired<components>["schemas"]["Actor"]> = ["DONOR", "ACCEPTOR", "ADMIN", "SYSTEM"];
+export const bookingStatusValues: ReadonlyArray<FlattenedDeepRequired<components>["schemas"]["BookingStatus"]> = ["BOOKED", "PICKED_UP", "DELIVERED", "CANCELLED"];
 export const categoryValues: ReadonlyArray<FlattenedDeepRequired<components>["schemas"]["Category"]> = ["CLOTHES", "TOYS", "BOOKS"];
 export const chatClosureValues: ReadonlyArray<FlattenedDeepRequired<components>["schemas"]["ChatClosure"]> = ["NO_LONGER_HELD"];
+export const commissionSourceValues: ReadonlyArray<FlattenedDeepRequired<components>["schemas"]["CommissionSource"]> = ["LOGISTICS", "RECYCLING"];
 export const conditionValues: ReadonlyArray<FlattenedDeepRequired<components>["schemas"]["Condition"]> = ["NEW", "GENTLY_USED", "USED"];
-export const donationActionValues: ReadonlyArray<FlattenedDeepRequired<components>["schemas"]["DonationAction"]> = ["OFFER", "ESCALATE", "CANCEL", "ACCEPT", "REJECT", "EXPIRE", "REOFFER", "REMATCH", "UPGRADE_PRIORITY", "REDIRECT_TO_RECYCLING", "STALL", "SCHEDULE_PICKUP", "CHOOSE_DROPOFF", "MARK_HANDED_OVER", "CONFIRM_RECEIPT", "CONFIRM_RECYCLED", "NO_RECYCLER", "REQUEUE"];
+export const donationActionValues: ReadonlyArray<FlattenedDeepRequired<components>["schemas"]["DonationAction"]> = ["OFFER", "ESCALATE", "CANCEL", "ACCEPT", "REJECT", "EXPIRE", "REOFFER", "REMATCH", "UPGRADE_PRIORITY", "REDIRECT_TO_RECYCLING", "STALL", "SCHEDULE_PICKUP", "CHOOSE_DROPOFF", "MARK_HANDED_OVER", "CONFIRM_RECEIPT", "CONFIRM_RECYCLED", "NO_RECYCLER", "REQUEUE", "BOOK_PICKUP"];
 export const donationStatusValues: ReadonlyArray<FlattenedDeepRequired<components>["schemas"]["DonationStatus"]> = ["LISTED", "MATCHED", "RE_MATCHING", "ESCALATED", "ACCEPTED", "PICKUP_SCHEDULED", "IN_TRANSIT", "COMPLETED", "WASTE_REDIRECTED", "RECYCLED", "NEEDS_ADMIN", "CANCELLED"];
 export const escalationCauseValues: ReadonlyArray<FlattenedDeepRequired<components>["schemas"]["EscalationCause"]> = ["THRESHOLD_REACHED", "NO_CANDIDATES", "NOT_OFFERED"];
 export const filterReasonValues: ReadonlyArray<FlattenedDeepRequired<components>["schemas"]["FilterReason"]> = ["NOT_VERIFIED", "CATEGORY_NOT_ACCEPTED", "EXCLUDED", "OUT_OF_RADIUS", "INSUFFICIENT_CAPACITY"];
-export const handoverModeValues: ReadonlyArray<FlattenedDeepRequired<components>["schemas"]["HandoverMode"]> = ["ACCEPTOR_PICKUP", "DONOR_DROPOFF"];
+export const handoverModeValues: ReadonlyArray<FlattenedDeepRequired<components>["schemas"]["HandoverMode"]> = ["ACCEPTOR_PICKUP", "DONOR_DROPOFF", "PLATFORM_PICKUP"];
 export const notificationKindValues: ReadonlyArray<FlattenedDeepRequired<components>["schemas"]["NotificationKind"]> = ["DONATION_EVENT", "ORGANISATION_REGISTERED", "CHAT_MESSAGE"];
 export const offerResponseValues: ReadonlyArray<FlattenedDeepRequired<components>["schemas"]["OfferResponse"]> = ["ACCEPTED", "REJECTED", "EXPIRED", "RETRACTED"];
 export const offerSourceValues: ReadonlyArray<FlattenedDeepRequired<components>["schemas"]["OfferSource"]> = ["DONOR", "SYSTEM"];
+export const paymentStatusValues: ReadonlyArray<FlattenedDeepRequired<components>["schemas"]["PaymentStatus"]> = ["SUCCEEDED", "REFUNDED"];
 export const rankingTriggerValues: ReadonlyArray<FlattenedDeepRequired<components>["schemas"]["RankingTrigger"]> = ["DONOR_OFFER", "RE_MATCHING"];
 export const rejectReasonValues: ReadonlyArray<FlattenedDeepRequired<components>["schemas"]["RejectReason"]> = ["NO_CAPACITY", "NOT_NEEDED", "CONDITION", "TOO_FAR", "OTHER"];
 export const roleValues: ReadonlyArray<FlattenedDeepRequired<components>["schemas"]["Role"]> = ["DONOR", "ACCEPTOR", "ADMIN"];
 export const scoreFactorValues: ReadonlyArray<FlattenedDeepRequired<components>["schemas"]["ScoreFactor"]> = ["PROXIMITY", "NEED_MATCH", "URGENCY", "CAPACITY_HEADROOM", "ACCEPTANCE_RATE"];
 export const urgencyValues: ReadonlyArray<FlattenedDeepRequired<components>["schemas"]["Urgency"]> = ["LOW", "MEDIUM", "HIGH"];
 export const verificationStatusValues: ReadonlyArray<FlattenedDeepRequired<components>["schemas"]["VerificationStatus"]> = ["PENDING", "VERIFIED", "REJECTED"];
+export const walletTxnTypeValues: ReadonlyArray<FlattenedDeepRequired<components>["schemas"]["WalletTxnType"]> = ["RECYCLING_CREDIT", "PICKUP_DEBIT", "PICKUP_REFUND"];

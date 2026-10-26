@@ -177,6 +177,14 @@ def test_handover_roles_are_fixed():
     assert ACTORS[(S.IN_TRANSIT, A.CONFIRM_RECEIPT)] == Actor.ACCEPTOR
 
 
+def test_three_handover_paths_all_reach_pickup_scheduled():
+    into_pickup_scheduled = {a for (s, a), t in TRANSITIONS.items() if s == S.ACCEPTED and t == S.PICKUP_SCHEDULED}
+    assert into_pickup_scheduled == {A.SCHEDULE_PICKUP, A.CHOOSE_DROPOFF, A.BOOK_PICKUP}
+    assert ACTORS[(S.ACCEPTED, A.SCHEDULE_PICKUP)] == Actor.ACCEPTOR
+    assert ACTORS[(S.ACCEPTED, A.CHOOSE_DROPOFF)] == Actor.DONOR
+    assert ACTORS[(S.ACCEPTED, A.BOOK_PICKUP)] == Actor.DONOR
+
+
 def test_no_withdraw_and_no_auto_offer():
     assert "WITHDRAW" not in {a.value for a in DonationAction}
     assert ACTORS[(S.LISTED, A.OFFER)] == Actor.DONOR
@@ -224,6 +232,17 @@ def test_editable_states_are_not_terminal():
 def test_held_states_follow_acceptance_and_precede_completion():
     assert HELD_STATES == {S.ACCEPTED, S.PICKUP_SCHEDULED, S.IN_TRANSIT}
     assert HELD_STATES <= NON_TERMINAL - TRANSIENT_STATES
+
+
+def test_only_stall_leaves_held_states_without_completing():
+    """Phase 4: a platform-pickup booking exists only while a donation holds
+    lifecycle.HELD_STATES, and app.services.sweeper cancels and refunds it at exactly
+    one edge, STALL. Driven off the table (not a hand-written list of states), so a
+    future edge that bypasses STALL — e.g. a direct admin CANCEL from ACCEPTED — fails
+    this test instead of silently leaving a paid, undelivered booking unrefunded."""
+    for (state, action), target in TRANSITIONS.items():
+        if state in HELD_STATES and target not in HELD_STATES and target != S.COMPLETED:
+            assert action == A.STALL, f"{state} --{action}--> {target} leaves a held donation unrefunded"
 
 
 def test_states_awaiting_an_admin_are_the_queue_and_recycling_confirmation():

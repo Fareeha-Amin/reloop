@@ -81,6 +81,7 @@ def _seed(args) -> int:
         return 1
     print(f"Organisations created: {len(report.organisations_created)}, already present: {len(report.organisations_existing)}")
     print(f"Recyclers created: {len(report.recyclers_created)}, already present: {len(report.recyclers_existing)}")
+    print(f"Logistics providers created: {len(report.providers_created)}, already present: {len(report.providers_existing)}")
     print(f"Demo donor {seed_service.DEMO_DONOR_EMAIL}: {'created' if report.donor_created else 'already present'}")
     print(f"Organisation logins: seed.<slug>@{seed_service.SEED_EMAIL_DOMAIN}, e.g. {seed_service.ORGANISATIONS[0].email}")
     print("Existing accounts keep their original password.")

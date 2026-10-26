@@ -100,6 +100,12 @@ const SPECS: Record<Surface, Partial<Record<DonationAction, ActionSpec>>> = {
       confirmKey: 'actions.handedOver.confirm',
       run: (id) => unwrap(client.POST('/donations/{donation_id}/mark-handed-over', donation(id))),
     },
+    BOOK_PICKUP: {
+      input: 'navigate',
+      emphasis: 'secondary',
+      labelKey: 'actions.bookPickup.label',
+      to: paths.bookPickup,
+    },
     CANCEL: {
       input: 'confirm',
       emphasis: 'danger',
@@ -213,6 +219,19 @@ export function offerTo(donationId: string, organizationId: string | null) {
     client.POST('/donations/{donation_id}/offer', {
       ...donation(donationId),
       body: organizationId ? { organization_id: organizationId } : null,
+    }),
+  );
+}
+
+/**
+ * Platform pickup is booked from its own page (fetches the quote, books on submit),
+ * not from the generic ActionBar dialog, so it has its own call like offerTo.
+ */
+export function bookPickup(donationId: string, providerId: string, scheduledFor: string, walletAmount: string) {
+  return unwrap(
+    client.POST('/donations/{donation_id}/book-pickup', {
+      ...donation(donationId),
+      body: { provider_id: providerId, scheduled_for: scheduledFor, wallet_amount: walletAmount },
     }),
   );
 }

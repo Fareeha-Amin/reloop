@@ -97,6 +97,7 @@ class GuardContext:
     slate_empty: bool | None = None
     recycler_available: bool | None = None
     pickup_capable: bool | None = None  # of the organisation holding the donation
+    logistics_available: bool | None = None  # any active LogisticsProvider
 
 
 def blocked_reason(state: DonationStatus, action: DonationAction, ctx: GuardContext) -> str | None:
@@ -110,6 +111,8 @@ def blocked_reason(state: DonationStatus, action: DonationAction, ctx: GuardCont
         return "No active recycler accepts this category within range; redirecting would return it to this queue."
     if (state, action) == (S.ACCEPTED, A.SCHEDULE_PICKUP) and ctx.pickup_capable is False:
         return "This organisation does not collect; the donor must choose drop-off."
+    if (state, action) == (S.ACCEPTED, A.BOOK_PICKUP) and ctx.logistics_available is False:
+        return "No active logistics provider is available to book a platform pickup."
     return None
 
 

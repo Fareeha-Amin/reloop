@@ -9,13 +9,20 @@ import {
   type QueueItemOut,
 } from '../../api/schema';
 import { paths } from '../../app/paths';
-import { useAdminDonations, useAdminOrganisations, useAwaitingAdmin, useOrganisationCounts, useRecyclers } from '../../app/queries';
+import {
+  useAdminCommission,
+  useAdminDonations,
+  useAdminOrganisations,
+  useAwaitingAdmin,
+  useOrganisationCounts,
+  useRecyclers,
+} from '../../app/queries';
 import { AdminDonationRow, AwaitingCard, SimulatedNote, SweepButton } from '../../components/admin';
 import { ApiErrorAlert } from '../../components/ApiErrorAlert';
 import { RecentActivity } from '../../components/NotificationList';
 import { VerificationTag } from '../../components/StatusTag';
 import { ADMIN_PAGE_SIZE } from '../../config';
-import { formatDate, formatMoney } from '../../i18n/format';
+import { formatDate, formatDateTime, formatMoney } from '../../i18n/format';
 import { t } from '../../i18n';
 import { Button } from '../../ui/Button';
 import { Card, LinkCard } from '../../ui/Card';
@@ -25,9 +32,9 @@ import { Icon } from '../../ui/icons';
 import { HeroBanner, Page } from '../../ui/layout';
 import { Tag } from '../../ui/Tag';
 import { Chips, Tabs } from '../../ui/Tabs';
-import { categoryIcon, statusTone, vocabLabel } from '../../vocab/display';
+import { categoryIcon, commissionSourceTone, statusTone, vocabLabel } from '../../vocab/display';
 
-const TABS = ['awaiting', 'organisations', 'donations', 'recyclers'] as const;
+const TABS = ['awaiting', 'organisations', 'donations', 'recyclers', 'commission'] as const;
 type Tab = (typeof TABS)[number];
 
 function Loading() {
@@ -228,6 +235,43 @@ function Recyclers() {
   );
 }
 
+function Commission() {
+  const commission = useAdminCommission();
+  if (commission.isPending) return <Loading />;
+  const data = commission.data;
+  return (
+    <div className="space-y-4">
+      <ApiErrorAlert error={commission.error} />
+      <SimulatedNote>{t('admin.commissionNote')}</SimulatedNote>
+      {data && (
+        <Card className="p-4 sm:p-5">
+          <p className="text-sm font-semibold text-ink-muted uppercase">{t('admin.commissionTotal')}</p>
+          <p className="mt-1 text-2xl font-semibold text-brand-700">{formatMoney(data.total, data.currency)}</p>
+        </Card>
+      )}
+      {data && data.entries.length > 0 ? (
+        <div className="space-y-2">
+          {data.entries.map((e) => (
+            <div key={e.id} className="flex items-center justify-between gap-3 rounded-control border border-line bg-surface p-3 text-sm">
+              <div className="flex items-center gap-2 min-w-0">
+                <Tag tone={commissionSourceTone(e.source)} dot size="sm">
+                  {vocabLabel('CommissionSource', e.source)}
+                </Tag>
+                <span className="truncate text-ink-muted">{formatDateTime(e.created_at)}</span>
+              </div>
+              <span className={`font-semibold ${Number(e.amount) < 0 ? 'text-ink-soft' : 'text-brand-700'}`}>
+                {formatMoney(e.amount, data.currency)}
+              </span>
+            </div>
+          ))}
+        </div>
+      ) : (
+        <EmptyState icon="scale" title={t('admin.commissionEmpty')} />
+      )}
+    </div>
+  );
+}
+
 export function AdminPanel() {
   const [params, setParams] = useSearchParams();
   const tab: Tab = (TABS as readonly string[]).includes(params.get('tab') ?? '') ? (params.get('tab') as Tab) : 'awaiting';
@@ -257,6 +301,7 @@ export function AdminPanel() {
               },
               { value: 'donations', label: t('admin.tabDonations'), icon: 'box' },
               { value: 'recyclers', label: t('admin.tabRecyclers'), icon: 'recycle' },
+              { value: 'commission', label: t('admin.tabCommission'), icon: 'wallet' },
             ]}
           />
           {tab === 'awaiting' && (
@@ -268,6 +313,7 @@ export function AdminPanel() {
           {tab === 'organisations' && <Organisations counts={counts.data} />}
           {tab === 'donations' && <Donations />}
           {tab === 'recyclers' && <Recyclers />}
+          {tab === 'commission' && <Commission />}
         </div>
         <aside>
           <RecentActivity />

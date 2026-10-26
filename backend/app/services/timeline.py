@@ -3,7 +3,8 @@
 from sqlalchemy import select
 from sqlalchemy.orm import Session, selectinload
 
-from app.models import Donation, Match, Recycling, StatusEvent
+from app.models import Booking, Donation, Match, Recycling, StatusEvent
+from app.schemas.logistics import BookingOut
 from app.schemas.timeline import (
     EventOut,
     HandoverOut,
@@ -29,6 +30,12 @@ def build(db: Session, donation: Donation, for_admin: bool) -> TimelineOut:
         .where(Recycling.donation_id == donation.id)
         .options(selectinload(Recycling.collector))
         .order_by(Recycling.created_at)
+    )
+    bookings = db.scalars(
+        select(Booking)
+        .where(Booking.donation_id == donation.id)
+        .options(selectinload(Booking.provider), selectinload(Booking.payment))
+        .order_by(Booking.booked_at)
     )
     return TimelineOut(
         events=[
@@ -61,6 +68,7 @@ def build(db: Session, donation: Donation, for_admin: bool) -> TimelineOut:
             for m in matches
         ],
         recyclings=[recycling_out(r) for r in recyclings],
+        bookings=[BookingOut.from_booking(b) for b in bookings],
     )
 
 

@@ -49,6 +49,18 @@ export function useCandidates(id: string) {
   });
 }
 
+/** A preview: the API stores nothing for it. Booking re-quotes. */
+export function usePickupQuote(id: string) {
+  return useQuery({
+    queryKey: ['pickup-quote', id],
+    queryFn: () => unwrap(client.GET('/donations/{donation_id}/pickup-quote', path(id))),
+  });
+}
+
+export function useWallet() {
+  return useQuery({ queryKey: ['wallet'], queryFn: () => unwrap(client.GET('/wallet')) });
+}
+
 export function useNotifications(enabled: boolean) {
   return useQuery({
     queryKey: keys.notifications,
@@ -196,4 +208,11 @@ export function useAdminDonation(id: string) {
 
 export function useRecyclers() {
   return useQuery({ queryKey: ['admin', 'recyclers'], queryFn: () => unwrap(client.GET('/admin/recyclers')) });
+}
+
+export function useAdminCommission() {
+  return useQuery({
+    queryKey: ['admin', 'commission'],
+    queryFn: () => unwrap(client.GET('/admin/commission', { params: { query: { limit: ADMIN_PAGE_SIZE } } })),
+  });
 }

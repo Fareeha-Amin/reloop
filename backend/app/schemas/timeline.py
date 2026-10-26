@@ -20,6 +20,7 @@ from app.constants import (
     RejectReason,
 )
 from app.schemas.common import OutputModel
+from app.schemas.logistics import BookingOut
 
 
 class EventOut(OutputModel):
@@ -85,3 +86,7 @@ class TimelineOut(OutputModel):
     events: list[EventOut]
     offers: list[OfferHistoryOut]
     recyclings: list[RecyclingOut]
+    bookings: list[BookingOut] = Field(
+        description="Platform-arranged pickup bookings (SIMULATED). Usually at most one; "
+        "more than one only if an earlier booking was cancelled and the donation was accepted again."
+    )

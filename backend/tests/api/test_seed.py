@@ -2,22 +2,27 @@ from sqlalchemy import func, select
 
 from app.constants import Category, VerificationStatus
 from app.domain.geo import haversine_km
-from app.models import CurrentNeed, OrganizationProfile, User, WasteCollector
+from app.models import CurrentNeed, LogisticsProvider, OrganizationProfile, User, WasteCollector
 from app.services import seed
 from tests.api import helpers as h
 
 
-def _counts(db) -> tuple[int, int, int, int]:
-    return tuple(db.scalar(select(func.count()).select_from(m)) for m in (OrganizationProfile, WasteCollector, User, CurrentNeed))
+def _counts(db) -> tuple[int, int, int, int, int]:
+    return tuple(
+        db.scalar(select(func.count()).select_from(m))
+        for m in (OrganizationProfile, WasteCollector, LogisticsProvider, User, CurrentNeed)
+    )
 
 
 def test_seed_is_idempotent(db):
     first = seed.seed(db, h.PASSWORD)
     assert len(first.organisations_created) == 10 and len(first.recyclers_created) == 3 and first.donor_created
+    assert len(first.providers_created) == 3
     after_first = _counts(db)
 
     second = seed.seed(db, h.PASSWORD)
     assert second.organisations_created == [] and second.recyclers_created == [] and not second.donor_created
+    assert second.providers_created == []
     assert len(second.organisations_existing) == 10
     assert _counts(db) == after_first
 

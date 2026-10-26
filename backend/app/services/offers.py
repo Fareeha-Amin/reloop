@@ -26,7 +26,7 @@ from app.constants import (
 from app.domain import lifecycle, policy
 from app.domain.geo import disclose_distance_km, haversine_km
 from app.models import Donation, Handover, Match, OrganizationProfile, User
-from app.services import audit, matching, organizations, sweeper, transitions
+from app.services import audit, logistics, matching, organizations, sweeper, transitions
 from app.services.actions import ensure_available
 from app.services.errors import Conflict, NotFound, Unprocessable
 
@@ -209,5 +209,6 @@ def confirm_receipt(db: Session, user: User, donation_id: uuid.UUID, now: dateti
     org = organizations.get_for_user(db, user)
     donation, match = _own_acceptance(db, org, donation_id, lock=True)
     transitions.apply(db, donation, A.CONFIRM_RECEIPT, Actor.ACCEPTOR, now, user=user, match=match)
+    logistics.mark_delivered(db, donation, now)
     db.commit()
     return _view(db, org, donation, match)

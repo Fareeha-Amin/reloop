@@ -22,9 +22,9 @@ from sqlalchemy.orm import Session
 
 from app.constants import Actor, DonationAction, DonationStatus, OfferResponse
 from app.db import get_engine
-from app.domain import policy
+from app.domain import lifecycle, policy
 from app.models import Donation, StatusEvent
-from app.services import matching, transitions
+from app.services import logistics, matching, transitions
 
 logger = logging.getLogger(__name__)
 
@@ -83,6 +83,12 @@ def apply_due(db: Session, donation: Donation, now: datetime) -> SweepItem | Non
         matching.resolve_re_matching(db, donation, now)
     else:
         transitions.apply(db, donation, action, Actor.SYSTEM, now, cause=decision.cause)
+    if action == DonationAction.STALL and before in lifecycle.HELD_STATES:
+        # The only path out of HELD_STATES that does not complete: a platform-pickup
+        # booking paid for but not yet delivered must be cancelled and refunded now,
+        # whatever the admin does with the donation next (tests/unit/test_lifecycle.py
+        # asserts, from the table, that STALL is the only such exit).
+        logistics.cancel_and_refund(db, donation, now, reason="Handover stalled; donation sent to the admin queue.")
     return SweepItem(donation.id, before, action, donation.status)
 
 

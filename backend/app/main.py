@@ -8,7 +8,7 @@ from fastapi.responses import JSONResponse
 
 from app.config import get_settings
 from app.constants import SWEEP_INTERVAL
-from app.routers import admin, auth, chat, discovery, donations, notifications, offers, organizations
+from app.routers import admin, auth, chat, discovery, donations, notifications, offers, organizations, wallet
 from app.services import sweeper
 from app.services.errors import ServiceError
 from app.services.geocoding import GeocodingUnavailable
@@ -35,7 +35,7 @@ async def lifespan(app: FastAPI):
 app = FastAPI(
     lifespan=lifespan,
     title="ReLoop API",
-    version="0.3.3-phase3",
+    version="0.4.0-phase4",
     description=(
         "The core loop: explainable matching, the full donation lifecycle, "
         "rejection handling, escalation, a recycling fallback and the deadline sweeper "
@@ -43,10 +43,14 @@ app = FastAPI(
         "runs it now). Phase 3 adds an in-app notification feed (polled; no push or email), "
         "a public discovery map of verified organisations at approximate positions, and a "
         "chat between a donor and the organisation that accepted their donation (polled). "
+        "Phase 4 adds a third handover path (a platform-arranged pickup the donor books "
+        "and pays for), a donor wallet credited by confirmed recycling settlements, and a "
+        "commission ledger for admins. "
         "**Stubs and simulations:** geocoding is a stub (coordinates are accepted as "
         "supplied); recycling settlements are **simulated** over **estimated** mass "
-        "(per-category weights are placeholders), and an admin confirms recycling on the "
-        "recycler's behalf. No money moves."
+        "(per-category weights are placeholders), an admin confirms recycling on the "
+        "recycler's behalf, and platform-arranged pickup is a **simulated** courier "
+        "booking with a **simulated**, auto-succeeding checkout. No real money moves."
     ),
 )
 
@@ -69,6 +73,7 @@ app.include_router(admin.router)
 app.include_router(notifications.router)
 app.include_router(chat.router)
 app.include_router(discovery.router)
+app.include_router(wallet.router)
 
 
 def _mark_binary_strings(node) -> None:

@@ -7,6 +7,7 @@ which writes the StatusEvent. A route never compares statuses itself.
 
 import uuid
 from datetime import datetime
+from decimal import Decimal
 
 from sqlalchemy.orm import Session
 
@@ -22,7 +23,7 @@ from app.constants import (
 )
 from app.domain import policy
 from app.models import Donation, Handover, User
-from app.services import matching, recycling, transitions
+from app.services import logistics, matching, recycling, transitions
 from app.services.errors import Conflict, NotFound, Unprocessable
 
 S = DonationStatus
@@ -34,7 +35,7 @@ A = DonationAction
 
 def guard_context(db: Session, donation: Donation) -> policy.GuardContext:
     """Compute only what the donation's current state needs."""
-    slate_empty = recycler_available = pickup_capable = None
+    slate_empty = recycler_available = pickup_capable = logistics_available = None
     if donation.status in (S.ESCALATED, S.NEEDS_ADMIN):
         slate_empty = matching.compute_slate(db, donation)[0].is_empty
     if donation.status == S.NEEDS_ADMIN:
@@ -42,11 +43,13 @@ def guard_context(db: Session, donation: Donation) -> policy.GuardContext:
     if donation.status == S.ACCEPTED:
         held = matching.holder(db, donation)
         pickup_capable = held.organization.pickup_capable if held is not None else None
+        logistics_available = bool(logistics.active_providers(db))
     return policy.GuardContext(
         is_priority=donation.is_priority,
         slate_empty=slate_empty,
         recycler_available=recycler_available,
         pickup_capable=pickup_capable,
+        logistics_available=logistics_available,
     )
 
 
@@ -166,6 +169,28 @@ def mark_handed_over(db: Session, donation_id: uuid.UUID, donor: User, now: date
     transitions.apply(
         db, donation, A.MARK_HANDED_OVER, Actor.DONOR, now, user=donor, match=matching.holder(db, donation)
     )
+    logistics.mark_picked_up(db, donation, now)
+    db.commit()
+    return donation
+
+
+def book_pickup(
+    db: Session,
+    donation_id: uuid.UUID,
+    donor: User,
+    provider_id: uuid.UUID,
+    scheduled_for: datetime,
+    wallet_amount: Decimal,
+    now: datetime,
+) -> Donation:
+    """ACCEPTED -> PICKUP_SCHEDULED: a simulated courier booking, paid for by the donor
+    (wallet credit first, then a simulated checkout for the rest). It only has to be in
+    the future: the pickup window is advisory."""
+    donation = _lock_owned(db, donation_id, donor)
+    ensure_available(db, donation, A.BOOK_PICKUP, Actor.DONOR)
+    if scheduled_for <= now:
+        raise Unprocessable("A pickup time must be in the future.")
+    logistics.book(db, donation, donor, provider_id, scheduled_for, wallet_amount, now)
     db.commit()
     return donation
 

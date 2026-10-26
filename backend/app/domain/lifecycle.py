@@ -51,9 +51,12 @@ _EDGES: tuple[tuple[DonationStatus, DonationAction, DonationStatus, Actor], ...]
     (S.ESCALATED,        A.REDIRECT_TO_RECYCLING, S.WASTE_REDIRECTED, Actor.DONOR),
     (S.ESCALATED,        A.CANCEL,                S.CANCELLED,        Actor.DONOR),
     (S.ESCALATED,        A.STALL,                 S.NEEDS_ADMIN,      Actor.SYSTEM),    # sweeper, ESCALATION_TTL
-    # Accepted: someone sets the handover time; the mode decides who.
+    # Accepted: someone sets the handover time; the mode decides who. Three handover
+    # paths: the acceptor collects, the donor delivers, or the donor books a simulated
+    # courier (BOOK_PICKUP) — all land in PICKUP_SCHEDULED.
     (S.ACCEPTED,         A.SCHEDULE_PICKUP,       S.PICKUP_SCHEDULED, Actor.ACCEPTOR),
     (S.ACCEPTED,         A.CHOOSE_DROPOFF,        S.PICKUP_SCHEDULED, Actor.DONOR),
+    (S.ACCEPTED,         A.BOOK_PICKUP,           S.PICKUP_SCHEDULED, Actor.DONOR),
     (S.ACCEPTED,         A.STALL,                 S.NEEDS_ADMIN,      Actor.SYSTEM),    # sweeper, reneging acceptor
     # Handover: the donor hands over, the acceptor confirms receipt.
     (S.PICKUP_SCHEDULED, A.MARK_HANDED_OVER,      S.IN_TRANSIT,       Actor.DONOR),

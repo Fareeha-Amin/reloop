@@ -9,6 +9,8 @@ from app.routers.common import PageDep
 from app.routers.donations import donation_out
 from app.schemas.admin import (
     AdminDonationDetailOut,
+    CommissionEntryOut,
+    CommissionSummaryOut,
     QueueItemOut,
     RankingRunOut,
     RecyclerOut,
@@ -24,7 +26,7 @@ from app.schemas.organization import (
     VerificationUpdate,
 )
 from app.security.deps import AdminUser, DbSession
-from app.services import actions, admin as admin_views, donations, organizations, sweeper, timeline
+from app.services import actions, admin as admin_views, commission, donations, organizations, sweeper, timeline
 
 router = APIRouter(prefix="/admin", tags=["admin"])
 
@@ -169,3 +171,14 @@ def run_sweep(admin: AdminUser, db: DbSession):
 @router.get("/recyclers", response_model=list[RecyclerOut])
 def list_recyclers(admin: AdminUser, db: DbSession):
     return admin_views.recyclers(db)
+
+
+@router.get("/commission", response_model=CommissionSummaryOut)
+def commission_summary(admin: AdminUser, db: DbSession, page: PageDep):
+    """The platform's earnings ledger: logistics fees and recycling fees. A cancelled,
+    undelivered booking's commission is reversed by a second, negated row, so `total`
+    is always net. SIMULATED: no money actually moves."""
+    return CommissionSummaryOut(
+        total=commission.total(db),
+        entries=[CommissionEntryOut.model_validate(e) for e in commission.recent(db, page.limit, page.offset)],
+    )

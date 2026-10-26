@@ -96,6 +96,7 @@ class DonationAction(StrEnum):
     CONFIRM_RECYCLED = "CONFIRM_RECYCLED"
     NO_RECYCLER = "NO_RECYCLER"
     REQUEUE = "REQUEUE"
+    BOOK_PICKUP = "BOOK_PICKUP"
 
 
 class Actor(StrEnum):
@@ -147,6 +148,7 @@ class HandoverMode(StrEnum):
 
     ACCEPTOR_PICKUP = "ACCEPTOR_PICKUP"  # the acceptor collects; it sets scheduled_for
     DONOR_DROPOFF = "DONOR_DROPOFF"  # the donor delivers; the donor sets scheduled_for
+    PLATFORM_PICKUP = "PLATFORM_PICKUP"  # a simulated courier collects; the donor books and sets scheduled_for
 
 
 class AddressAccess(StrEnum):
@@ -197,6 +199,39 @@ class NotificationKind(StrEnum):
     DONATION_EVENT = "DONATION_EVENT"  # a lifecycle transition (a status_events row)
     ORGANISATION_REGISTERED = "ORGANISATION_REGISTERED"  # admins: a new organisation to verify
     CHAT_MESSAGE = "CHAT_MESSAGE"  # a message from the other party in a chat thread
+
+
+class BookingStatus(StrEnum):
+    """A platform-arranged pickup's own progress. Derived from Booking's nullable
+    write-once timestamps (app.models.logistics), never stored as a column."""
+
+    BOOKED = "BOOKED"
+    PICKED_UP = "PICKED_UP"
+    DELIVERED = "DELIVERED"
+    CANCELLED = "CANCELLED"
+
+
+class PaymentStatus(StrEnum):
+    """Derived from Payment.refunded_at, never stored as a column."""
+
+    SUCCEEDED = "SUCCEEDED"
+    REFUNDED = "REFUNDED"
+
+
+class WalletTxnType(StrEnum):
+    """One row per ledger entry; the balance is SUM(amount), never stored."""
+
+    RECYCLING_CREDIT = "RECYCLING_CREDIT"  # a confirmed recycling settlement
+    PICKUP_DEBIT = "PICKUP_DEBIT"  # wallet credit applied to a platform pickup booking
+    PICKUP_REFUND = "PICKUP_REFUND"  # a cancelled, undelivered booking's wallet portion returned
+
+
+class CommissionSource(StrEnum):
+    """What earned a commission ledger entry. A cancelled booking's commission is
+    reversed by a second, negative entry (never edited or deleted)."""
+
+    LOGISTICS = "LOGISTICS"
+    RECYCLING = "RECYCLING"
 
 
 # --- Units ---------------------------------------------------------------------------
@@ -323,3 +358,10 @@ CATEGORY_WEIGHTS_ARE_PLACEHOLDERS = True
 RECYCLER_MAX_RADIUS_KM = 25.0
 RECYCLING_PLATFORM_FEE_PCT = Decimal("10")  # of the gross recovered value
 CURRENCY = "INR"
+
+# --- Logistics (simulated platform-arranged pickup) ------------------------------------
+# A LogisticsProvider's own pricing (base fee + per-km rate) lives on its record, not
+# here, same as a WasteCollector's rate. This fee is an independent policy choice from
+# RECYCLING_PLATFORM_FEE_PCT, even though both currently start at the same value.
+
+LOGISTICS_PLATFORM_FEE_PCT = Decimal("10")  # of the booking cost the donor pays

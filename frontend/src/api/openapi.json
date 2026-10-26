@@ -2,8 +2,8 @@
   "openapi": "3.1.0",
   "info": {
     "title": "ReLoop API",
-    "description": "The core loop: explainable matching, the full donation lifecycle, rejection handling, escalation, a recycling fallback and the deadline sweeper (in-process every 15 minutes; POST /admin/sweep runs it now). Phase 3 adds an in-app notification feed (polled; no push or email), a public discovery map of verified organisations at approximate positions, and a chat between a donor and the organisation that accepted their donation (polled). **Stubs and simulations:** geocoding is a stub (coordinates are accepted as supplied); recycling settlements are **simulated** over **estimated** mass (per-category weights are placeholders), and an admin confirms recycling on the recycler's behalf. No money moves.",
-    "version": "0.3.3-phase3"
+    "description": "The core loop: explainable matching, the full donation lifecycle, rejection handling, escalation, a recycling fallback and the deadline sweeper (in-process every 15 minutes; POST /admin/sweep runs it now). Phase 3 adds an in-app notification feed (polled; no push or email), a public discovery map of verified organisations at approximate positions, and a chat between a donor and the organisation that accepted their donation (polled). Phase 4 adds a third handover path (a platform-arranged pickup the donor books and pays for), a donor wallet credited by confirmed recycling settlements, and a commission ledger for admins. **Stubs and simulations:** geocoding is a stub (coordinates are accepted as supplied); recycling settlements are **simulated** over **estimated** mass (per-category weights are placeholders), an admin confirms recycling on the recycler's behalf, and platform-arranged pickup is a **simulated** courier booking with a **simulated**, auto-succeeding checkout. No real money moves.",
+    "version": "0.4.0-phase4"
   },
   "paths": {
     "/auth/register/donor": {
@@ -1480,6 +1480,114 @@
         }
       }
     },
+    "/donations/{donation_id}/pickup-quote": {
+      "get": {
+        "tags": [
+          "donor: donations"
+        ],
+        "summary": "Get Pickup Quote",
+        "description": "ACCEPTED only: a SIMULATED quote per active logistics provider, and the donor's\ncurrent wallet balance. A preview: nothing is stored. Booking re-quotes.",
+        "operationId": "get_pickup_quote_donations__donation_id__pickup_quote_get",
+        "security": [
+          {
+            "OAuth2PasswordBearer": []
+          }
+        ],
+        "parameters": [
+          {
+            "name": "donation_id",
+            "in": "path",
+            "required": true,
+            "schema": {
+              "type": "string",
+              "format": "uuid",
+              "title": "Donation Id"
+            }
+          }
+        ],
+        "responses": {
+          "200": {
+            "description": "Successful Response",
+            "content": {
+              "application/json": {
+                "schema": {
+                  "$ref": "#/components/schemas/PickupQuoteOut"
+                }
+              }
+            }
+          },
+          "422": {
+            "description": "Validation Error",
+            "content": {
+              "application/json": {
+                "schema": {
+                  "$ref": "#/components/schemas/HTTPValidationError"
+                }
+              }
+            }
+          }
+        }
+      }
+    },
+    "/donations/{donation_id}/book-pickup": {
+      "post": {
+        "tags": [
+          "donor: donations"
+        ],
+        "summary": "Book Pickup",
+        "description": "ACCEPTED → PICKUP_SCHEDULED: a SIMULATED platform-arranged pickup, paid for by\nthe donor (wallet credit first, then a simulated checkout for the rest). The time\nonly has to be in the future: the pickup window is advisory.",
+        "operationId": "book_pickup_donations__donation_id__book_pickup_post",
+        "security": [
+          {
+            "OAuth2PasswordBearer": []
+          }
+        ],
+        "parameters": [
+          {
+            "name": "donation_id",
+            "in": "path",
+            "required": true,
+            "schema": {
+              "type": "string",
+              "format": "uuid",
+              "title": "Donation Id"
+            }
+          }
+        ],
+        "requestBody": {
+          "required": true,
+          "content": {
+            "application/json": {
+              "schema": {
+                "$ref": "#/components/schemas/BookPickupIn"
+              }
+            }
+          }
+        },
+        "responses": {
+          "200": {
+            "description": "Successful Response",
+            "content": {
+              "application/json": {
+                "schema": {
+                  "$ref": "#/components/schemas/DonationOut"
+                }
+              }
+            }
+          },
+          "422": {
+            "description": "Validation Error",
+            "content": {
+              "application/json": {
+                "schema": {
+                  "$ref": "#/components/schemas/HTTPValidationError"
+                }
+              }
+            }
+          }
+        }
+      }
+    },
     "/donations/{donation_id}/images": {
       "post": {
         "tags": [
@@ -2350,6 +2458,68 @@
         ]
       }
     },
+    "/admin/commission": {
+      "get": {
+        "tags": [
+          "admin"
+        ],
+        "summary": "Commission Summary",
+        "description": "The platform's earnings ledger: logistics fees and recycling fees. A cancelled,\nundelivered booking's commission is reversed by a second, negated row, so `total`\nis always net. SIMULATED: no money actually moves.",
+        "operationId": "commission_summary_admin_commission_get",
+        "security": [
+          {
+            "OAuth2PasswordBearer": []
+          }
+        ],
+        "parameters": [
+          {
+            "name": "limit",
+            "in": "query",
+            "required": false,
+            "schema": {
+              "type": "integer",
+              "maximum": 100,
+              "minimum": 1,
+              "default": 20,
+              "title": "Limit"
+            }
+          },
+          {
+            "name": "offset",
+            "in": "query",
+            "required": false,
+            "schema": {
+              "type": "integer",
+              "minimum": 0,
+              "default": 0,
+              "title": "Offset"
+            }
+          }
+        ],
+        "responses": {
+          "200": {
+            "description": "Successful Response",
+            "content": {
+              "application/json": {
+                "schema": {
+                  "$ref": "#/components/schemas/CommissionSummaryOut"
+                }
+              }
+            }
+          },
+          "422": {
+            "description": "Validation Error",
+            "content": {
+              "application/json": {
+                "schema": {
+                  "$ref": "#/components/schemas/HTTPValidationError"
+                }
+              }
+            }
+          }
+        }
+      }
+    },
     "/notifications": {
       "get": {
         "tags": [
@@ -2635,6 +2805,33 @@
             }
           }
         }
+      }
+    },
+    "/wallet": {
+      "get": {
+        "tags": [
+          "donor: wallet"
+        ],
+        "summary": "Get Wallet",
+        "description": "The donor's wallet: an append-only ledger. The balance is SUM(amount), never\nstored. Credited by confirmed recycling settlements; spent, in full or in part, on\na platform-arranged pickup; refunded if that pickup is cancelled before delivery.\nNo withdrawals.",
+        "operationId": "get_wallet_wallet_get",
+        "responses": {
+          "200": {
+            "description": "Successful Response",
+            "content": {
+              "application/json": {
+                "schema": {
+                  "$ref": "#/components/schemas/WalletOut"
+                }
+              }
+            }
+          }
+        },
+        "security": [
+          {
+            "OAuth2PasswordBearer": []
+          }
+        ]
       }
     },
     "/health": {
@@ -3149,6 +3346,168 @@
         ],
         "title": "Body_upload_images_donations__donation_id__images_post"
       },
+      "BookPickupIn": {
+        "properties": {
+          "provider_id": {
+            "type": "string",
+            "format": "uuid",
+            "title": "Provider Id"
+          },
+          "scheduled_for": {
+            "type": "string",
+            "format": "date-time",
+            "title": "Scheduled For"
+          },
+          "wallet_amount": {
+            "anyOf": [
+              {
+                "type": "number",
+                "minimum": 0.0
+              },
+              {
+                "type": "string"
+              }
+            ],
+            "title": "Wallet Amount",
+            "description": "How much of the wallet balance to apply; capped at the cost.",
+            "default": "0"
+          }
+        },
+        "additionalProperties": false,
+        "type": "object",
+        "required": [
+          "provider_id",
+          "scheduled_for"
+        ],
+        "title": "BookPickupIn"
+      },
+      "BookingOut": {
+        "properties": {
+          "id": {
+            "type": "string",
+            "format": "uuid",
+            "title": "Id"
+          },
+          "provider_name": {
+            "type": "string",
+            "title": "Provider Name"
+          },
+          "distance_km": {
+            "type": "number",
+            "title": "Distance Km"
+          },
+          "cost": {
+            "type": "string",
+            "title": "Cost"
+          },
+          "wallet_applied": {
+            "type": "string",
+            "title": "Wallet Applied"
+          },
+          "gateway_amount": {
+            "type": "string",
+            "title": "Gateway Amount"
+          },
+          "currency": {
+            "type": "string",
+            "title": "Currency",
+            "default": "INR"
+          },
+          "status": {
+            "$ref": "#/components/schemas/BookingStatus"
+          },
+          "booked_at": {
+            "type": "string",
+            "format": "date-time",
+            "title": "Booked At"
+          },
+          "picked_up_at": {
+            "anyOf": [
+              {
+                "type": "string",
+                "format": "date-time"
+              },
+              {
+                "type": "null"
+              }
+            ],
+            "title": "Picked Up At"
+          },
+          "delivered_at": {
+            "anyOf": [
+              {
+                "type": "string",
+                "format": "date-time"
+              },
+              {
+                "type": "null"
+              }
+            ],
+            "title": "Delivered At"
+          },
+          "cancelled_at": {
+            "anyOf": [
+              {
+                "type": "string",
+                "format": "date-time"
+              },
+              {
+                "type": "null"
+              }
+            ],
+            "title": "Cancelled At"
+          },
+          "cancel_reason": {
+            "anyOf": [
+              {
+                "type": "string"
+              },
+              {
+                "type": "null"
+              }
+            ],
+            "title": "Cancel Reason"
+          },
+          "payment": {
+            "$ref": "#/components/schemas/PaymentOut"
+          },
+          "simulated": {
+            "type": "boolean",
+            "const": true,
+            "title": "Simulated",
+            "default": true
+          }
+        },
+        "type": "object",
+        "required": [
+          "id",
+          "provider_name",
+          "distance_km",
+          "cost",
+          "wallet_applied",
+          "gateway_amount",
+          "status",
+          "booked_at",
+          "picked_up_at",
+          "delivered_at",
+          "cancelled_at",
+          "cancel_reason",
+          "payment"
+        ],
+        "title": "BookingOut",
+        "description": "SIMULATED: no real courier, no real payment gateway. Status is derived from\nwhich of booked_at/picked_up_at/delivered_at/cancelled_at are set."
+      },
+      "BookingStatus": {
+        "type": "string",
+        "enum": [
+          "BOOKED",
+          "PICKED_UP",
+          "DELIVERED",
+          "CANCELLED"
+        ],
+        "title": "BookingStatus",
+        "description": "A platform-arranged pickup's own progress. Derived from Booking's nullable\nwrite-once timestamps (app.models.logistics), never stored as a column."
+      },
       "CandidateOut": {
         "properties": {
           "rank": {
@@ -3398,6 +3757,91 @@
         ],
         "title": "ChatThreadOut"
       },
+      "CommissionEntryOut": {
+        "properties": {
+          "id": {
+            "type": "string",
+            "format": "uuid",
+            "title": "Id"
+          },
+          "source": {
+            "$ref": "#/components/schemas/CommissionSource"
+          },
+          "source_id": {
+            "type": "string",
+            "format": "uuid",
+            "title": "Source Id",
+            "description": "A Booking id (LOGISTICS) or a Recycling id (RECYCLING)."
+          },
+          "amount": {
+            "type": "string",
+            "title": "Amount"
+          },
+          "note": {
+            "anyOf": [
+              {
+                "type": "string"
+              },
+              {
+                "type": "null"
+              }
+            ],
+            "title": "Note"
+          },
+          "created_at": {
+            "type": "string",
+            "format": "date-time",
+            "title": "Created At"
+          }
+        },
+        "type": "object",
+        "required": [
+          "id",
+          "source",
+          "source_id",
+          "amount",
+          "note",
+          "created_at"
+        ],
+        "title": "CommissionEntryOut",
+        "description": "One ledger row. A cancelled, undelivered booking's commission is reversed by a\nsecond row with the negated amount (never edited or deleted)."
+      },
+      "CommissionSource": {
+        "type": "string",
+        "enum": [
+          "LOGISTICS",
+          "RECYCLING"
+        ],
+        "title": "CommissionSource",
+        "description": "What earned a commission ledger entry. A cancelled booking's commission is\nreversed by a second, negative entry (never edited or deleted)."
+      },
+      "CommissionSummaryOut": {
+        "properties": {
+          "total": {
+            "type": "string",
+            "title": "Total",
+            "description": "SUM(amount); net of any reversals."
+          },
+          "currency": {
+            "type": "string",
+            "title": "Currency",
+            "default": "INR"
+          },
+          "entries": {
+            "items": {
+              "$ref": "#/components/schemas/CommissionEntryOut"
+            },
+            "type": "array",
+            "title": "Entries"
+          }
+        },
+        "type": "object",
+        "required": [
+          "total",
+          "entries"
+        ],
+        "title": "CommissionSummaryOut"
+      },
       "ComponentOut": {
         "properties": {
           "factor": {
@@ -3576,7 +4020,8 @@
           "CONFIRM_RECEIPT",
           "CONFIRM_RECYCLED",
           "NO_RECYCLER",
-          "REQUEUE"
+          "REQUEUE",
+          "BOOK_PICKUP"
         ],
         "title": "DonationAction",
         "description": "Things that can happen to a donation. The lifecycle table maps\n(state, action) -> next state, and declares who may perform each."
@@ -4189,7 +4634,8 @@
         "type": "string",
         "enum": [
           "ACCEPTOR_PICKUP",
-          "DONOR_DROPOFF"
+          "DONOR_DROPOFF",
+          "PLATFORM_PICKUP"
         ],
         "title": "HandoverMode",
         "description": "Decides who sets the handover time, not who performs the transitions."
@@ -5134,6 +5580,131 @@
         "title": "OrganizationUpdate",
         "description": "Operational fields only. name and registration_id cannot change after\nregistration (unknown fields are rejected), so a verified organisation cannot\nbecome a different one."
       },
+      "PaymentOut": {
+        "properties": {
+          "amount": {
+            "type": "string",
+            "title": "Amount",
+            "description": "What the simulated gateway charged (cost minus wallet_applied)."
+          },
+          "transaction_id": {
+            "type": "string",
+            "title": "Transaction Id"
+          },
+          "paid_at": {
+            "type": "string",
+            "format": "date-time",
+            "title": "Paid At"
+          },
+          "refunded_at": {
+            "anyOf": [
+              {
+                "type": "string",
+                "format": "date-time"
+              },
+              {
+                "type": "null"
+              }
+            ],
+            "title": "Refunded At"
+          },
+          "refund_transaction_id": {
+            "anyOf": [
+              {
+                "type": "string"
+              },
+              {
+                "type": "null"
+              }
+            ],
+            "title": "Refund Transaction Id"
+          },
+          "status": {
+            "$ref": "#/components/schemas/PaymentStatus"
+          }
+        },
+        "type": "object",
+        "required": [
+          "amount",
+          "transaction_id",
+          "paid_at",
+          "refunded_at",
+          "refund_transaction_id",
+          "status"
+        ],
+        "title": "PaymentOut"
+      },
+      "PaymentStatus": {
+        "type": "string",
+        "enum": [
+          "SUCCEEDED",
+          "REFUNDED"
+        ],
+        "title": "PaymentStatus",
+        "description": "Derived from Payment.refunded_at, never stored as a column."
+      },
+      "PickupQuoteOut": {
+        "properties": {
+          "distance_km": {
+            "type": "number",
+            "title": "Distance Km"
+          },
+          "wallet_balance": {
+            "type": "string",
+            "title": "Wallet Balance"
+          },
+          "currency": {
+            "type": "string",
+            "title": "Currency",
+            "default": "INR"
+          },
+          "providers": {
+            "items": {
+              "$ref": "#/components/schemas/ProviderQuoteOut"
+            },
+            "type": "array",
+            "title": "Providers"
+          },
+          "simulated": {
+            "type": "boolean",
+            "const": true,
+            "title": "Simulated",
+            "default": true
+          }
+        },
+        "type": "object",
+        "required": [
+          "distance_km",
+          "wallet_balance",
+          "providers"
+        ],
+        "title": "PickupQuoteOut",
+        "description": "A preview: nothing is stored. Booking re-quotes and stores what it quoted."
+      },
+      "ProviderQuoteOut": {
+        "properties": {
+          "provider_id": {
+            "type": "string",
+            "format": "uuid",
+            "title": "Provider Id"
+          },
+          "provider_name": {
+            "type": "string",
+            "title": "Provider Name"
+          },
+          "cost": {
+            "type": "string",
+            "title": "Cost"
+          }
+        },
+        "type": "object",
+        "required": [
+          "provider_id",
+          "provider_name",
+          "cost"
+        ],
+        "title": "ProviderQuoteOut"
+      },
       "QueueItemOut": {
         "properties": {
           "donation": {
@@ -5656,13 +6227,22 @@
             },
             "type": "array",
             "title": "Recyclings"
+          },
+          "bookings": {
+            "items": {
+              "$ref": "#/components/schemas/BookingOut"
+            },
+            "type": "array",
+            "title": "Bookings",
+            "description": "Platform-arranged pickup bookings (SIMULATED). Usually at most one; more than one only if an earlier booking was cancelled and the donation was accepted again."
           }
         },
         "type": "object",
         "required": [
           "events",
           "offers",
-          "recyclings"
+          "recyclings",
+          "bookings"
         ],
         "title": "TimelineOut"
       },
@@ -5818,6 +6398,111 @@
           "status"
         ],
         "title": "VerificationUpdate"
+      },
+      "WalletOut": {
+        "properties": {
+          "balance": {
+            "type": "string",
+            "title": "Balance"
+          },
+          "currency": {
+            "type": "string",
+            "title": "Currency",
+            "default": "INR"
+          },
+          "transactions": {
+            "items": {
+              "$ref": "#/components/schemas/WalletTxnOut"
+            },
+            "type": "array",
+            "title": "Transactions"
+          }
+        },
+        "type": "object",
+        "required": [
+          "balance",
+          "transactions"
+        ],
+        "title": "WalletOut",
+        "description": "The balance is derived (SUM of the ledger), never stored. No withdrawals."
+      },
+      "WalletTxnOut": {
+        "properties": {
+          "id": {
+            "type": "string",
+            "format": "uuid",
+            "title": "Id"
+          },
+          "type": {
+            "$ref": "#/components/schemas/WalletTxnType"
+          },
+          "amount": {
+            "type": "string",
+            "title": "Amount",
+            "description": "Signed: positive credits the donor, negative debits them."
+          },
+          "reference_recycling_id": {
+            "anyOf": [
+              {
+                "type": "string",
+                "format": "uuid"
+              },
+              {
+                "type": "null"
+              }
+            ],
+            "title": "Reference Recycling Id"
+          },
+          "reference_booking_id": {
+            "anyOf": [
+              {
+                "type": "string",
+                "format": "uuid"
+              },
+              {
+                "type": "null"
+              }
+            ],
+            "title": "Reference Booking Id"
+          },
+          "note": {
+            "anyOf": [
+              {
+                "type": "string"
+              },
+              {
+                "type": "null"
+              }
+            ],
+            "title": "Note"
+          },
+          "created_at": {
+            "type": "string",
+            "format": "date-time",
+            "title": "Created At"
+          }
+        },
+        "type": "object",
+        "required": [
+          "id",
+          "type",
+          "amount",
+          "reference_recycling_id",
+          "reference_booking_id",
+          "note",
+          "created_at"
+        ],
+        "title": "WalletTxnOut"
+      },
+      "WalletTxnType": {
+        "type": "string",
+        "enum": [
+          "RECYCLING_CREDIT",
+          "PICKUP_DEBIT",
+          "PICKUP_REFUND"
+        ],
+        "title": "WalletTxnType",
+        "description": "One row per ledger entry; the balance is SUM(amount), never stored."
       }
     },
     "securitySchemes": {

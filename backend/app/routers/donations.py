@@ -8,10 +8,11 @@ from app.constants import IMAGE_MAX_BYTES, Actor, Role
 from app.models import Donation, User
 from app.routers.common import GeocoderDep, PageDep, StorageDep
 from app.schemas.donation import DonationCreate, DonationImageOut, DonationOut, DonationUpdate, HolderOut
+from app.schemas.logistics import BookPickupIn, PickupQuoteOut, ProviderQuoteOut
 from app.schemas.matching import OfferCreate, ScheduleIn, SlateOut
 from app.schemas.timeline import TimelineOut
 from app.security.deps import CurrentUser, DbSession, DonorOrAdminUser, DonorUser
-from app.services import actions, chat, donations, matching, timeline
+from app.services import actions, chat, donations, logistics, matching, timeline
 from app.services.donations import Upload
 
 router = APIRouter(prefix="/donations", tags=["donor: donations"])
@@ -135,6 +136,33 @@ def choose_dropoff(donation_id: uuid.UUID, data: ScheduleIn, user: DonorUser, db
 def mark_handed_over(donation_id: uuid.UUID, user: DonorUser, db: DbSession):
     """PICKUP_SCHEDULED → IN_TRANSIT: the donor has handed the goods over."""
     return donation_out(db, actions.mark_handed_over(db, donation_id, user, _now()), user)
+
+
+@router.get("/{donation_id}/pickup-quote", response_model=PickupQuoteOut)
+def get_pickup_quote(donation_id: uuid.UUID, user: DonorUser, db: DbSession):
+    """ACCEPTED only: a SIMULATED quote per active logistics provider, and the donor's
+    current wallet balance. A preview: nothing is stored. Booking re-quotes."""
+    donation = donations.get_visible(db, donation_id, user)
+    q = logistics.quote(db, donation, user.id)
+    return PickupQuoteOut(
+        distance_km=q.distance_km,
+        wallet_balance=q.wallet_balance,
+        providers=[
+            ProviderQuoteOut(provider_id=pq.provider.id, provider_name=pq.provider.name, cost=pq.cost)
+            for pq in q.quotes
+        ],
+    )
+
+
+@router.post("/{donation_id}/book-pickup", response_model=DonationOut)
+def book_pickup(donation_id: uuid.UUID, data: BookPickupIn, user: DonorUser, db: DbSession):
+    """ACCEPTED → PICKUP_SCHEDULED: a SIMULATED platform-arranged pickup, paid for by
+    the donor (wallet credit first, then a simulated checkout for the rest). The time
+    only has to be in the future: the pickup window is advisory."""
+    donation = actions.book_pickup(
+        db, donation_id, user, data.provider_id, data.scheduled_for, data.wallet_amount, _now()
+    )
+    return donation_out(db, donation, user)
 
 
 # --- Images -----------------------------------------------------------------------------------

@@ -40,6 +40,9 @@ const PATHS = {
   message: 'M5 4h14a2 2 0 0 1 2 2v9a2 2 0 0 1-2 2h-8l-5 4v-4H5a2 2 0 0 1-2-2V6a2 2 0 0 1 2-2Zm3 6h.01M12 10h.01M16 10h.01',
   lock: 'M6 11h12a1 1 0 0 1 1 1v8a1 1 0 0 1-1 1H6a1 1 0 0 1-1-1v-8a1 1 0 0 1 1-1Zm2.5 0V7.5a3.5 3.5 0 0 1 7 0V11',
   pencil: 'M4 20h4L19 9a2.8 2.8 0 0 0-4-4L4 16v4Zm9.5-13.5 4 4',
+  wallet: 'M3 7a2 2 0 0 1 2-2h12a2 2 0 0 1 2 2v2h-3a3 3 0 0 0 0 6h3v2a2 2 0 0 1-2 2H5a2 2 0 0 1-2-2V7Zm13 5h.01M16 9h3a1 1 0 0 1 1 1v4a1 1 0 0 1-1 1h-3a3 3 0 0 1 0-6Z',
+  arrowUp: 'M12 19V5m-6 6 6-6 6 6',
+  arrowDown: 'M12 5v14m-6-6 6 6 6-6',
 } as const;
 
 export type IconName = keyof typeof PATHS;

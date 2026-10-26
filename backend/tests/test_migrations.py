@@ -22,7 +22,8 @@ PHASE2_TABLES = {
     "recyclings",
 }
 PHASE3_TABLES = {"chat_messages", "chat_reads"}
-APP_TABLES = PHASE1_TABLES | PHASE2_TABLES | PHASE3_TABLES
+PHASE4_TABLES = {"logistics_providers", "bookings", "payments", "commissions", "wallet_txns"}
+APP_TABLES = PHASE1_TABLES | PHASE2_TABLES | PHASE3_TABLES | PHASE4_TABLES
 
 
 def _tables(engine) -> set[str]:
@@ -61,5 +62,5 @@ def test_downgrade_one_step_leaves_phase1_intact(test_engine):
 
 
 def test_only_expected_tables_exist():
-    """Tables arrive with the code that uses them: no Wallet, Payment, Review yet."""
+    """Tables arrive with the code that uses them: no Review yet."""
     assert set(Base.metadata.tables) == APP_TABLES

@@ -1,10 +1,10 @@
-import type { EventOut, OfferHistoryOut, RecyclingOut, TimelineOut } from '../api/schema';
+import type { BookingOut, EventOut, OfferHistoryOut, RecyclingOut, TimelineOut } from '../api/schema';
 import { formatDateTime, formatMoney, formatNumber, formatRelative } from '../i18n/format';
 import { t } from '../i18n';
 import { Card, CardTitle, Facts } from '../ui/Card';
 import { Icon } from '../ui/icons';
 import { Marker, Tag, ToneDot } from '../ui/Tag';
-import { statusTone, vocabLabel } from '../vocab/display';
+import { bookingStatusTone, statusTone, vocabLabel } from '../vocab/display';
 import { OfferResponseTag, StatusTag } from './StatusTag';
 
 function EventRow({ event, last }: { event: EventOut; last: boolean }) {
@@ -102,6 +102,41 @@ export function RecyclingCard({ recycling }: { recycling: RecyclingOut }) {
   );
 }
 
+/** A platform-pickup booking, labelled exactly as the API labels it: simulated. */
+export function BookingCard({ booking }: { booking: BookingOut }) {
+  const money = (v: string) => formatMoney(v, booking.currency);
+  const wallet = Number(booking.wallet_applied) > 0;
+  return (
+    <div className="rounded-control border border-line bg-surface p-4">
+      <div className="mb-3 flex flex-wrap items-center gap-2">
+        <Icon name="truck" className="size-5 text-clay-500" />
+        <p className="font-semibold">{booking.provider_name}</p>
+        <Tag tone={bookingStatusTone(booking.status)} dot>
+          {vocabLabel('BookingStatus', booking.status)}
+        </Tag>
+        {booking.simulated && <Marker>{t('honesty.simulated')}</Marker>}
+      </div>
+      <Facts
+        items={[
+          { label: t('booking.cost'), value: money(booking.cost) },
+          wallet && { label: t('booking.walletApplied'), value: money(booking.wallet_applied) },
+          { label: t('booking.gatewayAmount'), value: money(booking.gateway_amount) },
+          { label: t('booking.bookedAt'), value: formatDateTime(booking.booked_at) },
+          booking.picked_up_at && { label: t('booking.pickedUpAt'), value: formatDateTime(booking.picked_up_at) },
+          booking.delivered_at && { label: t('booking.deliveredAt'), value: formatDateTime(booking.delivered_at) },
+          booking.cancelled_at && { label: t('booking.cancelledAt'), value: formatDateTime(booking.cancelled_at) },
+        ]}
+      />
+      {booking.cancel_reason && <p className="mt-2 text-sm text-ink-soft">{t('booking.cancelReason', { reason: booking.cancel_reason })}</p>}
+      <p className="mt-3 text-xs text-ink-muted">{t('booking.transactionId', { id: booking.payment.transaction_id })}</p>
+      {booking.payment.refund_transaction_id && (
+        <p className="text-xs text-ink-muted">{t('booking.refundTransactionId', { id: booking.payment.refund_transaction_id })}</p>
+      )}
+      <p className="mt-3 text-xs text-ink-muted">{t('booking.simulatedNote')}</p>
+    </div>
+  );
+}
+
 export function Timeline({ timeline }: { timeline: TimelineOut }) {
   return (
     <div className="grid gap-6 lg:grid-cols-5">
@@ -136,6 +171,16 @@ export function Timeline({ timeline }: { timeline: TimelineOut }) {
             <div className="space-y-3">
               {timeline.recyclings.map((r) => (
                 <RecyclingCard key={`${r.collector_id}-${r.assigned_at}`} recycling={r} />
+              ))}
+            </div>
+          </Card>
+        )}
+        {timeline.bookings.length > 0 && (
+          <Card>
+            <CardTitle>{t('timeline.booking')}</CardTitle>
+            <div className="space-y-3">
+              {timeline.bookings.map((b) => (
+                <BookingCard key={b.id} booking={b} />
               ))}
             </div>
           </Card>

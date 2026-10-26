@@ -10,7 +10,9 @@
  */
 
 import type {
+  BookingStatus,
   Category,
+  CommissionSource,
   ComponentOut,
   DonationStatus,
   OfferResponse,
@@ -67,6 +69,18 @@ const VERIFICATION_TONES: Record<VerificationStatus, Tone> = {
   REJECTED: 'danger',
 };
 
+const BOOKING_STATUS_TONES: Record<BookingStatus, Tone> = {
+  BOOKED: 'progress',
+  PICKED_UP: 'active',
+  DELIVERED: 'reuse',
+  CANCELLED: 'muted',
+};
+
+const COMMISSION_SOURCE_TONES: Record<CommissionSource, Tone> = {
+  LOGISTICS: 'active',
+  RECYCLING: 'recovery',
+};
+
 const CATEGORY_ICONS: Record<Category, IconName> = {
   CLOTHES: 'shirt',
   TOYS: 'toy',
@@ -81,13 +95,17 @@ export const statusTone = (status: string): Tone => pick(STATUS_TONES, status, '
 export const offerResponseTone = (response: string): Tone => pick(OFFER_RESPONSE_TONES, response, 'neutral');
 export const urgencyTone = (urgency: string): Tone => pick(URGENCY_TONES, urgency, 'neutral');
 export const verificationTone = (status: string): Tone => pick(VERIFICATION_TONES, status, 'neutral');
+export const bookingStatusTone = (status: string): Tone => pick(BOOKING_STATUS_TONES, status, 'neutral');
+export const commissionSourceTone = (source: string): Tone => pick(COMMISSION_SOURCE_TONES, source, 'neutral');
 export const categoryIcon = (category: string): IconName => pick(CATEGORY_ICONS, category, 'box');
 
 /** The API vocabularies with labels in the locale file (vocab.<name>.<VALUE>). */
 export type VocabName =
   | 'Actor'
+  | 'BookingStatus'
   | 'Category'
   | 'ChatClosure'
+  | 'CommissionSource'
   | 'Condition'
   | 'DonationAction'
   | 'DonationStatus'
@@ -97,12 +115,14 @@ export type VocabName =
   | 'NotificationKind'
   | 'OfferResponse'
   | 'OfferSource'
+  | 'PaymentStatus'
   | 'RankingTrigger'
   | 'RejectReason'
   | 'Role'
   | 'ScoreFactor'
   | 'Urgency'
-  | 'VerificationStatus';
+  | 'VerificationStatus'
+  | 'WalletTxnType';
 
 /** A value's label, or the raw value for one this app version has no label for. */
 export function vocabLabel(name: VocabName, value: string): string {

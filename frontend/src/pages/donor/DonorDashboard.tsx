@@ -1,17 +1,21 @@
 import { paths } from '../../app/paths';
-import { useMyDonations } from '../../app/queries';
+import { useMyDonations, useWallet } from '../../app/queries';
 import { useSession } from '../../app/session';
 import { ApiErrorAlert } from '../../components/ApiErrorAlert';
 import { DonationCard } from '../../components/donation';
 import { RecentActivity } from '../../components/NotificationList';
+import { formatMoney } from '../../i18n/format';
 import { t } from '../../i18n';
 import { LinkButton } from '../../ui/Button';
+import { LinkCard } from '../../ui/Card';
 import { EmptyState, Skeleton } from '../../ui/feedback';
+import { Icon } from '../../ui/icons';
 import { HeroBanner, Page } from '../../ui/layout';
 
 export function DonorDashboard() {
   const { user } = useSession();
   const donations = useMyDonations();
+  const wallet = useWallet();
   const firstName = user?.full_name.split(' ')[0] ?? '';
 
   return (
@@ -57,7 +61,20 @@ export function DonorDashboard() {
           )}
         </section>
 
-        <aside>
+        <aside className="space-y-6">
+          {wallet.data && (
+            <LinkCard to={paths.wallet} className="p-4">
+              <div className="flex items-center gap-3">
+                <span className="grid size-10 shrink-0 place-items-center rounded-control bg-brand-50 text-brand-700">
+                  <Icon name="wallet" />
+                </span>
+                <div className="min-w-0">
+                  <p className="font-semibold">{t('donor.walletLink')}</p>
+                  <p className="text-sm text-ink-muted">{t('donor.walletLinkBalance', { amount: formatMoney(wallet.data.balance, wallet.data.currency) })}</p>
+                </div>
+              </div>
+            </LinkCard>
+          )}
           <RecentActivity />
         </aside>
       </div>

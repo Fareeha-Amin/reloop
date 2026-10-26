@@ -121,6 +121,13 @@ def test_schedule_pickup_hidden_for_an_organisation_that_does_not_collect():
     assert blocked_reason(S.ACCEPTED, A.SCHEDULE_PICKUP, GuardContext(pickup_capable=True)) is None
 
 
+def test_book_pickup_hidden_with_no_active_logistics_provider():
+    assert blocked_reason(S.ACCEPTED, A.BOOK_PICKUP, GuardContext(logistics_available=False))
+    assert blocked_reason(S.ACCEPTED, A.BOOK_PICKUP, GuardContext(logistics_available=True)) is None
+    # Unknown (not computed) never blocks, same as the other guards.
+    assert blocked_reason(S.ACCEPTED, A.BOOK_PICKUP, GuardContext()) is None
+
+
 def test_guards_never_add_actions_the_table_does_not_allow():
     ctx = GuardContext(slate_empty=False, recycler_available=True, pickup_capable=True)
     for state in DonationStatus:

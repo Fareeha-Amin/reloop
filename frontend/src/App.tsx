@@ -6,10 +6,12 @@ import { Login } from './pages/auth/Login';
 import { RegisterChoice } from './pages/auth/RegisterChoice';
 import { RegisterDonor } from './pages/auth/RegisterDonor';
 import { RegisterOrganisation } from './pages/auth/RegisterOrganisation';
+import { BookPickup } from './pages/donor/BookPickup';
 import { Candidates } from './pages/donor/Candidates';
 import { DonationDetail } from './pages/donor/DonationDetail';
 import { DonorDashboard } from './pages/donor/DonorDashboard';
 import { NewDonation } from './pages/donor/NewDonation';
+import { Wallet } from './pages/donor/Wallet';
 import { AcceptorDashboard } from './pages/acceptor/AcceptorDashboard';
 import { HeldDonation } from './pages/acceptor/HeldDonation';
 import { OfferDetail } from './pages/acceptor/OfferDetail';
@@ -56,6 +58,14 @@ const router = createBrowserRouter([
       {
         path: '/donor/donations/:id/candidates',
         element: <RequireRole role={ROLE.donor}><Candidates /></RequireRole>,
+      },
+      {
+        path: '/donor/donations/:id/book-pickup',
+        element: <RequireRole role={ROLE.donor}><BookPickup /></RequireRole>,
+      },
+      {
+        path: '/donor/wallet',
+        element: <RequireRole role={ROLE.donor}><Wallet /></RequireRole>,
       },
       {
         path: '/acceptor',

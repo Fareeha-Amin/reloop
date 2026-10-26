@@ -7,7 +7,46 @@ recycling, so every donation ends in reuse or material recovery.
 Background: [docs/ReLoop_Project_Context.pdf](docs/ReLoop_Project_Context.pdf) ·
 Build brief: [PROMPT.md](PROMPT.md) · Decision log: [CLAUDE.md](CLAUDE.md)
 
-## Status: Phase 3 (the React frontend)
+## Status: Phase 4 (logistics & money)
+
+**What exists (Phase 4)**
+
+- **A third handover path: platform-arranged pickup.** Alongside the acceptor
+  collecting and the donor dropping off, the donor can book a **simulated** courier
+  from `ACCEPTED` (`BOOK_PICKUP`, the one new lifecycle action; actor donor). The
+  donor picks a provider and a future time on its own page
+  (`/donor/donations/{id}/book-pickup`, which fetches `GET
+  .../pickup-quote` and posts `POST .../book-pickup`). The donor still marks the
+  goods handed over and the acceptor still confirms receipt — the booking has its own
+  progress (`BOOKED → PICKED_UP → DELIVERED`, or `CANCELLED`) alongside, not instead
+  of, the donation's lifecycle.
+- **A simulated, auto-succeeding checkout.** Cost is `base_fee + per_km_rate ×
+  distance` for a `LogisticsProvider` (fictional, seeded, pricing on the record, same
+  pattern as a recycler). The donor's wallet balance can cover part or all of it; the
+  rest is a simulated Razorpay-style `Payment` that always succeeds. The wallet is
+  optional — a donor with no balance pays the full cost.
+- **Nothing is left paid but undelivered.** If a booked donation stalls out of
+  `ACCEPTED`/`PICKUP_SCHEDULED`/`IN_TRANSIT` without completing (the sweeper's
+  `STALL`, the only such exit — a unit test asserts this from the transition table),
+  the booking is cancelled, its payment refunded, any wallet amount spent credited
+  back, and its commission entry reversed by a second, negated row — all in the same
+  transaction as the stall.
+- **A donor wallet** (`GET /wallet`): an append-only ledger (`wallet_txns`); the
+  balance is `SUM(amount)`, never stored. Credited when a recycling is confirmed
+  (`donor_credit`, including every recycling confirmed before this phase — backfilled
+  by migration `0005`), debited (in full or in part) by a platform-pickup booking,
+  credited back if that booking is cancelled before delivery. No withdrawals.
+- **A commission ledger for admins** (`GET /admin/commission`, a tab in the admin
+  panel): logistics fees and recycling fees (`LOGISTICS_PLATFORM_FEE_PCT` and
+  `RECYCLING_PLATFORM_FEE_PCT` are independent constants, both currently 10%). Pure
+  insert-only; a reversal is a second row with the negated amount, so the total is
+  always net of any undelivered bookings.
+- **Backend additions:** `logistics_providers`, `bookings`, `payments`,
+  `commissions`, `wallet_txns` (migration `0005`; no changes to any existing table —
+  `HandoverMode` gains `PLATFORM_PICKUP` and `DonationAction` gains `BOOK_PICKUP`, both
+  vocabulary additions, not schema changes). `GET /donations/{id}/pickup-quote`,
+  `POST /donations/{id}/book-pickup`, `GET /wallet`, `GET /admin/commission`. A
+  donation's `timeline` gains `bookings`.
 
 **What exists (Phase 3, part 3)**
 
@@ -158,9 +197,9 @@ Build brief: [PROMPT.md](PROMPT.md) · Decision log: [CLAUDE.md](CLAUDE.md)
 - Alembic migrations, plus tests covering unit logic, the API, role enforcement and
   migrations.
 
-**What does not exist yet.** Platform-arranged logistics, payments, wallets (the
-recycling settlement is recorded but credits nothing), reviews, push and email
-notifications. Anything not listed above is not built.
+**What does not exist yet.** Reviews, push and email notifications, corporate drives,
+impact analytics and leaderboards, demand forecasting, weight calibration from real
+history. Anything not listed above is not built.
 
 ### Stubs and simulations
 
@@ -168,9 +207,11 @@ notifications. Anything not listed above is not built.
 |---|---|
 | **Geocoding** (`app/services/geocoding.py`) | **STUB.** `PassthroughGeocoder` returns the coordinates the client sends, unchanged and unverified. No address lookup takes place, and there is no maps API key. Endpoints therefore require `latitude`/`longitude`, and changing an address requires new coordinates. |
 | **Image storage** (`app/services/storage.py`) | Local disk under `backend/uploads/` (git-ignored), behind an `ImageStorage` interface so object storage can replace it. Files are served only through an authorised endpoint. |
-| **Recycling settlement** (`app/domain/recycling.py`) | **SIMULATED.** Mass is **estimated** as quantity × a per-category weight. The settlement (gross value, donor credit, platform fee) is recorded, but **no money moves**: Phase 4 wallets will credit from these records. Labelled `simulated` / `mass_is_estimate` in every API response. |
+| **Recycling settlement** (`app/domain/recycling.py`) | **SIMULATED.** Mass is **estimated** as quantity × a per-category weight. The settlement (gross value, donor credit, platform fee) credits the donor's wallet and the commission ledger; no real money moves. Labelled `simulated` / `mass_is_estimate` in every API response. |
 | **Per-category weights** (`CATEGORY_WEIGHT_KG`) | **PLACEHOLDERS** (clothes 0.5 kg, toys 0.3 kg, books 0.4 kg per item) pending a cited source. Responses carry `weights_are_placeholders: true`. |
 | **Recycler confirmation** | **SIMULATED.** There is no recycler login. An admin confirms recycling on the recycler's behalf, with a recorded reason. |
+| **Platform-arranged pickup** (`app/services/logistics.py`, `app/domain/logistics.py`) | **SIMULATED.** `LogisticsProvider` rows are fictional (seeded, like `WasteCollector`); there is no real courier API. Cost is distance-based, labelled `simulated` in every response. |
+| **Checkout** (`app/models/logistics.py: Payment`) | **SIMULATED.** A Razorpay-style mock that always succeeds, with a simulated transaction id. No payment gateway is called, and no real money moves. |
 | **Distances** | Haversine in Python over every organisation that accepts the category. No PostGIS. Fine at seed scale; revisit when the instant-pickup module needs fast geo-queries. |
 | **Map tiles** (frontend) | OpenStreetMap's public tile servers, no API key. Their usage policy suits development and demos, not production traffic: a deployment needs a tile provider. Locations are the pins people drop; nothing is geocoded. |
 | **Discovery map positions** | **APPROXIMATE.** Rounded to 2 decimal places of a degree before they leave the API (`positions_are_approximate`, `position_error_km`), and drawn as shaded areas, not pins. Matching uses the precise positions. |
@@ -184,8 +225,11 @@ notifications. Anything not listed above is not built.
   platform for now.
 - Rate limiting on donation creation, login and accept/reject.
 - Explicit consent capture before storing an address (DPDP), and a retention policy.
-- Rescheduling a handover, and recycler management endpoints (recyclers come from the
-  seed or the database).
+- Rescheduling a handover, and recycler or logistics-provider management endpoints
+  (both come from the seed or the database; no admin UI to add or edit one).
+- A pickup-slot *suggestion*: the donor picks any future time, the same as drop-off.
+  By decision, dropped before building — see CLAUDE.md.
+- Wallet withdrawals. Wallet credit can only be spent on a platform pickup.
 - Weight calibration from the stored ranking runs (Phase 5), and a fairness constraint
   if one organisation turns out to win every match.
 
@@ -233,6 +277,9 @@ notifications. Anything not listed above is not built.
   **Mark all as read** clears them. A notification committed slightly later than a
   newer one may count as read after "mark all".
 - **The admin organisation list shows the first 25** for each filter, without paging.
+- **No provider list in the admin panel.** `LogisticsProvider` rows come from the
+  seed only; they show up wherever a pickup quote already lists them, not in their
+  own admin tab (same decision as recyclers).
 - **Dark mode needs a 2024-or-later browser** (Chrome 123, Safari 17.5, Firefox 120):
   the colour tokens use CSS `light-dark()`. Older browsers get the light theme.
 
@@ -507,6 +554,47 @@ step 5 (the organisation accepts). Then:
 in *Accepted*. As admin, nothing can be done until it stalls (72 h); the API tests cover
 this (`tests/api/test_chat.py`): after a stall the thread shows **This conversation is
 closed** and the message box is gone.
+
+## Acceptance test (Phase 4, in the browser)
+
+Apply migration `0005` first (`alembic upgrade head` from `backend/`: it adds
+`logistics_providers`, `bookings`, `payments`, `commissions`, `wallet_txns`, and
+backfills wallet and commission rows for any recycling already confirmed). Re-run
+`seed` to get the three fictional logistics providers (idempotent).
+
+**A completed donation paid partly with wallet credit from an earlier recycling.**
+1. Run acceptance test B (recycling → `RECYCLED`) above with the demo donor, so the
+   wallet has a credit. As the donor, open **Wallet** (the card on the dashboard, or
+   `/donor/wallet`): the balance matches the recycling's *Your credit*, and the
+   ledger shows one **Recycling credit** entry.
+2. List and offer a new clothes donation, get it accepted (as in test A, steps 1–5).
+   On the accepted donation's page, click **Book platform pickup**.
+3. The page shows the distance and a cost per courier. Pick one, leave the time at
+   its default (any future time — the pickup window is only a preference), and set
+   **Use from your wallet** to less than the full cost. The summary below splits the
+   cost into *From your wallet* and *By simulated checkout* exactly. **Book and pay**.
+4. The donation page shows *Handover scheduled* with a **Platform pickup** booking
+   card in the timeline (status *Booked*, the cost split, a simulated transaction
+   id). **Wallet** shows the balance reduced by exactly the wallet amount used.
+5. As the donor, **I've handed it over** — the booking card now says *Picked up*. As
+   the organisation, **Confirm receipt** — the donor sees **Completed · reused** and
+   the booking card says *Delivered*.
+6. As admin, open **Commission**: the total includes this booking's fee (10% of its
+   cost) and the earlier recycling's fee.
+
+**The refund path: a stalled booking.**
+1. Repeat steps 1–3 above (book a platform pickup, with some wallet amount), but
+   never click **I've handed it over**.
+2. As admin, **Run the sweep now** (after the handover grace period has passed — in
+   a hurry, `python -m app.cli sweep` against a donation whose `scheduled_for` you
+   backdated, or wait). The donation moves to **Admin review**.
+3. As the donor, the booking card now says *Cancelled* with a reason, the payment
+   shows *Refunded* with a refund transaction id, and **Wallet** shows the wallet
+   amount credited back — its balance is exactly what it was before the booking.
+4. As admin, **Commission** shows the booking's fee reversed: the total is back to
+   what it was before the booking (the earlier recycling's fee only).
+5. **Re-queue** or **Cancel** the donation from the admin queue: either way, the
+   booking and payment stay exactly as settled in step 3.
 
 **A profile edit that changes matching.**
 1. As the donor, **New donation** → Toys, 5, pin in Indiranagar → **List and find
