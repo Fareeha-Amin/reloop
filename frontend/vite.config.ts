@@ -12,7 +12,9 @@ export default defineConfig({
   plugins: [react(), tailwindcss()],
   server: {
     port: 5173,
-    allowedHosts: ["gates-reader-entities-writes.trycloudflare.com"],
+    allowedHosts: [
+      "professional-weighted-coordinate-emerald.trycloudflare.com",
+    ],
     proxy: {
       "/api": {
         target: BACKEND,

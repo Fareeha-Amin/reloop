@@ -64,7 +64,7 @@
   },
 
   "landing": {
-    "eyebrow": "Circular giving · clothes, toys & books",
+    "eyebrow": "AI-Powered Circular Economy Platform",
     "titleA": "Your old things.",
     "titleB": "Someone's next chapter.",
     "subtitle": "The jacket your child outgrew can keep another warm this winter. The books on your shelf can fill a classroom. ReLoop finds the people who need what you no longer use — and if no one can use it, sees that it's recycled, not binned.",
@@ -73,11 +73,10 @@
     "ctaOrganisation": "Register your organisation",
     "exploreMap": "See who's near you",
     "haveAccount": "Already with us?",
-    "orbitCore": "Second life",
-    "chips": {
-      "need": "Matched to real need",
-      "landfill": "Recycled, never binned",
-      "private": "Your address stays private"
+    "journey": {
+      "listed": { "title": "Your jacket", "text": "No longer in use" },
+      "matched": { "title": "Matched to a real need", "text": "Children's shelter nearby" },
+      "warmer": { "title": "A warmer winter ahead", "text": "In use, not in landfill" }
     },
     "trust": {
       "verified": "Verified organisations only",
@@ -86,39 +85,36 @@
     },
     "promises": {
       "need": {
+        "label": "AI-powered matching",
         "title": "It goes where it's needed",
         "text": "Organisations are ranked by what they've actually asked for, how urgently, and how close they are — so your gift lands where it matters most."
       },
       "deadEnd": {
+        "label": "Waste fallback",
         "title": "A “no” is never the end",
         "text": "If one place can't take it, the next best one is asked. If no one can, it's recycled — your donation still counts."
       },
       "journey": {
+        "label": "Live tracking",
         "title": "You see where it goes",
         "text": "From the moment you list it to the moment it's received, every step is recorded and shown to you."
       }
     },
-    "becomesEyebrow": "What your donation becomes",
-    "becomesTitle": "Small things, given well, change someone's day.",
-    "becomes": {
-      "clothes": {
-        "from": "Clothes you've outgrown",
-        "to": "A warm winter for a child",
-        "text": "Coats, uniforms and everyday wear go to homes and shelters that have listed them as a need."
-      },
-      "toys": {
-        "from": "Toys gathering dust",
-        "to": "Playtime in a children's home",
-        "text": "Games and toys in good shape find their way to the children who'll love them next."
-      },
-      "books": {
-        "from": "Books you've finished",
-        "to": "A fuller shelf in a classroom",
-        "text": "Schools and reading rooms in your city put them back into readers' hands."
-      }
+    "match": {
+      "title": "Suggested organisations",
+      "first": { "name": "Sunrise Shelter", "need": "Needs winter clothing" },
+      "second": { "name": "Green Lane School", "need": "Needs books" }
     },
-    "statement": "The most sustainable thing you own is the thing that already exists.",
-    "statementText": "Every item reused is one less made and one less thrown away. ReLoop keeps good things in use for as long as they last — and recovers the material when they can't be.",
+    "flow": {
+      "eyebrow": "When a donation is declined",
+      "title": "A “no” is never the end.",
+      "text": "If an organisation can't take it, ReLoop asks the next best one. If nobody can use it, it's recovered, not binned.",
+      "listed": { "title": "Listed", "text": "by you" },
+      "declinedA": { "title": "Organisation A", "text": "Can't accept" },
+      "declinedB": { "title": "Organisation B", "text": "Can't accept" },
+      "recycling": { "title": "Recycling fallback", "text": "Recovery, not landfill" },
+      "outcome": { "title": "Second life", "text": "Reused, or material recovered" }
+    },
     "whyEyebrow": "Why it matters",
     "stats": {
       "textile": {
@@ -137,8 +133,8 @@
         "source": "CPCB, MSW Annual Report 2021–22"
       }
     },
-    "stepsEyebrow": "Giving, made simple",
-    "stepsTitle": "Three steps. A few minutes.",
+    "stepsEyebrow": "How it works",
+    "stepsTitle": "Three simple steps.",
     "steps": {
       "list": { "title": "Snap and list", "text": "Tell us what it is, add a photo, and drop a pin for pickup." },
       "choose": { "title": "Choose who receives it", "text": "See the organisations that need it most, and why — then pick one." },
@@ -214,7 +210,7 @@
     "storageCapacity": "Storage capacity (items)",
     "storageCapacityHint": "How many items you can hold at once — a count, not kilograms.",
     "pickupCapable": "We can collect donations",
-    "pickupCapableHint": "Turn off if donors must bring items to you.",
+    "pickupCapableHint": "Turn on if you provide organisation pickup service.",
     "address": "Address",
     "addressHint": "As you'd write it for a visitor. The pin, not this text, sets the location.",
     "category": "What are you donating?",
