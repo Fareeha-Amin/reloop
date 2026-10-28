@@ -500,7 +500,7 @@ pip install -r requirements.txt
 # 4. Schema, first admin, seed data
 alembic upgrade head
 python -m app.cli create-admin --email admin@example.org --name "Platform Admin"
-python -m app.cli seed              # Bengaluru organisations, recyclers, a demo donor
+python -m app.cli seed              # 22 Bengaluru organisations, 15 recyclers, 3 couriers, a demo donor (idempotent)
 
 # 5. Run
 uvicorn app.main:app --reload       # http://127.0.0.1:8000/docs

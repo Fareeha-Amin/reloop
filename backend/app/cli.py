@@ -79,7 +79,7 @@ def _create_admin(args) -> int:
 
 
 def _seed(args) -> int:
-    print("Seed accounts (10 organisations and the demo donor) share one password.")
+    print(f"Seed accounts ({len(seed_service.ORGANISATIONS)} organisations and the demo donor) share one password.")
     password = _prompt_password("Password for seed accounts: ")
     if password is None:
         return 1

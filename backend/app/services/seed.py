@@ -11,6 +11,16 @@ deliberate:
 - three organisations that never enter matching (two PENDING, one REJECTED);
 - two active recyclers and one inactive one, none of which accepts TOYS, so a toy
   donation redirected to recycling lands in the admin queue (NEEDS_ADMIN).
+
+Coverage additions (for demonstrations across the whole city): twelve more verified
+organisations and twelve more active recyclers, spread over the north-west, north,
+north-east, east, south-east, south, south-west and west. They are APPENDED: an
+organisation's registration ID follows its position in ORGANISATIONS, so the original ten
+(SEED-BLR-001 to 010) must never be reordered or have anything inserted before them. The
+additions keep the layout above intact: every added organisation is verified, every added
+recycler is active and takes only CLOTHES and/or BOOKS (still no TOYS), and none lies
+within reach of Nelamangala, so a donation from there still has no organisation to offer
+to and still goes to GreenCycle (tests/api/test_acceptance_script.py relies on both).
 """
 
 from dataclasses import dataclass, field
@@ -72,6 +82,31 @@ ORGANISATIONS: tuple[SeedOrg, ...] = (
             12.9255, 77.5468, (T, B), 80, False, P, ((T, 25, Urgency.HIGH),)),
     SeedOrg("hebbal-shelter", "Hebbal Night Shelter", "Bellary Road, Hebbal, Bengaluru",
             13.0358, 77.5970, (C, B), 150, True, R),
+    # --- Coverage additions: append only (registration IDs follow position). All verified. ---
+    SeedOrg("rajajinagar-aid", "Rajajinagar Neighbourhood Aid Society", "Dr Rajkumar Road, Rajajinagar, Bengaluru",
+            12.9915, 77.5520, (C, B), 180, True, V, ((C, 35, Urgency.MEDIUM),)),
+    SeedOrg("jalahalli-vidya", "Jalahalli Vidya Trust", "Jalahalli East, Bengaluru",
+            13.0480, 77.5530, (B, T), 250, False, V, ((B, 60, Urgency.HIGH), (T, 15, Urgency.LOW))),
+    SeedOrg("yeshwanthpur-seva", "Yeshwanthpur Seva Kendra", "Tumkur Road, Yeshwanthpur, Bengaluru",
+            13.0280, 77.5400, (C, T), 140, True, V, ((C, 25, Urgency.HIGH),)),
+    SeedOrg("sahakara-elders", "Sahakara Nagar Elders' Care", "Sahakara Nagar, Bengaluru",
+            13.0620, 77.5870, (C, B), 90, False, V, ((C, 20, Urgency.LOW),)),
+    SeedOrg("hennur-learning", "Hennur Learning Centre", "Hennur Main Road, Bengaluru",
+            13.0400, 77.6420, (C, T, B), 220, True, V, ((T, 30, Urgency.MEDIUM),)),
+    SeedOrg("krpuram-workers", "KR Puram Workers' Forum", "Old Madras Road, KR Puram, Bengaluru",
+            13.0070, 77.6960, (C,), 300, True, V, ((C, 60, Urgency.HIGH),)),
+    SeedOrg("marathahalli-hope", "Marathahalli Hope Home", "Outer Ring Road, Marathahalli, Bengaluru",
+            12.9560, 77.7010, (C, T, B), 200, True, V, ((T, 18, Urgency.HIGH), (B, 40, Urgency.MEDIUM))),
+    SeedOrg("bellandur-shelter", "Bellandur Lakeside Shelter", "Sarjapur Road, Bellandur, Bengaluru",
+            12.9260, 77.6760, (C, B), 160, False, V),
+    SeedOrg("bannerghatta-home", "Bannerghatta Road Children's Home", "Bannerghatta Main Road, Bengaluru",
+            12.8890, 77.5960, (C, T, B), 260, True, V, ((C, 45, Urgency.MEDIUM), (T, 22, Urgency.HIGH))),
+    SeedOrg("jpnagar-reading", "JP Nagar Reading Circle", "24th Main, JP Nagar 2nd Phase, Bengaluru",
+            12.9070, 77.5850, (B, T), 400, False, V, ((B, 90, Urgency.MEDIUM),)),
+    SeedOrg("kengeri-trust", "Kengeri Community Trust", "Mysore Road, Kengeri, Bengaluru",
+            12.9170, 77.4830, (C, B), 350, True, V, ((C, 70, Urgency.HIGH),)),
+    SeedOrg("rrnagar-women", "RR Nagar Women's Collective", "Rajarajeshwari Nagar, Bengaluru",
+            12.9270, 77.5190, (C, T), 110, True, V, ((C, 25, Urgency.MEDIUM),)),
 )  # fmt: skip
 
 
@@ -86,7 +121,7 @@ class SeedRecycler:
     is_active: bool
 
 
-# None accepts TOYS (deliberately).
+# None accepts TOYS (deliberately). The first three are the original seed; the rest are coverage additions.
 RECYCLERS: tuple[SeedRecycler, ...] = (
     SeedRecycler("GreenCycle Textile Recovery", "Peenya Industrial Area, Bengaluru",
                  13.0285, 77.5197, (C,), Decimal("12.00"), True),
@@ -94,6 +129,31 @@ RECYCLERS: tuple[SeedRecycler, ...] = (
                  12.9081, 77.6237, (B, C), Decimal("8.50"), True),
     SeedRecycler("Old Town Scrap Traders", "Near KR Market, Bengaluru",
                  12.9634, 77.5770, (C, B), Decimal("10.00"), False),
+    # --- Coverage additions: all active, CLOTHES and/or BOOKS only (still none takes TOYS). ---
+    SeedRecycler("Yeshwanthpur Fibre Reclaim", "Tumkur Road, Yeshwanthpur Industrial Suburb, Bengaluru",
+                 13.0230, 77.5420, (C,), Decimal("11.00"), True),
+    SeedRecycler("Jalahalli Paper & Cloth Traders", "Jalahalli Cross, Bengaluru",
+                 13.0510, 77.5380, (C, B), Decimal("9.00"), True),
+    SeedRecycler("Rajajinagar Industrial Recyclers", "Rajajinagar Industrial Town, Bengaluru",
+                 12.9930, 77.5470, (C, B), Decimal("9.50"), True),
+    SeedRecycler("Hebbal Reuse Works", "Hebbal Industrial Area, Bengaluru",
+                 13.0370, 77.5990, (C,), Decimal("10.50"), True),
+    SeedRecycler("Yelahanka Paper Reclaim", "Yelahanka Industrial Area, Bengaluru",
+                 13.1010, 77.5940, (B,), Decimal("8.00"), True),
+    SeedRecycler("KR Puram Textile Yard", "Old Madras Road, KR Puram, Bengaluru",
+                 13.0100, 77.7000, (C,), Decimal("11.50"), True),
+    SeedRecycler("Whitefield Material Recovery Hub", "EPIP Zone, Whitefield, Bengaluru",
+                 12.9760, 77.7480, (C, B), Decimal("10.00"), True),
+    SeedRecycler("Marathahalli Scrap & Cloth Co.", "Marathahalli Industrial Area, Bengaluru",
+                 12.9590, 77.6990, (C, B), Decimal("9.50"), True),
+    SeedRecycler("Electronic City Recycling Park", "Hosur Road, Electronic City Phase 2, Bengaluru",
+                 12.8470, 77.6650, (C, B), Decimal("12.50"), True),
+    SeedRecycler("Bannerghatta Road Reclaim Depot", "Bannerghatta Main Road, Bengaluru",
+                 12.8870, 77.5990, (B, C), Decimal("9.00"), True),
+    SeedRecycler("Kengeri Industrial Recyclers", "Kengeri Industrial Area, Bengaluru",
+                 12.9120, 77.4800, (C,), Decimal("10.00"), True),
+    SeedRecycler("RR Nagar Material Recovery", "Rajarajeshwari Nagar Industrial Area, Bengaluru",
+                 12.9250, 77.5170, (C, B), Decimal("9.75"), True),
 )  # fmt: skip
 
 
