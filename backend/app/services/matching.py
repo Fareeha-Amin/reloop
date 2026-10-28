@@ -26,8 +26,10 @@ from app.constants import (
 from app.domain import lifecycle, policy, scoring
 from app.domain.scoring import Candidate, MatchingConfig, Slate
 from app.models import CurrentNeed, Donation, Match, OrganizationProfile, RankingRun, StatusEvent
-from app.services import transitions
+from app.services import training, transitions
 
+# The cold-start prior: SCORE_WEIGHTS and the other defaults. Rankings use
+# training.active_config(db), which is this until a fit is activated.
 DEFAULT_CONFIG = MatchingConfig()
 
 
@@ -202,10 +204,10 @@ def organisation_facts(db: Session, donation: Donation) -> list[scoring.Organisa
     return facts
 
 
-def compute_slate(
-    db: Session, donation: Donation, config: MatchingConfig = DEFAULT_CONFIG
-) -> tuple[Slate, int]:
-    """The donation's current eligible slate, and the decline count that set its radius."""
+def compute_slate(db: Session, donation: Donation, config: MatchingConfig | None = None) -> tuple[Slate, int]:
+    """The donation's current eligible slate, and the decline count that set its radius.
+    Ranked with the active configuration unless one is given (the simulation passes its own)."""
+    config = config or training.active_config(db)
     n = declines(db, donation.id)
     slate = scoring.rank(
         scoring.DonationFacts(
@@ -293,11 +295,10 @@ def make_offer(
     return match
 
 
-def resolve_re_matching(
-    db: Session, donation: Donation, now: datetime, config: MatchingConfig = DEFAULT_CONFIG
-) -> None:
+def resolve_re_matching(db: Session, donation: Donation, now: datetime, config: MatchingConfig | None = None) -> None:
     """RE_MATCHING is transient: in the same transaction, re-offer to the new top
     candidate or escalate to the donor."""
+    config = config or training.active_config(db)
     slate, n = compute_slate(db, donation, config)
     decision = policy.rematch_decision(
         declines_since_escalation=declines_since_last_escalation(db, donation.id),

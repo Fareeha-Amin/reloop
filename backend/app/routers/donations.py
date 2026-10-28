@@ -16,10 +16,10 @@ from app.schemas.donation import (
     RecycleDonationCreate,
 )
 from app.schemas.logistics import BookPickupIn, PickupQuoteOut, ProviderQuoteOut
-from app.schemas.matching import OfferCreate, ScheduleIn, SlateOut
+from app.schemas.matching import ModelOut, OfferCreate, ScheduleIn, SlateOut
 from app.schemas.timeline import TimelineOut
 from app.security.deps import CurrentUser, DbSession, DonorOrAdminUser, DonorUser
-from app.services import actions, chat, donations, logistics, matching, timeline
+from app.services import actions, chat, donations, logistics, matching, timeline, training
 from app.services.donations import Upload
 
 router = APIRouter(prefix="/donations", tags=["donor: donations"])
@@ -97,7 +97,8 @@ def get_candidates(donation_id: uuid.UUID, user: DonorUser, db: DbSession):
     preview: nothing is stored. Offering re-ranks and stores the slate it used."""
     donation = donations.get_visible(db, donation_id, user)
     slate, n = matching.compute_slate(db, donation)
-    return SlateOut.from_slate(slate, n, matching.DEFAULT_CONFIG.version())
+    version = training.active_config(db).version()
+    return SlateOut.from_slate(slate, n, ModelOut.from_view(training.model_view(db, version)))
 
 
 @router.post("/{donation_id}/offer", response_model=DonationOut)

@@ -57,6 +57,20 @@ def test_config_rejects_weights_that_do_not_sum_to_one():
         MatchingConfig(weights={f: 0.5 for f in ScoreFactor})
 
 
+def test_components_sum_to_the_score_under_fitted_weights():
+    """Non-negotiable 5 holds for a retrained configuration too: the five named components
+    are the decomposition of the score, whatever the weights."""
+    fitted = MatchingConfig(weights={ScoreFactor.PROXIMITY: 0.5, ScoreFactor.NEED_MATCH: 0.2,
+                                     ScoreFactor.URGENCY: 0.0, ScoreFactor.CAPACITY_HEADROOM: 0.2,
+                                     ScoreFactor.ACCEPTANCE_RATE: 0.1})
+    slate = rank(DONATION, [org(need_urgency=Urgency.HIGH, need_quantity=5), org(accepted_offers=2, decided_offers=3)],
+                 frozenset(), 15.0, fitted)
+    for candidate in slate.candidates:
+        assert [c.factor for c in candidate.components] == list(ScoreFactor)
+        assert sum(c.contribution for c in candidate.components) == pytest.approx(candidate.score, abs=1e-5)
+        assert {c.factor: c.weight for c in candidate.components} == fitted.weights
+
+
 def test_config_version_is_stable_and_changes_with_config():
     assert MatchingConfig().version() == MatchingConfig().version()
     assert MatchingConfig(rejection_boost_enabled=False).version() != MatchingConfig().version()

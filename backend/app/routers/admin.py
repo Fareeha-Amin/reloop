@@ -17,7 +17,7 @@ from app.schemas.admin import (
     SweepReportOut,
 )
 from app.schemas.donation import DonationOut, DonationSummaryOut
-from app.schemas.matching import ReasonIn
+from app.schemas.matching import ModelOut, ReasonIn
 from app.schemas.need import NeedOut
 from app.schemas.organization import (
     AdminOrganizationDetail,
@@ -26,7 +26,7 @@ from app.schemas.organization import (
     VerificationUpdate,
 )
 from app.security.deps import AdminUser, DbSession
-from app.services import actions, admin as admin_views, commission, donations, organizations, sweeper, timeline
+from app.services import actions, admin as admin_views, commission, donations, organizations, sweeper, timeline, training
 
 router = APIRouter(prefix="/admin", tags=["admin"])
 
@@ -116,6 +116,12 @@ def awaiting_admin(admin: AdminUser, db: DbSession):
     return [_queue_item(db, e) for e in admin_views.awaiting(db, lifecycle.states_awaiting(Actor.ADMIN))]
 
 
+def _ranking_run_out(db, run) -> RankingRunOut:
+    view = training.model_view(db, run.config_version)
+    out = RankingRunOut.model_validate(run)
+    return out.model_copy(update={"model": ModelOut.from_view(view) if view else None})
+
+
 @router.get("/donations/{donation_id}", response_model=AdminDonationDetailOut)
 def get_donation_detail(donation_id: uuid.UUID, admin: AdminUser, db: DbSession):
     """Full detail, including the precise address. This read is recorded."""
@@ -123,7 +129,7 @@ def get_donation_detail(donation_id: uuid.UUID, admin: AdminUser, db: DbSession)
     return AdminDonationDetailOut(
         donation=donation_out(db, donation, admin),
         timeline=timeline.build(db, donation, for_admin=True),
-        ranking_runs=[RankingRunOut.model_validate(r) for r in admin_views.ranking_runs(db, donation.id)],
+        ranking_runs=[_ranking_run_out(db, r) for r in admin_views.ranking_runs(db, donation.id)],
     )
 
 

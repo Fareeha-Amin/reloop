@@ -7,7 +7,7 @@ recycling, so every donation ends in reuse or material recovery.
 Background: [docs/ReLoop_Project_Context.pdf](docs/ReLoop_Project_Context.pdf) ·
 Build brief: [PROMPT.md](PROMPT.md) · Decision log: [CLAUDE.md](CLAUDE.md)
 
-## Status: Phase 4 (logistics & money), plus impact metrics, a recycling choice, a handover-path fix and the recycling handover step
+## Status: Phase 4 (logistics & money), plus impact metrics, a recycling choice, a handover-path fix, the recycling handover step, and Phase 5 ranking-weight training (matching only)
 
 **What's new since Phase 4**
 
@@ -201,9 +201,11 @@ Build brief: [PROMPT.md](PROMPT.md) · Decision log: [CLAUDE.md](CLAUDE.md)
   offered this donation, within the search radius, enough remaining capacity), then a
   weighted sum of five factors: proximity, declared need, urgency, capacity headroom
   and a smoothed acceptance rate. Every score is broken into structured components
-  (factor, raw value, value, weight, contribution). The weights are **assigned, not
-  learned**: there is no accept/reject history yet. Donor rating is not a factor
-  until reviews exist.
+  (factor, raw value, value, weight, contribution). The weights start as **assigned**
+  values and can be refitted from real outcomes, but only past a data floor and only if
+  the fit beats the assigned weights on held-out offers (see *Ranking weights* below).
+  Every breakdown states which weights it used. Donor rating is not a factor until
+  reviews exist.
 - **The full lifecycle** in one transition table (`app/domain/lifecycle.py`), with the
   actor allowed for each edge declared beside it. Two outcomes, `COMPLETED` (reuse)
   and `RECYCLED` (material recovery). `CANCELLED` is a withdrawal. `NEEDS_ADMIN` is
@@ -272,6 +274,8 @@ history. Anything not listed above is not built.
 |---|---|
 | **Geocoding** (`app/services/geocoding.py`) | **STUB.** `PassthroughGeocoder` returns the coordinates the client sends, unchanged and unverified. No address lookup takes place, and there is no maps API key. Endpoints therefore require `latitude`/`longitude`, and changing an address requires new coordinates. |
 | **Image storage** (`app/services/storage.py`) | Local disk under `backend/uploads/` (git-ignored), behind an `ImageStorage` interface so object storage can replace it. Files are served only through an authorised endpoint. |
+| **Ranking weights** (`app/domain/learning.py`, `app/services/training.py`) | **PRIOR IN USE.** The assigned weights are active. No fit has been activated: there are no real outcomes yet (floor: 100 labelled, 20 accepted and 20 declined). |
+| **Simulation** (`backend/sim/`) | **SIMULATED.** Synthetic offers from an assumed acceptance model. They exercise the training pipeline and never activate weights. They say nothing about real acceptors. |
 | **Recycling settlement** (`app/domain/recycling.py`) | **SIMULATED.** Mass is **estimated** as quantity × a per-category weight. The settlement (gross value, donor credit, platform fee) credits the donor's wallet and the commission ledger; no real money moves. Labelled `simulated` / `mass_is_estimate` in every API response. |
 | **Per-category weights** (`CATEGORY_WEIGHT_KG`) | **PLACEHOLDERS** (clothes 0.5 kg, toys 0.3 kg, books 0.4 kg per item) pending a cited source. Responses carry `weights_are_placeholders: true`. |
 | **Per-category carbon factors** (`CARBON_FACTOR_KG_PER_ITEM`) | **PLACEHOLDERS, not sourced** (clothes 5.0 kg CO2e, toys 2.0 kg, books 1.5 kg, avoided per item reused). Credited to reuse only, never to recycling. `GET /impact/me` and `GET /impact/organisation` carry `placeholders: true` and `estimated: true`. |
@@ -312,6 +316,61 @@ history. Anything not listed above is not built.
   request and picks them up on its next run. With several API processes each runs its
   own loop. That is safe (row locks, with every decision re-made under the lock), just
   redundant.
+
+### Ranking weights (Phase 5)
+
+The five ranking weights can be refitted from real outcomes. Until a fit is activated,
+the assigned prior (`SCORE_WEIGHTS`) is used, and every breakdown says so: the response
+carries `model` with the configuration version, `is_prior`, and the training sample split.
+
+- **What the live scorer is.** The live scorer is the logistic model of P(accept) in its
+  **cold-start state**: its coefficients are the assigned weights (`SCORE_WEIGHTS`), so
+  every live score is the weighted sum of the assigned weights. No coefficient has been
+  fitted to any behavioural data. The model's *structure* and training pipeline exist from
+  day one; its *learned content* does not yet. A reader should not take a current score as
+  evidence about how organisations respond.
+- **"AI-powered" describes the architecture, not learned behaviour.** In this project it
+  means a model behind an interface, with a gated pipeline that can refit the weights from
+  real outcomes. It does not mean the platform has learned anything from behaviour yet.
+  Until the activation gate passes on real outcomes, nothing in the product should claim
+  learned or predicted acceptance.
+- **What is fitted.** A logistic model of P(accept) over the five factors each offer was
+  made against, fitted with scipy: coefficients bounded to `[0, MODEL_COEF_MAX]` and
+  pulled toward the prior. The normalised coefficients are the weights. They are an
+  index, not a probability, and nothing displays them as one.
+- **Activation.** A fit activates only if there are at least `MODEL_MIN_REAL_OUTCOMES`
+  (100) labelled real offers, at least `MODEL_MIN_REAL_PER_CLASS` (20) accepted and 20
+  declined, and its held-out log-loss beats the prior's on a split by donation. Otherwise
+  the prior stays and the reasons are reported. Nothing is reviewed by a person. Activation
+  is recorded as an insert into `model_versions`, which is append-only.
+- **Real data today: zero organic outcomes.** The development database holds 32 labelled
+  offers (13 accepted, 18 rejected, 1 expired). They are the developer's own test runs,
+  so they do not count as real use. The floor is not met, so the assigned weights are the
+  active ones and no fit has been activated.
+- **What that means for the model.** Nothing has been learned. The scores are the
+  assigned weights, and the platform makes no claim that they reflect how organisations
+  actually respond. When real offers accumulate, `train-model` reports whether the floor
+  is met and whether a fit beats the prior, and `show-model` shows the fitted weights next
+  to the prior with 90% bootstrap intervals. With few offers the intervals are wide, and
+  a factor whose interval contains its prior weight is not evidence of a different one.
+- **Synthetic data.** `python -m sim generate` writes simulated outcomes into the
+  database, tagged for purging with `purge-synthetic`. A sandbox fit with them
+  (`train-model --include-synthetic`) is recorded and never activated. Recovering the
+  simulator's planted direction shows the pipeline works. It shows nothing else.
+- **Known limitations.** The fit scores each offer on its own; a choice model over each
+  donation's candidates would match the decision more closely, and is the next thing to
+  try once real data exists. Offers go to top-ranked candidates, so training data covers
+  part of each slate, and candidates never offered are unlabelled. The acceptance-rate
+  factor is read from each stored slate as it stood at the offer, so it cannot leak the
+  outcome. Held capacity is not modelled in the simulation.
+
+```
+# from backend/, venv active
+python -m app.cli train-model              # fit from real outcomes; activates only past the gate
+python -m app.cli show-model               # active weights against the prior
+python -m sim generate --tag NAME          # synthetic outcomes (sandbox only)
+python -m app.cli purge-synthetic [--tag NAME]
+```
 
 ### Known limitations
 
@@ -377,6 +436,7 @@ kilograms or bags.
 
 ```
 backend/
+  sim/                      # Phase 5 simulation harness (synthetic outcomes only)
   app/
     constants.py      every vocabulary and tunable, defined once
     config.py         environment variables, read once

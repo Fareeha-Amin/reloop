@@ -5,13 +5,13 @@ import { paths } from '../../app/paths';
 import { useCandidates, useDonation } from '../../app/queries';
 import { ApiErrorAlert } from '../../components/ApiErrorAlert';
 import { CandidateCard } from '../../components/CandidateCard';
+import { ModelNote } from '../../components/ModelNote';
 import { donationTitle } from '../../components/donation';
 import { formatNumber } from '../../i18n/format';
 import { t } from '../../i18n';
 import { Button, LinkButton } from '../../ui/Button';
 import { Alert, EmptyState, LoadingBlock } from '../../ui/feedback';
 import { Page, PageHeader } from '../../ui/layout';
-import { Marker } from '../../ui/Tag';
 import { offerAllowed, offerTo } from '../../vocab/actions';
 import { vocabLabel } from '../../vocab/display';
 
@@ -77,7 +77,7 @@ export function Candidates() {
           </span>
         )}
         <span className="ml-auto">
-          <Marker>{t('candidates.assignedWeights')}</Marker>
+          <ModelNote model={s.model} />
         </span>
       </div>
 

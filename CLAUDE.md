@@ -81,6 +81,8 @@ Phase 4 adds no environment variables either. New tunables, both in `app/constan
 
 Impact metrics, the handover-path fix and the recycling-choice entry point add no environment variables. New tunable: `CARBON_FACTOR_KG_PER_ITEM` in `app/constants.py`, a per-category placeholder beside `CATEGORY_WEIGHT_KG`, under the same `CATEGORY_WEIGHTS_ARE_PLACEHOLDERS` flag.
 
+Phase 5 (ranking weights) adds no environment variables. New tunables, all in `app/constants.py`: `MODEL_MIN_REAL_OUTCOMES` (100), `MODEL_MIN_REAL_PER_CLASS` (20), `MODEL_HOLDOUT_FRACTION`, `MODEL_COEF_MAX`, `MODEL_PRIOR_PENALTY`, `MODEL_BOOTSTRAP_RESAMPLES`, `MODEL_BOOTSTRAP_SEED`, `MODEL_INTERVAL_PERCENTILES`. The simulation's hidden acceptance model is in `backend/sim/truth.py`, not in config, because it is a generator assumption rather than a platform setting.
+
 ---
 
 ## Commands
@@ -125,6 +127,22 @@ python -m app.cli export-openapi
 ```
 
 ```
+# Phase 5 — ranking weights (from backend/, venv active; migration 0008 is part of `alembic upgrade head`)
+
+# generate synthetic offer outcomes into DATABASE_URL (additive; tagged so a run can be purged)
+python -m sim generate --tag NAME [--seed 0] [--orgs 40] [--donations 2000]
+
+# fit the weights from real outcomes; activates only past the floor and if held-out log-loss beats the prior
+python -m app.cli train-model
+# sandbox fit with synthetic data included; recorded, never activated
+python -m app.cli train-model --include-synthetic
+
+# the active weights against the prior, with intervals and the unconstrained comparison
+python -m app.cli show-model
+
+# delete synthetic outcomes (one run, or all). Never touches real rows
+python -m app.cli purge-synthetic [--tag NAME]
+
 # frontend commands run from frontend/ (Node 24 LTS)
 
 # install dependencies
@@ -288,6 +306,20 @@ exists.
 | `STALL_TIMEOUTS[RECYCLING_IN_TRANSIT] = 48h`, same as `IN_TRANSIT` | Both are "a booked/self-reported handover in progress, no further news expected soon" |
 | **Admin `CONFIRM_RECYCLED` no longer has an edge directly from `WASTE_REDIRECTED`** — a deliberate behaviour change, not an oversight. Four existing tests were updated to add the donor's handover step before confirming: `test_acceptance_script.py`, `test_impact_and_recycle.py`, `test_logistics_and_wallet.py` (via its shared `_credit_wallet` helper), `test_recycling_and_admin.py` | Before this change an admin could confirm recycled the moment a donation was redirected, with no record that the goods ever left the donor. `lifecycle.states_awaiting(Actor.ADMIN)` now reads `{NEEDS_ADMIN, RECYCLING_IN_TRANSIT}`, so `WASTE_REDIRECTED` also drops out of the admin notification feed and `GET /admin/awaiting` until the handover is recorded |
 | `RecyclingOut` (the donor's and admin's view of a recycling assignment) gains the collector's `address_text`/`latitude`/`longitude` and the donor's own `handover` record (null until recorded) | The collector's address is a business address, not donor-sensitive, so it is shown plainly (unlike an organisation's, released only on acceptance) — the donor needs it to know where to take the goods, or to confirm where a booked courier is headed |
+| **Supersedes "Ranking weights assigned, not learned, at launch".** Phase 5 fits the five weights from real outcomes (`app.domain.learning`), starting at `SCORE_WEIGHTS`. A fit activates only past the real-outcome floor and only if its held-out log-loss beats the prior's | The original reason (no accept/reject history) still holds until the floor is met; the rule now says what happens when it is. Reopened with the floor and the gate as the argument |
+| **Departure from PROMPT.md: scipy, not scikit-learn, does the fit.** Bounded L-BFGS-B with a penalty toward `SCORE_WEIGHTS`. scikit-learn's diagnostics stay: an unconstrained comparison (`fit.unconstrained_coefficients`) and held-out AUC and log-loss | `LogisticRegression` cannot bound a coefficient to be non-negative or shrink it toward a non-zero prior, and the normalised weights must be non-negative shares |
+| **Activation is an insert.** `model_versions` is append-only (`app.db.AppendOnly`). `activated` is decided before the row is written and never changes. The active weights are the latest activated row, or the prior if there is none. Rolling back is another insert. A row that did not activate keeps its reasons | Consistent with rejections are data: every fit tried stays on record, and nothing is updated to change what is active |
+| **The active fit uses real outcomes only.** Synthetic outcomes fit a sandbox (`train-model --include-synthetic`) that is recorded and never activated. Training still reads both tables and reports both counts | A model trained on simulated offers learns the simulator's assumptions (`sim/truth.py`), not real acceptors |
+| **Real-outcome floor: 100 labelled offers, at least 20 accepted and 20 declined** (`MODEL_MIN_REAL_OUTCOMES`, `MODEL_MIN_REAL_PER_CLASS`). Below it no fit is made and no row is written. Labelled means ACCEPTED, REJECTED or EXPIRED; RETRACTED and OPEN are not labelled | About ten events per estimated parameter on the minority class, plus margin for the intervals. A proposal, tunable in `app/constants.py` |
+| **Retraining is a CLI command run on demand** (`python -m app.cli train-model`), not a sweeper job | Activation has no review step, so an automatic trigger would change live rankings unattended. The sweeper runs in every API process and would need a lock. Revisit with a real-outcome trigger and that lock |
+| **The activation gate is code, not review.** Held-out log-loss of the fit must be below the prior's, on a split by donation (a stable hash of the donation id, `MODEL_HOLDOUT_FRACTION`), so one donation's offers stay on one side | Every failed rule is a recorded reason. Splitting by donation keeps the holdout honest about generalising to new donations |
+| **The fitted weights are an index, not a probability.** The betas are normalised to sum to 1. That divides by a positive constant, and the intercept is shared by a donation's candidates, so the order within a donation is that of the fitted probability | Nothing shows a score as P(accept) until calibration exists. The cold-start prior on a logit scale only spans about 0.5 to 0.73, so it is not a probability either |
+| **Betas are bounded to `[0, MODEL_COEF_MAX]` with penalty `MODEL_PRIOR_PENALTY` toward `SCORE_WEIGHTS`.** A factor can reach weight 0; it stays in every breakdown with contribution 0 | Non-negative shares keep "share of the score" meaningful. Weight 0 is the honest answer when the data shows no effect. The five components still sum to the score (non-negotiable 5) |
+| **Every breakdown carries `model`** (`ModelOut`, on the donor's `SlateOut` and each admin `RankingRunOut`): `config_version`, `is_prior`, `trained_at`, the training sample split (real and synthetic, with accepted counts) and the largest shift from the prior. `ModelNote` chooses labels from those fields only | Non-negotiable 5 and the Phase 5 requirement that a score shows what it was built from. No version logic in React |
+| **The simulation harness is `backend/sim/`, not the repo root.** It runs the real `scoring.rank`, `policy` and `lifecycle` modules (a test checks identity and that it defines no scoring of its own) | It imports `app`, and sharing the backend venv keeps one import path. PROMPT.md placed `sim/` at the root; this is a departure |
+| **`purge-synthetic` is the one bulk DELETE allowed in `app/`**, allowlisted to `services/training.py` and only for `synthetic_outcomes`, which has no real rows and no foreign keys. `test_app_code_issues_no_bulk_update_or_delete` pins the allowance | The append-only guard covers every other table. The purge test checks that real matches and ranking runs are unchanged |
+| **The `synthetic_outcomes` table has no foreign keys** and is the only table that holds synthetic history. The sim's acceptance model (`sim/truth.py`) is an assumption, labelled as one, and deliberately not `SCORE_WEIGHTS` | A query over `matches` cannot count a simulated offer as real. A fit that recovers the planted direction shows the pipeline works, and nothing about real acceptors |
+| **Every training attempt writes one `model_versions` row, activated or not.** Below the real-outcome floor the row has NULL weights, intercept, config_version and fit, `activated` false, the reason and the counts it was judged on. This supersedes the earlier "below the floor no row is written" note | The audit has to show that a retrain was tried and why it did not move the weights; a missing row would look like no attempt |
 
 ---
 

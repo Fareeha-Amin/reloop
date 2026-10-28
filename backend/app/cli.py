@@ -4,6 +4,9 @@
     python -m app.cli seed
     python -m app.cli sweep
     python -m app.cli export-openapi
+    python -m app.cli train-model [--include-synthetic]
+    python -m app.cli show-model
+    python -m app.cli purge-synthetic [--tag NAME]
 
 Admins cannot self-register; create-admin is the only way to create one. Passwords are
 prompted for (twice) and never passed on the command line, where they would end up in
@@ -30,7 +33,9 @@ from app.db import get_engine
 from app.models import User
 from app.schemas.user import AdminCreate
 from app.services import seed as seed_service
-from app.services import sweeper, users
+from app.constants import ScoreFactor
+from app.domain import learning
+from app.services import sweeper, training, users
 from app.services.errors import ServiceError
 
 
@@ -100,6 +105,83 @@ def _sweep(args) -> int:
     return 1 if report.errors else 0
 
 
+def _train_model(args) -> int:
+    with Session(get_engine()) as db:
+        report = training.train(db, include_synthetic=args.include_synthetic)
+        active = training.active_model(db)
+    real = report.real
+    print(f"Real outcomes: {real.total} labelled ({real.accepted} accepted, {real.declined} declined).")
+    synthetic = report.synthetic_available
+    print(f"Synthetic outcomes available: {synthetic.total} ({synthetic.accepted} accepted); "
+          f"used: {'yes, sandbox only' if report.include_synthetic else 'no'}.")
+    row = report.version
+    if report.activated:
+        print(f"Gate: MET. Fit activated: {row.config_version}.")
+    else:
+        print("Gate: NOT MET. No weights were activated.")
+        for reason in report.reasons:
+            print(f"  - {reason}")
+    if active is None:
+        print("Active weights: the cold-start prior (SCORE_WEIGHTS).")
+    else:
+        print(f"Active weights: fit {active.config_version} (seq {active.seq}).")
+    print(f"Audit row: model_versions seq {row.seq}, activated={str(row.activated).lower()}, "
+          f"fitted={str(report.fitted).lower()}.")
+    if report.fitted:
+        _print_fit(row)
+    return 0
+
+
+def _print_fit(version) -> None:
+    fit = version.fit
+    if fit is None:
+        return
+    print(f"Split: {fit['train_n']} training, {fit['holdout_n']} held out (by donation).")
+    print(f"Held-out log-loss: fitted {fit['fitted_holdout_loss']}, prior {fit['prior_holdout_loss']}.")
+    print(f"Held-out AUC: fitted {fit['fitted_holdout_auc']}, prior {fit['prior_holdout_auc']}.")
+    print(f"Largest weight shift from the prior: {fit['max_shift_from_prior']}")
+    print(f"{'factor':<20}{'prior':>8}{'fitted':>10}{'90% interval':>22}{'unconstrained (logit)':>24}")
+    for f in ScoreFactor:
+        prior = fit["prior_weights"][f.value]
+        fitted = version.weights[f.value]
+        interval = fit["intervals"][f.value]
+        interval_text = f"[{interval[0]:.3f}, {interval[1]:.3f}]" if interval else "n/a"
+        unconstrained = fit["unconstrained_coefficients"]
+        raw = f"{unconstrained[f.value]:.3f}" if unconstrained else "n/a"
+        print(f"{f.value:<20}{prior:>8.3f}{fitted:>10.3f}{interval_text:>22}{raw:>24}")
+
+
+def _show_model(args) -> int:
+    with Session(get_engine()) as db:
+        row = training.active_model(db)
+        config = training.active_config(db)
+        attempt = training.latest_attempt(db)
+    if row is None:
+        print(f"Active weights: the cold-start prior (SCORE_WEIGHTS), version {config.version()}.")
+        print("No fit has been activated.")
+    else:
+        print(f"Active weights: fit {row.config_version} (seq {row.seq}), recorded {row.created_at.isoformat()}.")
+        print(f"Trained on {row.real_n} real ({row.real_accepted} accepted) and {row.synthetic_n} synthetic "
+              f"({row.synthetic_accepted} accepted) outcomes.")
+        _print_fit(row)
+    if attempt is None:
+        print("Latest training attempt: none.")
+    else:
+        print(f"Latest training attempt: seq {attempt.seq}, activated={str(attempt.activated).lower()}, "
+              f"real {attempt.real_n} ({attempt.real_accepted} accepted).")
+        for reason in attempt.reasons:
+            print(f"  - {reason}")
+    return 0
+
+
+def _purge_synthetic(args) -> int:
+    with Session(get_engine()) as db:
+        removed = training.purge_synthetic(db, args.tag)
+    scope = f"tag {args.tag!r}" if args.tag else "every tag"
+    print(f"Removed {removed} synthetic outcomes ({scope}). Real outcomes are untouched.")
+    return 0
+
+
 FRONTEND_OPENAPI = Path(__file__).resolve().parents[2] / "frontend" / "src" / "api" / "openapi.json"
 
 
@@ -130,6 +212,13 @@ def main(argv: list[str] | None = None) -> int:
     export = sub.add_parser("export-openapi", help="Write the OpenAPI schema for the frontend's generated types.")
     export.add_argument("--out", default=str(FRONTEND_OPENAPI))
     export.set_defaults(handler=_export_openapi)
+    train = sub.add_parser("train-model", help="Fit the ranking weights from real outcomes; activate if the gate passes.")
+    train.add_argument("--include-synthetic", action="store_true", help="Sandbox fit with synthetic data. Never activated.")
+    train.set_defaults(handler=_train_model)
+    sub.add_parser("show-model", help="Show the active weights against the prior.").set_defaults(handler=_show_model)
+    purge = sub.add_parser("purge-synthetic", help="Delete synthetic outcomes (never real ones).")
+    purge.add_argument("--tag", default=None, help="Only this run's outcomes. Omit for all synthetic outcomes.")
+    purge.set_defaults(handler=_purge_synthetic)
     args = parser.parse_args(argv)
     return args.handler(args)
 

@@ -16,7 +16,7 @@ from app.constants import (
 )
 from app.schemas.common import OutputModel
 from app.schemas.donation import DonationOut, DonationSummaryOut
-from app.schemas.matching import CandidateOut
+from app.schemas.matching import CandidateOut, ModelOut
 from app.schemas.timeline import TimelineOut
 
 
@@ -40,6 +40,10 @@ class RankingRunOut(OutputModel):
     slate: list[CandidateOut] = Field(description="The eligible organisations the decision was made against, best first.")
     filtered_out: dict[FilterReason, int]
     created_at: datetime
+    model: ModelOut | None = Field(
+        default=None,
+        description="The weights this run used: the prior or a fit, with its training sample. Null only for a version no record exists for.",
+    )
 
 
 class AdminDonationDetailOut(OutputModel):

@@ -25,7 +25,8 @@ PHASE2_TABLES = {
 PHASE3_TABLES = {"chat_messages", "chat_reads"}
 PHASE4_TABLES = {"logistics_providers", "bookings", "payments", "commissions", "wallet_txns"}
 PHASE5_TABLES = {"impact_records"}
-APP_TABLES = PHASE1_TABLES | PHASE2_TABLES | PHASE3_TABLES | PHASE4_TABLES | PHASE5_TABLES
+PHASE5_TRAINING_TABLES = {"synthetic_outcomes", "model_versions"}
+APP_TABLES = PHASE1_TABLES | PHASE2_TABLES | PHASE3_TABLES | PHASE4_TABLES | PHASE5_TABLES | PHASE5_TRAINING_TABLES
 
 
 def _tables(engine) -> set[str]:

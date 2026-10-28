@@ -2178,6 +2178,33 @@ export interface components {
              */
             carbon_avoided_kg: number;
         };
+        /**
+         * ModelOut
+         * @description The weights behind a breakdown: the cold-start prior, or a fit from real outcomes.
+         */
+        ModelOut: {
+            /**
+             * Config Version
+             * @description Fingerprint of the full matching configuration the weights belong to.
+             */
+            config_version: string;
+            /**
+             * Is Prior
+             * @description True: the cold-start prior (the assigned SCORE_WEIGHTS), not a fit.
+             */
+            is_prior: boolean;
+            /**
+             * Trained At
+             * @description When the activated fit was recorded; null for the prior.
+             */
+            trained_at: string | null;
+            training_sample: components["schemas"]["TrainingSampleOut"];
+            /**
+             * Max Shift From Prior
+             * @description Largest change in any factor's weight from the prior, as a share of the score (0 to 1). Null for the prior.
+             */
+            max_shift_from_prior: number | null;
+        };
         /** NeedCreate */
         NeedCreate: {
             category: components["schemas"]["Category"];
@@ -2618,6 +2645,8 @@ export interface components {
              * Format: date-time
              */
             created_at: string;
+            /** @description The weights this run used: the prior or a fit, with its training sample. Null only for a version no record exists for. */
+            model?: components["schemas"]["ModelOut"] | null;
         };
         /**
          * RankingTrigger
@@ -2826,6 +2855,7 @@ export interface components {
             declines: number;
             /** Config Version */
             config_version: string;
+            model: components["schemas"]["ModelOut"];
             /** Candidates */
             candidates: components["schemas"]["CandidateOut"][];
             /**
@@ -2888,6 +2918,26 @@ export interface components {
              * @default bearer
              */
             token_type: string;
+        };
+        /**
+         * TrainingSampleOut
+         * @description What a fitted set of weights was trained on, split by source.
+         */
+        TrainingSampleOut: {
+            /**
+             * Real
+             * @description Labelled real offers (ACCEPTED, REJECTED, EXPIRED). Zero for the prior.
+             */
+            real: number;
+            /** Real Accepted */
+            real_accepted: number;
+            /**
+             * Synthetic
+             * @description Simulated offers used. Always zero for an activated fit: synthetic data never activates.
+             */
+            synthetic: number;
+            /** Synthetic Accepted */
+            synthetic_accepted: number;
         };
         /**
          * Urgency
@@ -3037,6 +3087,7 @@ export type HandoverOptionOut = components['schemas']['HandoverOptionOut'];
 export type HandoverOut = components['schemas']['HandoverOut'];
 export type HolderOut = components['schemas']['HolderOut'];
 export type ImpactTotalsOut = components['schemas']['ImpactTotalsOut'];
+export type ModelOut = components['schemas']['ModelOut'];
 export type NeedCreate = components['schemas']['NeedCreate'];
 export type NeedOut = components['schemas']['NeedOut'];
 export type NeedUpdate = components['schemas']['NeedUpdate'];
@@ -3074,6 +3125,7 @@ export type SweepItemOut = components['schemas']['SweepItemOut'];
 export type SweepReportOut = components['schemas']['SweepReportOut'];
 export type TimelineOut = components['schemas']['TimelineOut'];
 export type TokenPair = components['schemas']['TokenPair'];
+export type TrainingSampleOut = components['schemas']['TrainingSampleOut'];
 export type Urgency = components['schemas']['Urgency'];
 export type UserOut = components['schemas']['UserOut'];
 export type ValidationError = components['schemas']['ValidationError'];

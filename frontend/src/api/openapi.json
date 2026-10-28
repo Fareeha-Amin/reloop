@@ -5189,6 +5189,58 @@
         "title": "ImpactTotalsOut",
         "description": "Totals over finished donations. Every figure is an ESTIMATE: mass is modelled from\nitem counts, and carbon from a per-item factor. Reuse and recycling are separate.\n`placeholders` is true while the per-item factors are unsourced."
       },
+      "ModelOut": {
+        "properties": {
+          "config_version": {
+            "type": "string",
+            "title": "Config Version",
+            "description": "Fingerprint of the full matching configuration the weights belong to."
+          },
+          "is_prior": {
+            "type": "boolean",
+            "title": "Is Prior",
+            "description": "True: the cold-start prior (the assigned SCORE_WEIGHTS), not a fit."
+          },
+          "trained_at": {
+            "anyOf": [
+              {
+                "type": "string",
+                "format": "date-time"
+              },
+              {
+                "type": "null"
+              }
+            ],
+            "title": "Trained At",
+            "description": "When the activated fit was recorded; null for the prior."
+          },
+          "training_sample": {
+            "$ref": "#/components/schemas/TrainingSampleOut"
+          },
+          "max_shift_from_prior": {
+            "anyOf": [
+              {
+                "type": "number"
+              },
+              {
+                "type": "null"
+              }
+            ],
+            "title": "Max Shift From Prior",
+            "description": "Largest change in any factor's weight from the prior, as a share of the score (0 to 1). Null for the prior."
+          }
+        },
+        "type": "object",
+        "required": [
+          "config_version",
+          "is_prior",
+          "trained_at",
+          "training_sample",
+          "max_shift_from_prior"
+        ],
+        "title": "ModelOut",
+        "description": "The weights behind a breakdown: the cold-start prior, or a fit from real outcomes."
+      },
       "NeedCreate": {
         "properties": {
           "category": {
@@ -6258,6 +6310,17 @@
             "type": "string",
             "format": "date-time",
             "title": "Created At"
+          },
+          "model": {
+            "anyOf": [
+              {
+                "$ref": "#/components/schemas/ModelOut"
+              },
+              {
+                "type": "null"
+              }
+            ],
+            "description": "The weights this run used: the prior or a fit, with its training sample. Null only for a version no record exists for."
           }
         },
         "type": "object",
@@ -6670,6 +6733,9 @@
             "type": "string",
             "title": "Config Version"
           },
+          "model": {
+            "$ref": "#/components/schemas/ModelOut"
+          },
           "candidates": {
             "items": {
               "$ref": "#/components/schemas/CandidateOut"
@@ -6694,6 +6760,7 @@
           "radius_km",
           "declines",
           "config_version",
+          "model",
           "candidates",
           "filtered_out"
         ],
@@ -6829,6 +6896,37 @@
           "refresh_token"
         ],
         "title": "TokenPair"
+      },
+      "TrainingSampleOut": {
+        "properties": {
+          "real": {
+            "type": "integer",
+            "title": "Real",
+            "description": "Labelled real offers (ACCEPTED, REJECTED, EXPIRED). Zero for the prior."
+          },
+          "real_accepted": {
+            "type": "integer",
+            "title": "Real Accepted"
+          },
+          "synthetic": {
+            "type": "integer",
+            "title": "Synthetic",
+            "description": "Simulated offers used. Always zero for an activated fit: synthetic data never activates."
+          },
+          "synthetic_accepted": {
+            "type": "integer",
+            "title": "Synthetic Accepted"
+          }
+        },
+        "type": "object",
+        "required": [
+          "real",
+          "real_accepted",
+          "synthetic",
+          "synthetic_accepted"
+        ],
+        "title": "TrainingSampleOut",
+        "description": "What a fitted set of weights was trained on, split by source."
       },
       "Urgency": {
         "type": "string",

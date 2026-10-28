@@ -321,6 +321,18 @@ URGENCY_FACTOR = {Urgency.LOW: 0.33, Urgency.MEDIUM: 0.67, Urgency.HIGH: 1.0}
 ACCEPTANCE_PRIOR_RATE = 0.5
 ACCEPTANCE_PRIOR_WEIGHT = 4
 
+# Phase 5: the weights may be re-fitted from real outcomes (app.domain.learning,
+# app.services.training). The fit starts from SCORE_WEIGHTS and only activates past the
+# floor below, on a held-out split of real offers, and only when it beats the prior there.
+MODEL_MIN_REAL_OUTCOMES = 100  # labelled real offers (ACCEPTED, REJECTED, EXPIRED)
+MODEL_MIN_REAL_PER_CLASS = 20  # accepted, and declined (EXPIRED counts as declined)
+MODEL_HOLDOUT_FRACTION = 0.25  # share of donations held out by a stable hash of the donation id
+MODEL_COEF_MAX = 5.0  # logit-scale coefficients are bounded to [0, MODEL_COEF_MAX]
+MODEL_PRIOR_PENALTY = 10.0  # weight on (beta - prior)^2 against the summed log-loss
+MODEL_BOOTSTRAP_RESAMPLES = 200  # for the per-factor intervals shown by show-model
+MODEL_BOOTSTRAP_SEED = 0  # the intervals are reproducible for the same data
+MODEL_INTERVAL_PERCENTILES = (5, 95)
+
 MAX_RADIUS_KM = 15.0  # search radius with no declines
 
 # --- Rejection boost and priority -----------------------------------------------------

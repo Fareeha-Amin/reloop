@@ -48,17 +48,25 @@ def test_vocabularies_found():
     } <= names
 
 
+# The one bulk DELETE allowed in app/: purge_synthetic, which removes synthetic_outcomes
+# rows only (a table with no real rows and no foreign keys). Every other table is
+# append-only, and bulk statements would bypass the ORM guard that enforces that.
+ALLOWED_BULK_STATEMENTS = {("services/training.py", "delete")}
+
+
 def test_app_code_issues_no_bulk_update_or_delete():
     """Bulk UPDATE/DELETE statements bypass the ORM, and with it the append-only guard
-    (app.db.AppendOnly). App code changes rows only through the ORM."""
+    (app.db.AppendOnly). App code changes rows only through the ORM, except the one
+    allowance above."""
     offenders = []
     for path in APP_DIR.rglob("*.py"):
+        relative = path.relative_to(APP_DIR).as_posix()
         tree = ast.parse(path.read_text(encoding="utf-8"))
         for node in ast.walk(tree):
             if isinstance(node, ast.ImportFrom) and node.module and node.module.startswith("sqlalchemy"):
                 for alias in node.names:
-                    if alias.name in {"update", "delete"}:
-                        offenders.append(f"{path.relative_to(APP_DIR)}:{node.lineno} {alias.name}")
+                    if alias.name in {"update", "delete"} and (relative, alias.name) not in ALLOWED_BULK_STATEMENTS:
+                        offenders.append(f"{relative}:{node.lineno} {alias.name}")
     assert not offenders, "Bulk statements bypass the append-only guard:\n" + "\n".join(offenders)
 
 

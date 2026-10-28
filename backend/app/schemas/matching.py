@@ -1,13 +1,17 @@
 """Ranking slates and the inputs to lifecycle actions."""
 
 import uuid
-from typing import Annotated
+from datetime import datetime
+from typing import TYPE_CHECKING, Annotated
 
 from pydantic import AwareDatetime, Field, StringConstraints
 
 from app.constants import NOTE_MAX_LENGTH, FilterReason, RejectReason, ScoreFactor
 from app.domain.scoring import Candidate, Slate
 from app.schemas.common import InputModel, Note, OutputModel
+
+if TYPE_CHECKING:
+    from app.services.training import ModelView
 
 
 class ComponentOut(OutputModel):
@@ -47,6 +51,42 @@ class CandidateOut(OutputModel):
         )
 
 
+class TrainingSampleOut(OutputModel):
+    """What a fitted set of weights was trained on, split by source."""
+
+    real: int = Field(description="Labelled real offers (ACCEPTED, REJECTED, EXPIRED). Zero for the prior.")
+    real_accepted: int
+    synthetic: int = Field(description="Simulated offers used. Always zero for an activated fit: synthetic data never activates.")
+    synthetic_accepted: int
+
+
+class ModelOut(OutputModel):
+    """The weights behind a breakdown: the cold-start prior, or a fit from real outcomes."""
+
+    config_version: str = Field(description="Fingerprint of the full matching configuration the weights belong to.")
+    is_prior: bool = Field(description="True: the cold-start prior (the assigned SCORE_WEIGHTS), not a fit.")
+    trained_at: datetime | None = Field(description="When the activated fit was recorded; null for the prior.")
+    training_sample: TrainingSampleOut
+    max_shift_from_prior: float | None = Field(
+        description="Largest change in any factor's weight from the prior, as a share of the score (0 to 1). Null for the prior."
+    )
+
+    @classmethod
+    def from_view(cls, view: "ModelView") -> "ModelOut":
+        return cls(
+            config_version=view.config_version,
+            is_prior=view.is_prior,
+            trained_at=view.trained_at,
+            training_sample=TrainingSampleOut(
+                real=view.real.total,
+                real_accepted=view.real.accepted,
+                synthetic=view.synthetic.total,
+                synthetic_accepted=view.synthetic.accepted,
+            ),
+            max_shift_from_prior=view.max_shift_from_prior,
+        )
+
+
 class SlateOut(OutputModel):
     """The donation's eligible organisations, best first. A preview: nothing is stored
     until an offer is made, which re-ranks and stores the slate it was made against."""
@@ -54,17 +94,19 @@ class SlateOut(OutputModel):
     radius_km: float = Field(description="Search radius; widens with each decline (capped).")
     declines: int
     config_version: str
+    model: ModelOut
     candidates: list[CandidateOut]
     filtered_out: dict[FilterReason, int] = Field(
         description="Organisations accepting this category that the hard filters removed, by reason."
     )
 
     @classmethod
-    def from_slate(cls, slate: Slate, declines: int, config_version: str) -> "SlateOut":
+    def from_slate(cls, slate: Slate, declines: int, model: ModelOut) -> "SlateOut":
         return cls(
             radius_km=slate.radius_km,
             declines=declines,
-            config_version=config_version,
+            config_version=model.config_version,
+            model=model,
             candidates=[CandidateOut.from_candidate(c) for c in slate.candidates],
             filtered_out=dict(slate.filtered_out),
         )
