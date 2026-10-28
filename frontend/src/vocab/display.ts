@@ -45,6 +45,7 @@ const STATUS_TONES: Record<DonationStatus, Tone> = {
   IN_TRANSIT: 'active',
   COMPLETED: 'reuse',
   WASTE_REDIRECTED: 'recovery',
+  RECYCLING_SCHEDULED: 'active',
   RECYCLING_IN_TRANSIT: 'active',
   RECYCLED: 'recovered',
   NEEDS_ADMIN: 'danger',

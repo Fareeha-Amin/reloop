@@ -87,7 +87,7 @@ def test_platform_pickup_to_recycler(client, db):
         json={"provider_id": str(provider.id), "scheduled_for": future, "wallet_amount": "0"},
     )
     assert resp.status_code == 200, resp.text
-    assert resp.json()["status"] == "RECYCLING_IN_TRANSIT"
+    assert resp.json()["status"] == "RECYCLING_SCHEDULED"
 
     timeline = client.get(f"/donations/{donation['id']}/timeline", headers=donor).json()
     booking = timeline["bookings"][0]
@@ -99,12 +99,51 @@ def test_platform_pickup_to_recycler(client, db):
     ledger_before = Decimal(client.get("/admin/commission", headers=admin).json()["total"])
     assert ledger_before > 0  # the booking's own commission is already on the ledger
 
+    # The donor hands the goods to the courier; only then is the booking picked up.
+    handed = client.post(f"/donations/{donation['id']}/mark-recycler-handed-over", headers=donor)
+    assert handed.status_code == 200, handed.text
+    assert handed.json()["status"] == "RECYCLING_IN_TRANSIT"
+    timeline = client.get(f"/donations/{donation['id']}/timeline", headers=donor).json()
+    assert timeline["bookings"][0]["status"] == "PICKED_UP"
+
     resp = client.post(
         f"/admin/donations/{donation['id']}/confirm-recycled", headers=admin, json={"reason": "Courier delivered"}
     )
     assert resp.status_code == 200 and resp.json()["status"] == "RECYCLED", resp.text
     timeline = client.get(f"/donations/{donation['id']}/timeline", headers=donor).json()
     assert timeline["bookings"][0]["status"] == "DELIVERED"
+
+
+def test_after_booking_the_donor_can_hand_over_and_admin_confirm_waits_for_it(client, db):
+    """The donation-pickup split, mirrored: booking alone (RECYCLING_SCHEDULED) offers the
+    donor the handed-over action, and refuses admin confirmation until it is recorded."""
+    h.add_recycler(db, "Far Recycler", at=h.PEENYA)
+    provider = h.add_provider(db, "Swift", base_fee="20.00", per_km_rate="10.00")
+    donor, donation = _redirected(client, db)
+    admin = h.admin(client, db)
+
+    future = (datetime.now(UTC) + timedelta(days=1)).isoformat()
+    booked = client.post(
+        f"/donations/{donation['id']}/book-recycler-pickup",
+        headers=donor,
+        json={"provider_id": str(provider.id), "scheduled_for": future, "wallet_amount": "0"},
+    )
+    assert booked.status_code == 200, booked.text
+    assert booked.json()["status"] == "RECYCLING_SCHEDULED"
+    assert booked.json()["allowed_actions"] == ["MARK_RECYCLER_HANDED_OVER"]
+
+    refused = client.post(
+        f"/admin/donations/{donation['id']}/confirm-recycled", headers=admin, json={"reason": "too soon"}
+    )
+    assert refused.status_code == 409
+    assert "RECYCLING_SCHEDULED" in refused.json()["detail"]
+
+    handed = client.post(f"/donations/{donation['id']}/mark-recycler-handed-over", headers=donor)
+    assert handed.status_code == 200, handed.text
+    assert handed.json()["allowed_actions"] == []
+    assert client.post(
+        f"/admin/donations/{donation['id']}/confirm-recycled", headers=admin, json={"reason": "now"}
+    ).status_code == 200
 
 
 def test_a_stalled_recycler_pickup_is_cancelled_and_refunded(client, db):
@@ -123,9 +162,10 @@ def test_a_stalled_recycler_pickup_is_cancelled_and_refunded(client, db):
     assert resp.status_code == 200, resp.text
     assert Decimal(client.get("/admin/commission", headers=admin).json()["total"]) > commission_before
 
-    report = sweeper.sweep(db, scheduled_for + STALL_TIMEOUTS[DonationStatus.RECYCLING_IN_TRANSIT])
+    # Booked but never handed over: stalls after RECYCLING_SCHEDULED's own timeout.
+    report = sweeper.sweep(db, datetime.now(UTC) + STALL_TIMEOUTS[DonationStatus.RECYCLING_SCHEDULED])
     applied = [(i.from_state, i.action, i.to_state) for i in report.applied]
-    assert ("RECYCLING_IN_TRANSIT", "STALL", "NEEDS_ADMIN") in applied
+    assert ("RECYCLING_SCHEDULED", "STALL", "NEEDS_ADMIN") in applied
 
     status = h.status(client, donor, donation["id"])
     assert status["status"] == "NEEDS_ADMIN"

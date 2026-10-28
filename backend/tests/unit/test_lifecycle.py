@@ -140,7 +140,12 @@ def test_recycler_handover_is_donor_only_and_confirm_requires_it():
     assert ACTORS[(S.WASTE_REDIRECTED, A.DELIVER_TO_RECYCLER)] == Actor.DONOR
     assert ACTORS[(S.WASTE_REDIRECTED, A.BOOK_RECYCLER_PICKUP)] == Actor.DONOR
     assert TRANSITIONS[(S.WASTE_REDIRECTED, A.DELIVER_TO_RECYCLER)] == S.RECYCLING_IN_TRANSIT
-    assert TRANSITIONS[(S.WASTE_REDIRECTED, A.BOOK_RECYCLER_PICKUP)] == S.RECYCLING_IN_TRANSIT
+    assert TRANSITIONS[(S.WASTE_REDIRECTED, A.BOOK_RECYCLER_PICKUP)] == S.RECYCLING_SCHEDULED
+    # A booking alone is not a handover: the donor must mark it handed over first.
+    assert ACTORS[(S.RECYCLING_SCHEDULED, A.MARK_RECYCLER_HANDED_OVER)] == Actor.DONOR
+    assert TRANSITIONS[(S.RECYCLING_SCHEDULED, A.MARK_RECYCLER_HANDED_OVER)] == S.RECYCLING_IN_TRANSIT
+    assert successors(S.RECYCLING_SCHEDULED) == {S.RECYCLING_IN_TRANSIT, S.NEEDS_ADMIN}
+    assert (S.RECYCLING_SCHEDULED, A.CONFIRM_RECYCLED) not in TRANSITIONS
     assert (S.WASTE_REDIRECTED, A.CONFIRM_RECYCLED) not in TRANSITIONS
     assert TRANSITIONS[(S.RECYCLING_IN_TRANSIT, A.CONFIRM_RECYCLED)] == S.RECYCLED
     assert ACTORS[(S.RECYCLING_IN_TRANSIT, A.CONFIRM_RECYCLED)] == Actor.ADMIN
@@ -285,8 +290,8 @@ def test_only_stall_leaves_booked_states_without_completing():
             assert action == A.STALL, f"{state} --{action}--> {target} leaves a booking unrefunded"
 
 
-def test_booked_states_are_held_states_plus_recycling_in_transit():
-    assert BOOKED_STATES == HELD_STATES | {S.RECYCLING_IN_TRANSIT}
+def test_booked_states_are_held_states_plus_the_recycler_handover():
+    assert BOOKED_STATES == HELD_STATES | {S.RECYCLING_SCHEDULED, S.RECYCLING_IN_TRANSIT}
     assert BOOKED_STATES <= NON_TERMINAL - TRANSIENT_STATES
 
 

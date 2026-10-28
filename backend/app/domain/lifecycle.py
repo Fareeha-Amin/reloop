@@ -85,7 +85,12 @@ _EDGES: tuple[tuple[DonationStatus, DonationAction, DonationStatus, Actor], ...]
     (S.WASTE_REDIRECTED, A.NO_RECYCLER,           S.NEEDS_ADMIN,      Actor.SYSTEM),    # immediate
     (S.WASTE_REDIRECTED, A.STALL,                 S.NEEDS_ADMIN,      Actor.SYSTEM),    # sweeper
     (S.WASTE_REDIRECTED, A.DELIVER_TO_RECYCLER,   S.RECYCLING_IN_TRANSIT, Actor.DONOR),
-    (S.WASTE_REDIRECTED, A.BOOK_RECYCLER_PICKUP,  S.RECYCLING_IN_TRANSIT, Actor.DONOR),
+    # Booking a courier schedules the handover; the donor then marks it handed over, the
+    # same split as PICKUP_SCHEDULED -> IN_TRANSIT. Admin confirmation needs the second
+    # step, so a booking alone never lets anyone confirm recycling.
+    (S.WASTE_REDIRECTED, A.BOOK_RECYCLER_PICKUP,  S.RECYCLING_SCHEDULED, Actor.DONOR),
+    (S.RECYCLING_SCHEDULED, A.MARK_RECYCLER_HANDED_OVER, S.RECYCLING_IN_TRANSIT, Actor.DONOR),
+    (S.RECYCLING_SCHEDULED, A.STALL,              S.NEEDS_ADMIN,      Actor.SYSTEM),    # sweeper
     # Confirmation is simulated: an admin acts for the recycler, but only once the
     # donor's own handover to the recycler is recorded (never straight from
     # WASTE_REDIRECTED — a deliberate change; see CLAUDE.md Decisions).
@@ -125,11 +130,11 @@ EDITABLE_STATES: frozenset[DonationStatus] = frozenset({S.LISTED})
 HELD_STATES: frozenset[DonationStatus] = frozenset({S.ACCEPTED, S.PICKUP_SCHEDULED, S.IN_TRANSIT})
 
 # States in which a platform-arranged pickup booking can exist and be paid for but not
-# yet delivered: HELD_STATES (to an organisation) plus RECYCLING_IN_TRANSIT (to a
-# recycler). Read only by the sweeper's refund hook — WASTE_REDIRECTED is deliberately
+# yet delivered: HELD_STATES (to an organisation) plus RECYCLING_SCHEDULED and
+# RECYCLING_IN_TRANSIT (to a recycler). Read only by the sweeper's refund hook — WASTE_REDIRECTED is deliberately
 # excluded: address release, capacity, chat and the notification feed all key on
 # HELD_STATES alone, and recycling never holds an organisation's slot or address.
-BOOKED_STATES: frozenset[DonationStatus] = HELD_STATES | {S.RECYCLING_IN_TRANSIT}
+BOOKED_STATES: frozenset[DonationStatus] = HELD_STATES | {S.RECYCLING_SCHEDULED, S.RECYCLING_IN_TRANSIT}
 
 
 class InvalidTransition(Exception):

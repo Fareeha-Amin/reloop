@@ -188,7 +188,7 @@ def book_recycler_pickup(
     wallet_amount: Decimal,
     now: datetime,
 ) -> Donation:
-    """WASTE_REDIRECTED -> RECYCLING_IN_TRANSIT: a simulated courier booking to the
+    """WASTE_REDIRECTED -> RECYCLING_SCHEDULED: a simulated courier booking to the
     assigned recycler's address, paid for by the donor exactly as a donation pickup is
     (wallet credit first, then a simulated checkout for the rest). It only has to be in
     the future."""
@@ -197,6 +197,17 @@ def book_recycler_pickup(
     if scheduled_for <= now:
         raise Unprocessable("A pickup time must be in the future.")
     logistics.book_recycler_pickup(db, donation, donor, provider_id, scheduled_for, wallet_amount, now)
+    db.commit()
+    return donation
+
+
+def mark_recycler_handed_over(db: Session, donation_id: uuid.UUID, donor: User, now: datetime) -> Donation:
+    """RECYCLING_SCHEDULED -> RECYCLING_IN_TRANSIT: the donor has handed the goods to the
+    courier booked for the recycler. Only then can an admin confirm recycled."""
+    donation = _lock_owned(db, donation_id, donor)
+    ensure_available(db, donation, A.MARK_RECYCLER_HANDED_OVER, Actor.DONOR)
+    transitions.apply(db, donation, A.MARK_RECYCLER_HANDED_OVER, Actor.DONOR, now, user=donor)
+    logistics.mark_recycler_picked_up(db, donation, now)
     db.commit()
     return donation
 

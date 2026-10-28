@@ -152,7 +152,7 @@ def book_recycler_pickup(
     wallet_amount: Decimal,
     now: datetime,
 ) -> Booking:
-    """WASTE_REDIRECTED -> RECYCLING_IN_TRANSIT. Same simulated checkout as `book`, to
+    """WASTE_REDIRECTED -> RECYCLING_SCHEDULED. Same simulated checkout as `book`, to
     the assigned recycler's address instead of an accepting organisation's. The donor
     pays the quote in full by default; the wallet is optional, same as a donation
     pickup (it is clamped and never raises on a zero balance)."""
@@ -230,6 +230,15 @@ def mark_delivered(db: Session, donation: Donation, now: datetime) -> None:
     booking = _booking_for_current_acceptance(db, donation)
     if booking is not None and booking.delivered_at is None and booking.cancelled_at is None:
         booking.delivered_at = now
+
+
+def mark_recycler_picked_up(db: Session, donation: Donation, now: datetime) -> None:
+    """The donor has handed the goods to the courier booked for the recycler
+    (MARK_RECYCLER_HANDED_OVER), the same progress a donation pickup records as
+    picked_up_at."""
+    booking = _booking_for_current_recycling(db, donation)
+    if booking is not None and booking.picked_up_at is None and booking.cancelled_at is None and booking.delivered_at is None:
+        booking.picked_up_at = now
 
 
 def mark_recycler_delivered(db: Session, donation: Donation, now: datetime) -> None:

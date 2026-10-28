@@ -69,6 +69,7 @@ class DonationStatus(StrEnum):
     IN_TRANSIT = "IN_TRANSIT"
     COMPLETED = "COMPLETED"
     WASTE_REDIRECTED = "WASTE_REDIRECTED"
+    RECYCLING_SCHEDULED = "RECYCLING_SCHEDULED"
     RECYCLING_IN_TRANSIT = "RECYCLING_IN_TRANSIT"
     RECYCLED = "RECYCLED"
     NEEDS_ADMIN = "NEEDS_ADMIN"
@@ -101,6 +102,7 @@ class DonationAction(StrEnum):
     CHOOSE_ACCEPTOR_COLLECTION = "CHOOSE_ACCEPTOR_COLLECTION"
     DELIVER_TO_RECYCLER = "DELIVER_TO_RECYCLER"
     BOOK_RECYCLER_PICKUP = "BOOK_RECYCLER_PICKUP"
+    MARK_RECYCLER_HANDED_OVER = "MARK_RECYCLER_HANDED_OVER"
 
 
 class Actor(StrEnum):
@@ -351,6 +353,7 @@ STALL_TIMEOUTS = {
     DonationStatus.ACCEPTED: timedelta(hours=72),
     DonationStatus.IN_TRANSIT: timedelta(hours=48),
     DonationStatus.WASTE_REDIRECTED: timedelta(days=7),
+    DonationStatus.RECYCLING_SCHEDULED: timedelta(hours=72),  # same as ACCEPTED: booked, not yet handed over
     DonationStatus.RECYCLING_IN_TRANSIT: timedelta(hours=48),  # same as IN_TRANSIT
 }
 HANDOVER_GRACE = timedelta(hours=48)  # after scheduled_for, before PICKUP_SCHEDULED stalls

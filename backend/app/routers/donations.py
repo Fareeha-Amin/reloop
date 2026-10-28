@@ -151,6 +151,13 @@ def deliver_to_recycler(donation_id: uuid.UUID, user: DonorUser, db: DbSession):
     return donation_out(db, actions.deliver_to_recycler(db, donation_id, user, _now()), user)
 
 
+@router.post("/{donation_id}/mark-recycler-handed-over", response_model=DonationOut)
+def mark_recycler_handed_over(donation_id: uuid.UUID, user: DonorUser, db: DbSession):
+    """RECYCLING_SCHEDULED → RECYCLING_IN_TRANSIT: the donor has handed the goods to the
+    courier booked for the recycler. Admin confirm-recycled is available only after this."""
+    return donation_out(db, actions.mark_recycler_handed_over(db, donation_id, user, _now()), user)
+
+
 @router.get("/{donation_id}/recycler-pickup-quote", response_model=PickupQuoteOut)
 def get_recycler_pickup_quote(donation_id: uuid.UUID, user: DonorUser, db: DbSession):
     """WASTE_REDIRECTED only: a SIMULATED quote per active logistics provider for a

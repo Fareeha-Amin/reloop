@@ -547,6 +547,27 @@ export interface paths {
         patch?: never;
         trace?: never;
     };
+    "/donations/{donation_id}/mark-recycler-handed-over": {
+        parameters: {
+            query?: never;
+            header?: never;
+            path?: never;
+            cookie?: never;
+        };
+        get?: never;
+        put?: never;
+        /**
+         * Mark Recycler Handed Over
+         * @description RECYCLING_SCHEDULED → RECYCLING_IN_TRANSIT: the donor has handed the goods to the
+         *     courier booked for the recycler. Admin confirm-recycled is available only after this.
+         */
+        post: operations["mark_recycler_handed_over_donations__donation_id__mark_recycler_handed_over_post"];
+        delete?: never;
+        options?: never;
+        head?: never;
+        patch?: never;
+        trace?: never;
+    };
     "/donations/{donation_id}/recycler-pickup-quote": {
         parameters: {
             query?: never;
@@ -1812,7 +1833,7 @@ export interface components {
          *     (state, action) -> next state, and declares who may perform each.
          * @enum {string}
          */
-        DonationAction: "OFFER" | "ESCALATE" | "CANCEL" | "ACCEPT" | "REJECT" | "EXPIRE" | "REOFFER" | "REMATCH" | "UPGRADE_PRIORITY" | "REDIRECT_TO_RECYCLING" | "STALL" | "SCHEDULE_PICKUP" | "CHOOSE_DROPOFF" | "MARK_HANDED_OVER" | "CONFIRM_RECEIPT" | "CONFIRM_RECYCLED" | "NO_RECYCLER" | "REQUEUE" | "BOOK_PICKUP" | "CHOOSE_ACCEPTOR_COLLECTION" | "DELIVER_TO_RECYCLER" | "BOOK_RECYCLER_PICKUP";
+        DonationAction: "OFFER" | "ESCALATE" | "CANCEL" | "ACCEPT" | "REJECT" | "EXPIRE" | "REOFFER" | "REMATCH" | "UPGRADE_PRIORITY" | "REDIRECT_TO_RECYCLING" | "STALL" | "SCHEDULE_PICKUP" | "CHOOSE_DROPOFF" | "MARK_HANDED_OVER" | "CONFIRM_RECEIPT" | "CONFIRM_RECYCLED" | "NO_RECYCLER" | "REQUEUE" | "BOOK_PICKUP" | "CHOOSE_ACCEPTOR_COLLECTION" | "DELIVER_TO_RECYCLER" | "BOOK_RECYCLER_PICKUP" | "MARK_RECYCLER_HANDED_OVER";
         /**
          * DonationCreate
          * @example {
@@ -1947,7 +1968,7 @@ export interface components {
          *     `app.domain.lifecycle`.
          * @enum {string}
          */
-        DonationStatus: "LISTED" | "MATCHED" | "RE_MATCHING" | "ESCALATED" | "ACCEPTED" | "PICKUP_SCHEDULED" | "IN_TRANSIT" | "COMPLETED" | "WASTE_REDIRECTED" | "RECYCLING_IN_TRANSIT" | "RECYCLED" | "NEEDS_ADMIN" | "CANCELLED";
+        DonationStatus: "LISTED" | "MATCHED" | "RE_MATCHING" | "ESCALATED" | "ACCEPTED" | "PICKUP_SCHEDULED" | "IN_TRANSIT" | "COMPLETED" | "WASTE_REDIRECTED" | "RECYCLING_SCHEDULED" | "RECYCLING_IN_TRANSIT" | "RECYCLED" | "NEEDS_ADMIN" | "CANCELLED";
         /**
          * DonationSummaryOut
          * @description A donation without its precise address or coordinates (admin lists and queue).
@@ -4017,6 +4038,37 @@ export interface operations {
             };
         };
     };
+    mark_recycler_handed_over_donations__donation_id__mark_recycler_handed_over_post: {
+        parameters: {
+            query?: never;
+            header?: never;
+            path: {
+                donation_id: string;
+            };
+            cookie?: never;
+        };
+        requestBody?: never;
+        responses: {
+            /** @description Successful Response */
+            200: {
+                headers: {
+                    [name: string]: unknown;
+                };
+                content: {
+                    "application/json": components["schemas"]["DonationOut"];
+                };
+            };
+            /** @description Validation Error */
+            422: {
+                headers: {
+                    [name: string]: unknown;
+                };
+                content: {
+                    "application/json": components["schemas"]["HTTPValidationError"];
+                };
+            };
+        };
+    };
     get_recycler_pickup_quote_donations__donation_id__recycler_pickup_quote_get: {
         parameters: {
             query?: never;
@@ -5041,8 +5093,8 @@ export const categoryValues: ReadonlyArray<FlattenedDeepRequired<components>["sc
 export const chatClosureValues: ReadonlyArray<FlattenedDeepRequired<components>["schemas"]["ChatClosure"]> = ["NO_LONGER_HELD"];
 export const commissionSourceValues: ReadonlyArray<FlattenedDeepRequired<components>["schemas"]["CommissionSource"]> = ["LOGISTICS", "RECYCLING"];
 export const conditionValues: ReadonlyArray<FlattenedDeepRequired<components>["schemas"]["Condition"]> = ["NEW", "GENTLY_USED", "USED"];
-export const donationActionValues: ReadonlyArray<FlattenedDeepRequired<components>["schemas"]["DonationAction"]> = ["OFFER", "ESCALATE", "CANCEL", "ACCEPT", "REJECT", "EXPIRE", "REOFFER", "REMATCH", "UPGRADE_PRIORITY", "REDIRECT_TO_RECYCLING", "STALL", "SCHEDULE_PICKUP", "CHOOSE_DROPOFF", "MARK_HANDED_OVER", "CONFIRM_RECEIPT", "CONFIRM_RECYCLED", "NO_RECYCLER", "REQUEUE", "BOOK_PICKUP", "CHOOSE_ACCEPTOR_COLLECTION", "DELIVER_TO_RECYCLER", "BOOK_RECYCLER_PICKUP"];
-export const donationStatusValues: ReadonlyArray<FlattenedDeepRequired<components>["schemas"]["DonationStatus"]> = ["LISTED", "MATCHED", "RE_MATCHING", "ESCALATED", "ACCEPTED", "PICKUP_SCHEDULED", "IN_TRANSIT", "COMPLETED", "WASTE_REDIRECTED", "RECYCLING_IN_TRANSIT", "RECYCLED", "NEEDS_ADMIN", "CANCELLED"];
+export const donationActionValues: ReadonlyArray<FlattenedDeepRequired<components>["schemas"]["DonationAction"]> = ["OFFER", "ESCALATE", "CANCEL", "ACCEPT", "REJECT", "EXPIRE", "REOFFER", "REMATCH", "UPGRADE_PRIORITY", "REDIRECT_TO_RECYCLING", "STALL", "SCHEDULE_PICKUP", "CHOOSE_DROPOFF", "MARK_HANDED_OVER", "CONFIRM_RECEIPT", "CONFIRM_RECYCLED", "NO_RECYCLER", "REQUEUE", "BOOK_PICKUP", "CHOOSE_ACCEPTOR_COLLECTION", "DELIVER_TO_RECYCLER", "BOOK_RECYCLER_PICKUP", "MARK_RECYCLER_HANDED_OVER"];
+export const donationStatusValues: ReadonlyArray<FlattenedDeepRequired<components>["schemas"]["DonationStatus"]> = ["LISTED", "MATCHED", "RE_MATCHING", "ESCALATED", "ACCEPTED", "PICKUP_SCHEDULED", "IN_TRANSIT", "COMPLETED", "WASTE_REDIRECTED", "RECYCLING_SCHEDULED", "RECYCLING_IN_TRANSIT", "RECYCLED", "NEEDS_ADMIN", "CANCELLED"];
 export const escalationCauseValues: ReadonlyArray<FlattenedDeepRequired<components>["schemas"]["EscalationCause"]> = ["THRESHOLD_REACHED", "NO_CANDIDATES", "NOT_OFFERED"];
 export const filterReasonValues: ReadonlyArray<FlattenedDeepRequired<components>["schemas"]["FilterReason"]> = ["NOT_VERIFIED", "CATEGORY_NOT_ACCEPTED", "EXCLUDED", "OUT_OF_RADIUS", "INSUFFICIENT_CAPACITY"];
 export const handoverModeValues: ReadonlyArray<FlattenedDeepRequired<components>["schemas"]["HandoverMode"]> = ["ACCEPTOR_PICKUP", "DONOR_DROPOFF", "PLATFORM_PICKUP"];

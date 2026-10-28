@@ -17,8 +17,11 @@ Build brief: [PROMPT.md](PROMPT.md) · Decision log: [CLAUDE.md](CLAUDE.md)
   .../deliver-to-recycler`, a self-report, timestamped when you click it) or book a
   **simulated** platform pickup to the recycler's address (`POST
   .../book-recycler-pickup`, the same booking/payment/wallet machinery as a pickup to
-  an organisation) — landing in a new state, `RECYCLING_IN_TRANSIT`. Only from there
-  can an admin `confirm-recycled`. **Nobody confirms the recycler actually received
+  an organisation) — landing in `RECYCLING_SCHEDULED`. For a booking, the donor then
+  marks the goods handed over to the courier (`POST .../mark-recycler-handed-over`),
+  which moves the donation to `RECYCLING_IN_TRANSIT`. Only from there can an admin
+  `confirm-recycled`. Donations booked before this change sit in
+  `RECYCLING_IN_TRANSIT` with no donor action left; an admin can still confirm them. **Nobody confirms the recycler actually received
   the goods**: there is no recycler login, so the donor's own record of delivery (a
   drop-off report, or a completed courier booking) is the only evidence; an admin's
   confirmation stands in for the recycler's receipt. A silent donor stalls after 48h

@@ -1468,6 +1468,55 @@
         }
       }
     },
+    "/donations/{donation_id}/mark-recycler-handed-over": {
+      "post": {
+        "tags": [
+          "donor: donations"
+        ],
+        "summary": "Mark Recycler Handed Over",
+        "description": "RECYCLING_SCHEDULED → RECYCLING_IN_TRANSIT: the donor has handed the goods to the\ncourier booked for the recycler. Admin confirm-recycled is available only after this.",
+        "operationId": "mark_recycler_handed_over_donations__donation_id__mark_recycler_handed_over_post",
+        "security": [
+          {
+            "OAuth2PasswordBearer": []
+          }
+        ],
+        "parameters": [
+          {
+            "name": "donation_id",
+            "in": "path",
+            "required": true,
+            "schema": {
+              "type": "string",
+              "format": "uuid",
+              "title": "Donation Id"
+            }
+          }
+        ],
+        "responses": {
+          "200": {
+            "description": "Successful Response",
+            "content": {
+              "application/json": {
+                "schema": {
+                  "$ref": "#/components/schemas/DonationOut"
+                }
+              }
+            }
+          },
+          "422": {
+            "description": "Validation Error",
+            "content": {
+              "application/json": {
+                "schema": {
+                  "$ref": "#/components/schemas/HTTPValidationError"
+                }
+              }
+            }
+          }
+        }
+      }
+    },
     "/donations/{donation_id}/recycler-pickup-quote": {
       "get": {
         "tags": [
@@ -4337,7 +4386,8 @@
           "BOOK_PICKUP",
           "CHOOSE_ACCEPTOR_COLLECTION",
           "DELIVER_TO_RECYCLER",
-          "BOOK_RECYCLER_PICKUP"
+          "BOOK_RECYCLER_PICKUP",
+          "MARK_RECYCLER_HANDED_OVER"
         ],
         "title": "DonationAction",
         "description": "Things that can happen to a donation. The lifecycle table maps\n(state, action) -> next state, and declares who may perform each."
@@ -4634,6 +4684,7 @@
           "IN_TRANSIT",
           "COMPLETED",
           "WASTE_REDIRECTED",
+          "RECYCLING_SCHEDULED",
           "RECYCLING_IN_TRANSIT",
           "RECYCLED",
           "NEEDS_ADMIN",

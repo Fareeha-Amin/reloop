@@ -384,6 +384,7 @@
     "recycle": { "label": "Send to recycling", "confirm": "Route it to the nearest recycling partner for this category. If none is in range, it goes to the admin queue." },
     "deliverToRecycler": { "label": "I've dropped it off", "confirm": "Confirm you've taken the items to the recycler. There's no recycler login, so this is the only record of delivery." },
     "bookRecyclerPickup": { "label": "Book platform pickup to the recycler" },
+    "recyclerHandedOver": { "label": "I've handed it over", "confirm": "Confirm the courier has collected the items for the recycler. An admin can confirm recycled after this." },
     "chooseAcceptorCollection": { "label": "They collect it", "confirm": "The organisation will arrange when to collect it." },
     "dropoff": { "label": "I'll drop it off", "confirm": "Choose when you'll take it to the organisation." },
     "handedOver": { "label": "I've handed it over", "confirm": "Confirm that the organisation now has your items." },
@@ -530,6 +531,7 @@
     "REDIRECT_TO_RECYCLING": "{item} sent to recycling",
     "DELIVER_TO_RECYCLER": "{item} dropped off at the recycler",
     "BOOK_RECYCLER_PICKUP": "A platform pickup to the recycler was booked for {item}",
+    "MARK_RECYCLER_HANDED_OVER": "{item} handed over to the courier for the recycler",
     "STALL": "{item} moved to the admin queue after no progress",
     "CHOOSE_ACCEPTOR_COLLECTION": "{item}: the organisation will collect it",
     "SCHEDULE_PICKUP": "Pickup scheduled for {item}",
@@ -785,7 +787,8 @@
       "REQUEUE": "Re-queued by admin",
       "BOOK_PICKUP": "Platform pickup booked",
       "DELIVER_TO_RECYCLER": "Dropped off at the recycler",
-      "BOOK_RECYCLER_PICKUP": "Platform pickup to the recycler booked"
+      "BOOK_RECYCLER_PICKUP": "Platform pickup to the recycler booked",
+      "MARK_RECYCLER_HANDED_OVER": "Handed over to the courier for the recycler"
     },
     "DonationStatus": {
       "LISTED": "Listed",
@@ -797,6 +800,7 @@
       "IN_TRANSIT": "In transit",
       "COMPLETED": "Completed · reused",
       "WASTE_REDIRECTED": "Going to recycling",
+      "RECYCLING_SCHEDULED": "Courier booked to the recycler",
       "RECYCLING_IN_TRANSIT": "On its way to the recycler",
       "RECYCLED": "Recycled",
       "NEEDS_ADMIN": "Admin review",

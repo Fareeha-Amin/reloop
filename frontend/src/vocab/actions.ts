@@ -87,6 +87,13 @@ const SPECS: Record<Surface, Partial<Record<DonationAction, ActionSpec>>> = {
       confirmKey: 'actions.deliverToRecycler.confirm',
       run: (id) => unwrap(client.POST('/donations/{donation_id}/deliver-to-recycler', donation(id))),
     },
+    MARK_RECYCLER_HANDED_OVER: {
+      input: 'confirm',
+      emphasis: 'primary',
+      labelKey: 'actions.recyclerHandedOver.label',
+      confirmKey: 'actions.recyclerHandedOver.confirm',
+      run: (id) => unwrap(client.POST('/donations/{donation_id}/mark-recycler-handed-over', donation(id))),
+    },
     BOOK_RECYCLER_PICKUP: {
       input: 'navigate',
       emphasis: 'secondary',

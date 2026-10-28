@@ -187,6 +187,7 @@ SWEEP_RULES: Mapping[DonationStatus, frozenset[DonationAction]] = MappingProxyTy
         S.PICKUP_SCHEDULED: frozenset({A.STALL}),
         S.IN_TRANSIT: frozenset({A.STALL}),
         S.WASTE_REDIRECTED: frozenset({A.STALL}),
+        S.RECYCLING_SCHEDULED: frozenset({A.STALL}),
         S.RECYCLING_IN_TRANSIT: frozenset({A.STALL}),
     }
 )
@@ -214,7 +215,7 @@ def _deadline(facts: SweepFacts) -> tuple[datetime, Decision] | None:
             return base + HANDOVER_GRACE, Decision(A.STALL)
         case S.ESCALATED:
             return facts.entered_at + ESCALATION_TTL, Decision(A.STALL)
-        case S.ACCEPTED | S.IN_TRANSIT | S.WASTE_REDIRECTED | S.RECYCLING_IN_TRANSIT:
+        case S.ACCEPTED | S.IN_TRANSIT | S.WASTE_REDIRECTED | S.RECYCLING_SCHEDULED | S.RECYCLING_IN_TRANSIT:
             return facts.entered_at + STALL_TIMEOUTS[facts.status], Decision(A.STALL)
     return None
 
