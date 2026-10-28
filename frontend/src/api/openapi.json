@@ -5217,6 +5217,11 @@
           "training_sample": {
             "$ref": "#/components/schemas/TrainingSampleOut"
           },
+          "is_synthetic_demo": {
+            "type": "boolean",
+            "title": "Is Synthetic Demo",
+            "description": "True: the weights were fitted on simulated data for a demonstration on the test database, not on real outcomes."
+          },
           "max_shift_from_prior": {
             "anyOf": [
               {
@@ -5236,6 +5241,7 @@
           "is_prior",
           "trained_at",
           "training_sample",
+          "is_synthetic_demo",
           "max_shift_from_prior"
         ],
         "title": "ModelOut",
@@ -6911,7 +6917,7 @@
           "synthetic": {
             "type": "integer",
             "title": "Synthetic",
-            "description": "Simulated offers used. Always zero for an activated fit: synthetic data never activates."
+            "description": "Simulated offers used. Zero for any fit made from real outcomes; non-zero only for a synthetic demo fit."
           },
           "synthetic_accepted": {
             "type": "integer",

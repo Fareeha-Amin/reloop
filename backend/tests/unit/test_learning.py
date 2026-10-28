@@ -217,3 +217,20 @@ def test_the_gate_needs_held_out_outcomes_to_compare():
 def test_all_zero_coefficients_have_no_ranking_weights():
     with pytest.raises(ValueError):
         ranking_weights(np.zeros(5))
+
+
+# --- The demo gate (test database only; see app.services.training.demo_fit) ---------------------
+
+
+def test_the_demo_gate_needs_no_floor_but_still_needs_to_beat_the_prior_on_the_holdout():
+    assert learning.demo_gate(_evaluation(0.50, 0.60, WEIGHTS)).activate
+    worse = learning.demo_gate(_evaluation(0.61, 0.60, WEIGHTS))
+    assert not worse.activate and any("does not beat the prior" in r for r in worse.reasons)
+    assert not learning.demo_gate(_evaluation(None, None, WEIGHTS)).activate
+    assert not learning.demo_gate(_evaluation(None, None, None)).activate
+
+
+def test_the_production_gate_still_refuses_synthetic_data_however_good():
+    """The demo exception is a separate function. The production gate is unchanged."""
+    result = gate(_evaluation(0.10, 0.60, WEIGHTS), real_n=500, real_accepted=200, real_declined=300, sandbox=True)
+    assert not result.activate

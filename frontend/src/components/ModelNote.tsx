@@ -12,7 +12,9 @@ export function ModelNote({ model }: { model: ModelOut }) {
   const sample = model.training_sample;
   return (
     <span className="inline-flex flex-wrap items-center gap-x-3 gap-y-1.5 text-xs text-ink-muted">
-      <Marker icon={model.is_prior ? 'info' : 'star'}>{model.is_prior ? t('model.prior') : t('model.fitted')}</Marker>
+      <Marker icon={model.is_prior || model.is_synthetic_demo ? 'info' : 'star'}>
+        {model.is_synthetic_demo ? t('model.demo') : model.is_prior ? t('model.prior') : t('model.fitted')}
+      </Marker>
       <span className="font-mono" title={t('model.versionHint')}>
         {model.config_version}
       </span>

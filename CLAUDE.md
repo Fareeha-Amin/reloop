@@ -143,6 +143,10 @@ python -m app.cli show-model
 # delete synthetic outcomes (one run, or all). Never touches real rows
 python -m app.cli purge-synthetic [--tag NAME]
 
+# COLLEGE DEMO, TEST DATABASE ONLY (never dev): generate synthetic outcomes, fit on them, activate the fit.
+# Run it in a shell where DATABASE_URL is NOT overridden to the test database. pytest wipes its result.
+python -m sim demo [--tag college-demo] [--seed 1] [--orgs 60] [--donations 3000] [--offer-pool 8]
+
 # frontend commands run from frontend/ (Node 24 LTS)
 
 # install dependencies
@@ -320,6 +324,8 @@ exists.
 | **`purge-synthetic` is the one bulk DELETE allowed in `app/`**, allowlisted to `services/training.py` and only for `synthetic_outcomes`, which has no real rows and no foreign keys. `test_app_code_issues_no_bulk_update_or_delete` pins the allowance | The append-only guard covers every other table. The purge test checks that real matches and ranking runs are unchanged |
 | **The `synthetic_outcomes` table has no foreign keys** and is the only table that holds synthetic history. The sim's acceptance model (`sim/truth.py`) is an assumption, labelled as one, and deliberately not `SCORE_WEIGHTS` | A query over `matches` cannot count a simulated offer as real. A fit that recovers the planted direction shows the pipeline works, and nothing about real acceptors |
 | **Every training attempt writes one `model_versions` row, activated or not.** Below the real-outcome floor the row has NULL weights, intercept, config_version and fit, `activated` false, the reason and the counts it was judged on. This supersedes the earlier "below the floor no row is written" note | The audit has to show that a retrain was tried and why it did not move the weights; a missing row would look like no attempt |
+| **College demo path: a synthetic-only fit can be activated, on the TEST database only.** `python -m sim demo` generates synthetic outcomes, fits on them alone (`training.demo_fit`) and activates the fit if it beats the prior on held-out donations. It is an **explicit exception** to the rows above that say synthetic data never activates, and it is kept separate: the production gate (`learning.gate`, `training.train`) is unchanged and still refuses synthetic data. The row is written `sandbox` true and `activated` true, and every breakdown labels it (`ModelOut.is_synthetic_demo`, the "Demo fit: trained on simulated data" marker) | A demonstration needs a visibly fitted model before any real outcome exists. The guard is in two places: the command opens its own connection to `TEST_DATABASE_URL` and refuses if that is the same database as `DATABASE_URL`, and `demo_fit` checks the session's actual connection against `TEST_DATABASE_URL`. **It must never be run against the development database, and a demo fit must never be presented as learned behaviour.** Re-running pytest drops every table in the test database, which removes the demo state; run the demo after the last pytest |
+| **"Optimized" synthetic rules mean a realistic spread of offers, not a rigged gate.** `sim.engine.run(offer_pool=N)` lets the simulated donor choose among the top N candidates (the demo uses 8) instead of always the top one | With only the top candidate offered, factors such as need match barely vary in the offered set and the fit cannot recover their effect (measured: need match 0.08 fitted against 0.25 planted). A real donor may choose any eligible candidate. The held-out gate still decides activation |
 
 ---
 

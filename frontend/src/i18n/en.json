@@ -357,6 +357,7 @@
   "model": {
     "prior": "Assigned weights",
     "fitted": "Fitted from real outcomes",
+    "demo": "Demo fit: trained on simulated data, not real outcomes",
     "versionHint": "Matching configuration version",
     "sample": "Real outcomes used: {real} ({accepted} accepted). Simulated outcomes used: {synthetic}.",
     "shift": "Largest shift from the assigned weights: {points} points"

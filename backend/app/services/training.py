@@ -21,8 +21,10 @@ from dataclasses import dataclass
 from datetime import datetime
 
 from sqlalchemy import delete, select
+from sqlalchemy.engine import make_url
 from sqlalchemy.orm import Session
 
+from app.config import get_settings
 from app.constants import OfferResponse, ScoreFactor
 from app.domain import learning
 from app.domain.scoring import MatchingConfig
@@ -157,6 +159,65 @@ def train(db: Session, *, include_synthetic: bool = False) -> TrainReport:
     return TrainReport(real_counts, available, include_synthetic, fitted, activated, tuple(reasons), row)
 
 
+class DemoNotAllowed(Exception):
+    """The demo path was asked to run somewhere other than the test database."""
+
+
+def assert_test_database(db: Session) -> None:
+    """The demo path writes an activated fit trained on simulated data. It must never reach
+    the development or any real database, so it checks the connection it was given, not
+    just the configuration."""
+    configured = get_settings().test_database_url
+    if not configured:
+        raise DemoNotAllowed("TEST_DATABASE_URL is not set; the demo path runs on the test database only.")
+    bound, test = db.get_bind().engine.url, make_url(configured)  # Engine and Connection both have .engine
+    if (bound.host, bound.port or 5432, bound.database) != (test.host, test.port or 5432, test.database):
+        raise DemoNotAllowed(
+            f"Refusing: this session is connected to {bound.database!r}, not the test database "
+            f"{test.database!r}. A synthetic demo fit is never activated anywhere else."
+        )
+
+
+def demo_fit(db: Session) -> TrainReport:
+    """Fit on the synthetic outcomes ALONE and activate the result if it beats the prior on
+    held-out donations. For demonstrations on the test database only.
+
+    This is a deliberate exception to "synthetic data never activates" (see CLAUDE.md). It
+    is kept separate from `train`, whose gate is unchanged. The row is written with
+    `sandbox` true and `activated` true, which is how every breakdown knows to label it a
+    demo fit trained on simulated data. Real outcomes are NOT fitted, so the row records
+    zero real outcomes used; how many existed is kept in `fit["real_available"]`. The point
+    is to show what the synthetic rules produce."""
+    assert_test_database(db)
+    real_counts = Counts.of(real_outcomes(db))
+    synthetic = synthetic_outcomes(db)
+    synthetic_counts = Counts.of(synthetic)
+
+    evaluation = learning.evaluate(synthetic)
+    gate = learning.demo_gate(evaluation)
+    fitted = evaluation.weights is not None
+    fit = _fit_json(evaluation)
+    fit["demo"] = True
+    fit["real_available"] = {"total": real_counts.total, "accepted": real_counts.accepted}
+    row = ModelVersion(
+        config_version=MatchingConfig(weights=evaluation.weights).version() if fitted else None,
+        weights={f.value: w for f, w in evaluation.weights.items()} if fitted else None,
+        intercept=float(evaluation.intercept) if fitted else None,
+        activated=gate.activate,
+        sandbox=True,
+        reasons=list(gate.reasons),
+        real_n=0,  # real outcomes used by this fit: none
+        real_accepted=0,
+        synthetic_n=synthetic_counts.total,
+        synthetic_accepted=synthetic_counts.accepted,
+        fit=fit,
+    )
+    db.add(row)
+    db.commit()
+    db.refresh(row)
+    return TrainReport(real_counts, synthetic_counts, True, fitted, gate.activate, tuple(gate.reasons), row)
+
+
 def _fit_json(evaluation: learning.Evaluation) -> dict:
     def interval(f: ScoreFactor):
         return list(evaluation.intervals[f]) if evaluation.intervals else None
@@ -211,6 +272,7 @@ class ModelView:
     real: Counts
     synthetic: Counts
     max_shift_from_prior: float | None
+    is_synthetic_demo: bool = False  # fitted on simulated data for a demonstration
 
 
 def model_view(db: Session, config_version: str | None) -> ModelView | None:
@@ -234,6 +296,7 @@ def model_view(db: Session, config_version: str | None) -> ModelView | None:
         real=Counts(row.real_n, row.real_accepted),
         synthetic=Counts(row.synthetic_n, row.synthetic_accepted),
         max_shift_from_prior=row.fit.get("max_shift_from_prior"),
+        is_synthetic_demo=row.sandbox,
     )
 
 

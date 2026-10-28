@@ -128,11 +128,11 @@ def _train_model(args) -> int:
     print(f"Audit row: model_versions seq {row.seq}, activated={str(row.activated).lower()}, "
           f"fitted={str(report.fitted).lower()}.")
     if report.fitted:
-        _print_fit(row)
+        print_fit(row)
     return 0
 
 
-def _print_fit(version) -> None:
+def print_fit(version) -> None:
     fit = version.fit
     if fit is None:
         return
@@ -161,9 +161,11 @@ def _show_model(args) -> int:
         print("No fit has been activated.")
     else:
         print(f"Active weights: fit {row.config_version} (seq {row.seq}), recorded {row.created_at.isoformat()}.")
+        if row.sandbox:
+            print("DEMO FIT: trained on simulated data only (test database). Not real behaviour.")
         print(f"Trained on {row.real_n} real ({row.real_accepted} accepted) and {row.synthetic_n} synthetic "
               f"({row.synthetic_accepted} accepted) outcomes.")
-        _print_fit(row)
+        print_fit(row)
     if attempt is None:
         print("Latest training attempt: none.")
     else:

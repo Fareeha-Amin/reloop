@@ -110,3 +110,53 @@ def test_fitting_recovers_the_planted_direction():
     assert evaluation.weights[ScoreFactor.PROXIMITY] > SCORE_WEIGHTS[ScoreFactor.PROXIMITY]
     assert evaluation.weights[ScoreFactor.PROXIMITY] == max(evaluation.weights.values())
     assert TRUE_MODEL.coefficients[ScoreFactor.PROXIMITY] > TRUE_MODEL.coefficients[ScoreFactor.NEED_MATCH]
+
+
+def test_a_wider_offer_pool_changes_who_is_offered_and_spreads_the_factors():
+    """With offer_pool 1 every offer goes to the top candidate; a wider pool models a donor
+    who may choose any of the top few, so need match varies in the offered set."""
+    generated = world.generate(8, orgs=40, donations=300)
+    top_only = engine.run(generated, 8)
+    wide = engine.run(generated, 8, offer_pool=8)
+    assert top_only != wide
+    need = learning.FACTORS.index(ScoreFactor.NEED_MATCH)
+
+    def spread(offers):
+        values = [o.features[need] for o in offers]
+        mean = sum(values) / len(values)
+        return sum((v - mean) ** 2 for v in values) / len(values)
+
+    assert spread(wide) > spread(top_only)
+
+
+def test_the_wider_pool_still_goes_through_the_real_scoring_function(monkeypatch):
+    calls = []
+    real_rank = scoring_module.rank
+    monkeypatch.setattr(scoring_module, "rank", lambda *a, **k: calls.append(1) or real_rank(*a, **k))
+    engine.run(world.generate(9, orgs=10, donations=10), 9, offer_pool=5)
+    assert calls
+
+
+def test_outcomes_are_identical_across_separate_processes_with_different_hash_seeds():
+    """Python randomises string hashing per process, so anything that depends on set order
+    changes between runs. Running in-process twice cannot catch that; separate processes can."""
+    import os
+    import subprocess
+    import sys
+
+    code = """
+import hashlib
+from sim import engine, world
+offers = engine.run(world.generate(5, orgs=20, donations=150), 5, offer_pool=4)
+rows = [(o.donation_ref, o.organization_ref, o.features, o.accepted) for o in offers]
+print(hashlib.sha256(repr(rows).encode()).hexdigest())
+"""
+    digests = set()
+    for hash_seed in ("1", "2", "3"):
+        result = subprocess.run(
+            [sys.executable, "-c", code],
+            capture_output=True, text=True, check=True, cwd=SIM_DIR.parent,
+            env={**os.environ, "PYTHONHASHSEED": hash_seed},
+        )
+        digests.add(result.stdout.strip())
+    assert len(digests) == 1, "simulation output depends on the process's hash seed"

@@ -43,10 +43,12 @@ def generate(seed: int, *, orgs: int = 40, donations: int = 2000) -> World:
     made_orgs = []
     for i in range(orgs):
         categories = frozenset(c for c in Category if rng.random() < 0.7) or frozenset({Category.CLOTHES})
+        # Iterate in the enum's fixed order, not the frozenset's: set order depends on the
+        # per-process string hash seed, which would change the random draws between runs.
         needs = {
             c: (rng.choice(list(Urgency)), rng.randint(5, 50))
-            for c in categories
-            if rng.random() < 0.5
+            for c in Category
+            if c in categories and rng.random() < 0.5
         }
         made_orgs.append(
             SimOrg(

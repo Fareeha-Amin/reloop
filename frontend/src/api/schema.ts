@@ -2200,6 +2200,11 @@ export interface components {
             trained_at: string | null;
             training_sample: components["schemas"]["TrainingSampleOut"];
             /**
+             * Is Synthetic Demo
+             * @description True: the weights were fitted on simulated data for a demonstration on the test database, not on real outcomes.
+             */
+            is_synthetic_demo: boolean;
+            /**
              * Max Shift From Prior
              * @description Largest change in any factor's weight from the prior, as a share of the score (0 to 1). Null for the prior.
              */
@@ -2933,7 +2938,7 @@ export interface components {
             real_accepted: number;
             /**
              * Synthetic
-             * @description Simulated offers used. Always zero for an activated fit: synthetic data never activates.
+             * @description Simulated offers used. Zero for any fit made from real outcomes; non-zero only for a synthetic demo fit.
              */
             synthetic: number;
             /** Synthetic Accepted */

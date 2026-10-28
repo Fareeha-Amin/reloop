@@ -56,7 +56,9 @@ class TrainingSampleOut(OutputModel):
 
     real: int = Field(description="Labelled real offers (ACCEPTED, REJECTED, EXPIRED). Zero for the prior.")
     real_accepted: int
-    synthetic: int = Field(description="Simulated offers used. Always zero for an activated fit: synthetic data never activates.")
+    synthetic: int = Field(
+        description="Simulated offers used. Zero for any fit made from real outcomes; non-zero only for a synthetic demo fit."
+    )
     synthetic_accepted: int
 
 
@@ -67,6 +69,9 @@ class ModelOut(OutputModel):
     is_prior: bool = Field(description="True: the cold-start prior (the assigned SCORE_WEIGHTS), not a fit.")
     trained_at: datetime | None = Field(description="When the activated fit was recorded; null for the prior.")
     training_sample: TrainingSampleOut
+    is_synthetic_demo: bool = Field(
+        description="True: the weights were fitted on simulated data for a demonstration on the test database, not on real outcomes."
+    )
     max_shift_from_prior: float | None = Field(
         description="Largest change in any factor's weight from the prior, as a share of the score (0 to 1). Null for the prior."
     )
@@ -83,6 +88,7 @@ class ModelOut(OutputModel):
                 synthetic=view.synthetic.total,
                 synthetic_accepted=view.synthetic.accepted,
             ),
+            is_synthetic_demo=view.is_synthetic_demo,
             max_shift_from_prior=view.max_shift_from_prior,
         )
 

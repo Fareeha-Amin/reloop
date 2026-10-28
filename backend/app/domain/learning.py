@@ -276,6 +276,19 @@ class Gate:
     reasons: tuple[str, ...]
 
 
+def _holdout_reasons(evaluation: Evaluation) -> list[str]:
+    """Reasons a fit cannot be activated on its held-out evidence alone."""
+    if evaluation.weights is None:
+        return ["no fit to activate"]
+    if evaluation.fitted_loss is None or evaluation.prior_loss is None:
+        return ["no held-out outcomes to compare against the prior"]
+    if evaluation.fitted_loss >= evaluation.prior_loss:
+        return [
+            f"held-out log-loss does not beat the prior ({evaluation.fitted_loss:.4f} vs {evaluation.prior_loss:.4f})"
+        ]
+    return []
+
+
 def gate(evaluation: Evaluation, *, real_n: int, real_accepted: int, real_declined: int, sandbox: bool) -> Gate:
     """Whether a fit may become the active weights. Every failed rule is a reason, so the
     CLI and the audit row say why a retrain did not activate. Nothing here is a review
@@ -286,12 +299,14 @@ def gate(evaluation: Evaluation, *, real_n: int, real_accepted: int, real_declin
     floor = floor_reason(real_n, real_accepted, real_declined)
     if floor is not None:
         reasons.append(floor)
-    if evaluation.weights is None:
-        reasons.append("no fit to activate")
-    elif evaluation.fitted_loss is None or evaluation.prior_loss is None:
-        reasons.append("no held-out outcomes to compare against the prior")
-    elif evaluation.fitted_loss >= evaluation.prior_loss:
-        reasons.append(
-            f"held-out log-loss does not beat the prior ({evaluation.fitted_loss:.4f} vs {evaluation.prior_loss:.4f})"
-        )
+    reasons.extend(_holdout_reasons(evaluation))
+    return Gate(activate=not reasons, reasons=tuple(reasons))
+
+
+def demo_gate(evaluation: Evaluation) -> Gate:
+    """The gate for the college demo (app.services.training.demo_fit): the same held-out
+    comparison against the prior, but no real-outcome floor and no refusal of synthetic
+    data. Only the demo path may call it, and that path runs on the test database only.
+    The production gate above is unchanged: synthetic data never activates there."""
+    reasons = _holdout_reasons(evaluation)
     return Gate(activate=not reasons, reasons=tuple(reasons))

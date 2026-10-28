@@ -57,8 +57,14 @@ def run(
     *,
     truth: TrueModel = TRUE_MODEL,
     config: MatchingConfig | None = None,
+    offer_pool: int = 1,
 ) -> list[SyntheticOffer]:
-    """Labelled offers for every donation in the world, in order. Deterministic for a seed."""
+    """Labelled offers for every donation in the world, in order. Deterministic for a seed.
+
+    `offer_pool` is how many of the slate's top candidates the simulated donor chooses
+    among (uniformly). With 1, every offer goes to the top candidate, so factors like need
+    match barely vary in the offered set and a fit cannot tell their effects apart. A real
+    donor may pick any eligible candidate, and a larger pool models that."""
     config = config or MatchingConfig()
     rng = random.Random(seed)
     orgs = {org.id: org for org in world.orgs}
@@ -82,6 +88,8 @@ def run(
             top = slate.top()
             if top is None:
                 break  # nothing to offer: the real system escalates this, outside the labels
+            if offer_pool > 1:
+                top = rng.choice(slate.candidates[:offer_pool])
 
             features = _features(top)
             accepted = rng.random() < _acceptance_probability(features, truth)

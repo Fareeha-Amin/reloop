@@ -275,7 +275,7 @@ history. Anything not listed above is not built.
 | **Geocoding** (`app/services/geocoding.py`) | **STUB.** `PassthroughGeocoder` returns the coordinates the client sends, unchanged and unverified. No address lookup takes place, and there is no maps API key. Endpoints therefore require `latitude`/`longitude`, and changing an address requires new coordinates. |
 | **Image storage** (`app/services/storage.py`) | Local disk under `backend/uploads/` (git-ignored), behind an `ImageStorage` interface so object storage can replace it. Files are served only through an authorised endpoint. |
 | **Ranking weights** (`app/domain/learning.py`, `app/services/training.py`) | **PRIOR IN USE.** The assigned weights are active. No fit has been activated: there are no real outcomes yet (floor: 100 labelled, 20 accepted and 20 declined). |
-| **Simulation** (`backend/sim/`) | **SIMULATED.** Synthetic offers from an assumed acceptance model. They exercise the training pipeline and never activate weights. They say nothing about real acceptors. |
+| **Simulation** (`backend/sim/`) | **SIMULATED.** Synthetic offers from an assumed acceptance model. They exercise the training pipeline and say nothing about real acceptors. The production training path never activates weights from them; the one exception is the test-database college demo (below), whose fit is labelled as a demo trained on simulated data. |
 | **Recycling settlement** (`app/domain/recycling.py`) | **SIMULATED.** Mass is **estimated** as quantity × a per-category weight. The settlement (gross value, donor credit, platform fee) credits the donor's wallet and the commission ledger; no real money moves. Labelled `simulated` / `mass_is_estimate` in every API response. |
 | **Per-category weights** (`CATEGORY_WEIGHT_KG`) | **PLACEHOLDERS** (clothes 0.5 kg, toys 0.3 kg, books 0.4 kg per item) pending a cited source. Responses carry `weights_are_placeholders: true`. |
 | **Per-category carbon factors** (`CARBON_FACTOR_KG_PER_ITEM`) | **PLACEHOLDERS, not sourced** (clothes 5.0 kg CO2e, toys 2.0 kg, books 1.5 kg, avoided per item reused). Credited to reuse only, never to recycling. `GET /impact/me` and `GET /impact/organisation` carry `placeholders: true` and `estimated: true`. |
@@ -321,7 +321,8 @@ history. Anything not listed above is not built.
 
 The five ranking weights can be refitted from real outcomes. Until a fit is activated,
 the assigned prior (`SCORE_WEIGHTS`) is used, and every breakdown says so: the response
-carries `model` with the configuration version, `is_prior`, and the training sample split.
+carries `model` with the configuration version, `is_prior`, `is_synthetic_demo` and the
+training sample split.
 
 - **What the live scorer is.** The live scorer is the logistic model of P(accept) in its
   **cold-start state**: its coefficients are the assigned weights (`SCORE_WEIGHTS`), so
@@ -357,6 +358,16 @@ carries `model` with the configuration version, `is_prior`, and the training sam
   database, tagged for purging with `purge-synthetic`. A sandbox fit with them
   (`train-model --include-synthetic`) is recorded and never activated. Recovering the
   simulator's planted direction shows the pipeline works. It shows nothing else.
+- **College demo (test database only).** `python -m sim demo` is the one place a fit on
+  synthetic data is activated, so a demonstration can show a fitted model before any real
+  outcome exists. It connects only to `TEST_DATABASE_URL` and refuses to run against the
+  development database. Every breakdown labels the result "Demo fit: trained on simulated
+  data, not real outcomes". It is a demonstration of the pipeline: the weights it produces
+  are what the rules *we wrote* imply, and say nothing about how real organisations behave.
+  The production gate is unchanged. The demo's simulated donors choose among the top few
+  candidates (`--offer-pool`) rather than always the top one, because otherwise need match
+  barely varies in the offered set and the fit cannot recover its effect. Re-running pytest
+  drops every table in the test database, which removes the demo; run it afterwards.
 - **Known limitations.** The fit scores each offer on its own; a choice model over each
   donation's candidates would match the decision more closely, and is the next thing to
   try once real data exists. Offers go to top-ranked candidates, so training data covers

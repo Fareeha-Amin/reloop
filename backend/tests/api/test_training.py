@@ -309,3 +309,88 @@ def test_a_training_run_on_real_offers_is_consistent_with_what_it_reports(client
     else:
         assert _active_weights(db) == _prior_weights()
         assert report.reasons, "a run that does not activate must say why"
+
+
+# --- The college demo path: synthetic-only fit, activated, test database only ----------------
+
+
+def _record_demo_synthetic(db, donations: int = 700):
+    offers = engine.run(world.generate(1, orgs=40, donations=donations), 1, offer_pool=8)
+    training.record_synthetic(db, "demo-test", 1, offers)
+    return offers
+
+
+def test_a_demo_fit_is_trained_on_synthetic_data_only_activated_and_labelled(client, db):
+    org_id = uuid.UUID(h.verified_acceptor(client, db)[1])
+    donor = h.donor(client)
+    donation = h.create_donation(client, donor)
+    _labelled_offer(db, uuid.UUID(donation["id"]), org_id, FACTOR_VALUES, OfferResponse.ACCEPTED)
+    db.commit()
+    offers = _record_demo_synthetic(db)
+
+    report = training.demo_fit(db)
+
+    row = report.version
+    assert report.activated and row.activated is True and row.sandbox is True
+    assert row.fit["demo"] is True
+    assert row.synthetic_n == len(offers) and row.real_n == 0  # no real outcome was used by the fit
+    assert row.fit["real_available"] == {"total": 1, "accepted": 1}  # but it is on record that one existed
+    assert row.fit["train_n"] + row.fit["holdout_n"] == len(offers)
+    assert training.active_model(db).seq == row.seq
+    assert _active_weights(db) != _prior_weights()
+    assert _active_weights(db) == pytest.approx({f: row.weights[f.value] for f in learning.FACTORS})
+
+    body = client.get(f"/donations/{h.create_donation(client, donor)['id']}/candidates", headers=donor).json()
+    assert body["model"]["is_synthetic_demo"] is True
+    assert body["model"]["is_prior"] is False
+    assert body["model"]["training_sample"]["real"] == 0  # the UI says "real outcomes used": none were
+    assert body["model"]["training_sample"]["synthetic"] == len(offers)
+    candidate = body["candidates"][0]
+    assert sum(c["contribution"] for c in candidate["components"]) == pytest.approx(candidate["score"], abs=1e-5)
+
+
+def test_the_production_training_path_still_never_activates_synthetic_data(db):
+    _record_demo_synthetic(db, donations=300)
+    report = training.train(db, include_synthetic=True)
+    assert report.fitted and not report.activated
+    assert _active_weights(db) == _prior_weights()
+
+
+def test_a_real_fit_is_not_labelled_a_demo(client, db):
+    _version(db, _normalised(5.0, 2.0, 1.0, 1.0, 1.0), activated=True)
+    donor = h.donor(client)
+    h.verified_acceptor(client, db)
+    donation = h.create_donation(client, donor)
+    body = client.get(f"/donations/{donation['id']}/candidates", headers=donor).json()
+    assert body["model"]["is_synthetic_demo"] is False
+    assert body["model"]["is_prior"] is False
+
+
+def test_the_demo_path_refuses_any_database_but_the_test_database(db, monkeypatch):
+    from types import SimpleNamespace
+
+    _record_demo_synthetic(db, donations=100)
+    rows_before = db.scalar(select(func.count()).select_from(ModelVersion))
+    elsewhere = SimpleNamespace(test_database_url="postgresql+psycopg://u:p@localhost:5432/not_the_test_database")
+    monkeypatch.setattr(training, "get_settings", lambda: elsewhere)
+
+    with pytest.raises(training.DemoNotAllowed, match="not the test database"):
+        training.demo_fit(db)
+    assert db.scalar(select(func.count()).select_from(ModelVersion)) == rows_before
+    assert _active_weights(db) == _prior_weights()
+
+
+def test_the_demo_path_refuses_when_no_test_database_is_configured(db, monkeypatch):
+    from types import SimpleNamespace
+
+    monkeypatch.setattr(training, "get_settings", lambda: SimpleNamespace(test_database_url=None))
+    with pytest.raises(training.DemoNotAllowed, match="TEST_DATABASE_URL is not set"):
+        training.demo_fit(db)
+
+
+def test_a_demo_fit_that_does_not_beat_the_prior_is_recorded_and_not_activated(db):
+    """With no synthetic rows there is nothing to fit: one audit row, nothing activated."""
+    report = training.demo_fit(db)
+    assert not report.activated and not report.fitted
+    assert report.version.activated is False and report.version.weights is None
+    assert _active_weights(db) == _prior_weights()
