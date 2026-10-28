@@ -1,11 +1,11 @@
-import type { DonationOut, HolderOut } from '../api/schema';
+import type { DonationOut, HandoverOptionOut, HolderOut } from '../api/schema';
 import { paths } from '../app/paths';
 import { formatDate, formatDateTime } from '../i18n/format';
 import { t } from '../i18n';
 import { Card, CardTitle, Facts, LinkCard } from '../ui/Card';
 import { Icon } from '../ui/icons';
 import { Tag } from '../ui/Tag';
-import { categoryIcon, vocabLabel } from '../vocab/display';
+import { categoryIcon, conditionLabel, vocabLabel } from '../vocab/display';
 import { UnreadMessagesTag } from './chat';
 import { PointMap } from './maps';
 import { StatusTag } from './StatusTag';
@@ -35,7 +35,7 @@ export function DonationCard({ donation }: { donation: DonationOut }) {
             <StatusTag status={donation.status} />
           </div>
           <p className="mt-1 text-sm text-ink-muted">
-            {vocabLabel('Condition', donation.condition)} · {t('donation.listedOn', { date: formatDate(donation.created_at) })}
+            {conditionLabel(donation.condition)} · {t('donation.listedOn', { date: formatDate(donation.created_at) })}
           </p>
           <div className="mt-3 flex flex-wrap gap-2">
             {donation.is_priority && (
@@ -96,6 +96,31 @@ export function HolderCard({ holder, title, note }: { holder: HolderOut; title?:
         </div>
         <PointMap point={{ lat: holder.latitude, lng: holder.longitude }} />
       </div>
+    </Card>
+  );
+}
+
+/** The three ways an accepted donation can reach the organisation, as the donor sees
+ * them: the organisation's own collection is informational (it schedules it, not the
+ * donor), drop-off and platform pickup are the donor's buttons, above this card. Only
+ * rendered while a handover hasn't been chosen yet (ACCEPTED). */
+export function HandoverOptionsCard({ options }: { options: HandoverOptionOut[] }) {
+  if (options.length === 0) return null;
+  return (
+    <Card>
+      <CardTitle>{t('holder.pathsTitle')}</CardTitle>
+      <ul className="space-y-2.5">
+        {options.map((o) => (
+          <li key={o.path} className="flex items-center gap-3 text-sm">
+            <Icon
+              name={o.available ? 'check' : 'x'}
+              className={`size-4 shrink-0 ${o.available ? 'text-brand-600' : 'text-ink-muted'}`}
+            />
+            <span className={o.available ? '' : 'text-ink-muted line-through'}>{vocabLabel('HandoverMode', o.path)}</span>
+            {!o.you_do_it && <Tag tone="neutral">{t('holder.theyDoIt')}</Tag>}
+          </li>
+        ))}
+      </ul>
     </Card>
   );
 }

@@ -13,7 +13,8 @@
     "yes": "Yes",
     "km": "{km} km",
     "range": "{from} – {to}",
-    "items": { "one": "1 item", "other": "{count} items" }
+    "items": { "one": "1 item", "other": "{count} items" },
+    "notRecorded": "Not recorded"
   },
 
   "nav": {
@@ -49,6 +50,16 @@
     "estimatedMass": "Estimated mass",
     "placeholderWeights": "Placeholder weights",
     "approximate": "Approximate"
+  },
+
+  "impact": {
+    "donorTitle": "Your impact",
+    "organisationTitle": "Your impact",
+    "reusedItems": "Items reused",
+    "recycledItems": "Items recycled",
+    "recycledMass": "Mass recycled",
+    "carbonAvoided": "Carbon avoided",
+    "kg": "{value} kg"
   },
 
   "map": {
@@ -233,6 +244,7 @@
     "greeting": "Hello, {name}",
     "intro": "Every item you list is followed until it is reused or recycled.",
     "newDonation": "New donation",
+    "sendToRecycling": "Send to recycling",
     "myDonations": "My donations",
     "emptyTitle": "Nothing listed yet",
     "emptyText": "List clothes, toys or books, and ReLoop will rank the organisations that need them.",
@@ -270,7 +282,9 @@
     "address": "Address",
     "contact": "Contact",
     "phone": "Phone",
-    "privacy": "Shared with you while this organisation holds your donation."
+    "privacy": "Shared with you while this organisation holds your donation.",
+    "pathsTitle": "How it can reach them",
+    "theyDoIt": "They arrange it"
   },
 
   "newDonation": {
@@ -293,6 +307,21 @@
     "reviewTitle": "Review",
     "nextHint": "Next you'll see a ranked list of organisations, with the reasons behind each ranking.",
     "submit": "List and find matches"
+  },
+
+  "sendToRecycling": {
+    "eyebrow": "Send to recycling",
+    "title": "Send an item to recycling",
+    "intro": "This item will not be offered to any organisation: it goes straight to recycling.",
+    "conditionOptional": "Condition (optional)",
+    "stepWhat": "What",
+    "stepWhere": "Where & when",
+    "stepConfirm": "Confirm",
+    "whenText": "When it can be collected for recycling.",
+    "reviewTitle": "Review",
+    "confirmTitle": "This item will not be offered to any organisation",
+    "confirmText": "It goes straight to recycling. If no recycler accepts this category nearby, it goes to ReLoop's admin queue instead.",
+    "submit": "Send to recycling"
   },
 
   "images": {
@@ -353,6 +382,7 @@
     "rematch": { "label": "Re-match", "confirm": "Offer it to the next best organisation." },
     "upgradePriority": { "label": "Upgrade to priority", "confirm": "Mark it as priority and offer it to the next best organisation. Priority donations rise in organisations' inboxes." },
     "recycle": { "label": "Send to recycling", "confirm": "Route it to the nearest recycling partner for this category. If none is in range, it goes to the admin queue." },
+    "chooseAcceptorCollection": { "label": "They collect it", "confirm": "The organisation will arrange when to collect it." },
     "dropoff": { "label": "I'll drop it off", "confirm": "Choose when you'll take it to the organisation." },
     "handedOver": { "label": "I've handed it over", "confirm": "Confirm that the organisation now has your items." },
     "cancel": { "label": "Cancel donation", "confirm": "The donation is withdrawn (it is kept in your history). Any open offer is withdrawn too." },
@@ -474,6 +504,7 @@
     "UPGRADE_PRIORITY": "{item} upgraded to priority",
     "REDIRECT_TO_RECYCLING": "{item} sent to recycling",
     "STALL": "{item} moved to the admin queue after no progress",
+    "CHOOSE_ACCEPTOR_COLLECTION": "{item}: the organisation will collect it",
     "SCHEDULE_PICKUP": "Pickup scheduled for {item}",
     "CHOOSE_DROPOFF": "Drop-off scheduled for {item}",
     "MARK_HANDED_OVER": "{item} handed over",
@@ -565,7 +596,9 @@
     "released": "Released to you",
     "privacy": "Visible to you while you hold this donation. Its release to you was recorded.",
     "notHeldTitle": "You no longer hold this donation",
-    "notHeldText": "Its address is hidden again now that it has left your hands."
+    "notHeldText": "Its address is hidden again now that it has left your hands.",
+    "awaitingChoiceTitle": "Waiting for the donor to choose",
+    "awaitingChoiceText": "They can choose for you to collect it, drop it off themselves, or book a platform pickup. You'll see a schedule-pickup action here if they choose for you to collect it."
   },
 
   "needs": {
@@ -715,6 +748,7 @@
       "UPGRADE_PRIORITY": "Upgraded to priority",
       "REDIRECT_TO_RECYCLING": "Sent to recycling",
       "STALL": "No progress: sent to admin",
+      "CHOOSE_ACCEPTOR_COLLECTION": "Chose for the organisation to collect",
       "SCHEDULE_PICKUP": "Pickup scheduled",
       "CHOOSE_DROPOFF": "Drop-off chosen",
       "MARK_HANDED_OVER": "Handed over",

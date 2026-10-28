@@ -5,7 +5,7 @@ import { useDonation, useTimeline } from '../../app/queries';
 import { ActionBar } from '../../components/ActionBar';
 import { ApiErrorAlert } from '../../components/ApiErrorAlert';
 import { ChatButton } from '../../components/chat';
-import { CategoryBadge, donationTitle, HolderCard } from '../../components/donation';
+import { CategoryBadge, donationTitle, HandoverOptionsCard, HolderCard } from '../../components/donation';
 import { ImageGallery } from '../../components/images';
 import { PointMap } from '../../components/maps';
 import { StatusTag } from '../../components/StatusTag';
@@ -17,7 +17,7 @@ import { Alert, LoadingBlock } from '../../ui/feedback';
 import { Icon } from '../../ui/icons';
 import { Page, Section } from '../../ui/layout';
 import { Tag } from '../../ui/Tag';
-import { vocabLabel } from '../../vocab/display';
+import { conditionLabel, vocabLabel } from '../../vocab/display';
 
 export function DonationDetail() {
   const { id = '' } = useParams();
@@ -87,13 +87,14 @@ export function DonationDetail() {
           </Alert>
         )}
         {d.holder && <HolderCard holder={d.holder} />}
+        {!d.holder?.handover && <HandoverOptionsCard options={d.handover_options ?? []} />}
 
         <div className="grid gap-6 lg:grid-cols-5">
           <Card className="lg:col-span-3">
             <CardTitle>{t('donation.details')}</CardTitle>
             <Facts
               items={[
-                { label: t('fields.condition'), value: vocabLabel('Condition', d.condition) },
+                { label: t('fields.condition'), value: conditionLabel(d.condition) },
                 { label: t('donation.quantity'), value: t('common.items', { count: d.quantity }) },
                 { label: t('fields.pickupAddress'), value: d.pickup_address_text },
                 {

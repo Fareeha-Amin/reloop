@@ -3,7 +3,7 @@ from datetime import UTC, datetime
 
 from pydantic import AwareDatetime, ConfigDict, Field, model_validator
 
-from app.constants import Category, Condition, DonationAction, DonationStatus, EscalationCause
+from app.constants import Category, Condition, DonationAction, DonationStatus, EscalationCause, HandoverMode
 from app.schemas.common import (
     Address,
     InputModel,
@@ -65,6 +65,26 @@ class DonationCreate(InputModel):
         return self
 
 
+class RecycleDonationCreate(InputModel):
+    """Send to recycling: the donor's own choice, not a fallback. The item is never
+    offered to an organisation. Condition is optional: the donor may not know it. No
+    note or priority, since neither has a meaning without matching."""
+
+    category: Category
+    quantity: ItemCount
+    condition: Condition | None = None
+    pickup_address_text: Address
+    pickup_latitude: Latitude
+    pickup_longitude: Longitude
+    pickup_window_start: AwareDatetime
+    pickup_window_end: AwareDatetime
+
+    @model_validator(mode="after")
+    def check_window(self):
+        validate_pickup_window(self.pickup_window_start, self.pickup_window_end)
+        return self
+
+
 class DonationUpdate(InputModel):
     """Any subset of the donor-editable fields. Status is not here: it changes only
     through lifecycle actions such as POST /donations/{id}/cancel."""
@@ -103,7 +123,7 @@ class DonationSummaryOut(OutputModel):
     donor_id: uuid.UUID
     category: Category
     quantity: int = Field(description="A count of items.")
-    condition: Condition
+    condition: Condition | None = Field(description="Null for a donation sent straight to recycling.")
     is_priority: bool
     pickup_window_start: datetime
     pickup_window_end: datetime
@@ -143,12 +163,21 @@ class HolderOut(OutputModel):
         )
 
 
+class HandoverOptionOut(OutputModel):
+    """One handover path for an accepted donation, as the donor sees it. Informational
+    when `you_do_it` is false: the organisation performs it, so there is no button."""
+
+    path: HandoverMode
+    available: bool
+    you_do_it: bool
+
+
 class DonationOut(OutputModel):
     id: uuid.UUID
     donor_id: uuid.UUID
     category: Category
     quantity: int = Field(description="A count of items.")
-    condition: Condition
+    condition: Condition | None = Field(description="Null for a donation sent straight to recycling.")
     note: str | None
     is_priority: bool
     pickup_address_text: str
@@ -167,6 +196,9 @@ class DonationOut(OutputModel):
     # The organisation holding the donation, with its address and contact; null unless
     # the donation is ACCEPTED, PICKUP_SCHEDULED or IN_TRANSIT.
     holder: HolderOut | None = None
+    # The three handover paths while the organisation holds an accepted donation; empty
+    # otherwise. Read-only: which actions the donor may take is still allowed_actions.
+    handover_options: list[HandoverOptionOut] = Field(default_factory=list)
     chat: ChatSummaryOut | None = Field(
         default=None, description="The donor's chat with the accepting organisation; null until there is a thread, and for admins."
     )
@@ -181,11 +213,15 @@ class DonationOut(OutputModel):
         escalation_cause: EscalationCause | None = None,
         holder: HolderOut | None = None,
         chat: ChatSummaryOut | None = None,
+        handover_options: tuple = (),
     ) -> "DonationOut":
         data = {name: getattr(donation, name) for name in cls.model_fields if hasattr(donation, name)}
         data["editable"] = lifecycle.is_editable(donation.status)
         data["allowed_actions"] = sorted(allowed_actions)
         data["escalation_cause"] = escalation_cause
         data["holder"] = holder
+        data["handover_options"] = [
+            {"path": o.path, "available": o.available, "you_do_it": o.you_do_it} for o in handover_options
+        ]
         data["chat"] = chat
         return cls.model_validate(data)

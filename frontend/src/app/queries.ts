@@ -61,6 +61,16 @@ export function useWallet() {
   return useQuery({ queryKey: ['wallet'], queryFn: () => unwrap(client.GET('/wallet')) });
 }
 
+/** The donor's reuse and recycling totals. Estimates, labelled as such by the API. */
+export function useImpact() {
+  return useQuery({ queryKey: ['impact', 'me'], queryFn: () => unwrap(client.GET('/impact/me')) });
+}
+
+/** An organisation's reuse totals (recycling is never credited to an organisation). */
+export function useOrganisationImpact() {
+  return useQuery({ queryKey: ['impact', 'organisation'], queryFn: () => unwrap(client.GET('/impact/organisation')) });
+}
+
 export function useNotifications(enabled: boolean) {
   return useQuery({
     queryKey: keys.notifications,

@@ -46,7 +46,8 @@ class Donation(UUIDPrimaryKey, Timestamps, Base):
     category: Mapped[Category] = mapped_column(StrEnumType(Category))
     # A count of items.
     quantity: Mapped[int] = mapped_column(Integer)
-    condition: Mapped[Condition] = mapped_column(StrEnumType(Condition))
+    # NULL only for a donation sent straight to recycling, where the donor may not know it.
+    condition: Mapped[Condition | None] = mapped_column(StrEnumType(Condition), nullable=True)
     note: Mapped[str | None] = mapped_column(Text)
     is_priority: Mapped[bool] = mapped_column(Boolean, default=False, server_default=text("false"))
     pickup_address_text: Mapped[str] = mapped_column(String(300))

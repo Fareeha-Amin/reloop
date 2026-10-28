@@ -14,6 +14,7 @@ from sqlalchemy.orm import Session
 from app.constants import Actor, DonationAction, EscalationCause
 from app.domain import lifecycle
 from app.models import Donation, Match, StatusEvent, User
+from app.services import impact
 from app.services.errors import Conflict, NotFound, Unprocessable
 
 
@@ -63,4 +64,8 @@ def apply(
     )
     db.add(event)
     donation.status = target
+    # The one place an outcome is recorded: the impact record is written in the same
+    # transaction as the move into COMPLETED or RECYCLED (see app.services.impact).
+    if target in lifecycle.OUTCOME_STATES:
+        impact.record(db, donation, now, match=match)
     return event

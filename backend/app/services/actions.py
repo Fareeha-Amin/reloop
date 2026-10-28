@@ -20,6 +20,7 @@ from app.constants import (
     OfferResponse,
     OfferSource,
     RankingTrigger,
+    RedirectReason,
 )
 from app.domain import policy
 from app.models import Donation, Handover, User
@@ -36,6 +37,7 @@ A = DonationAction
 def guard_context(db: Session, donation: Donation) -> policy.GuardContext:
     """Compute only what the donation's current state needs."""
     slate_empty = recycler_available = pickup_capable = logistics_available = None
+    donor_chose_acceptor_pickup = None
     if donation.status in (S.ESCALATED, S.NEEDS_ADMIN):
         slate_empty = matching.compute_slate(db, donation)[0].is_empty
     if donation.status == S.NEEDS_ADMIN:
@@ -44,17 +46,29 @@ def guard_context(db: Session, donation: Donation) -> policy.GuardContext:
         held = matching.holder(db, donation)
         pickup_capable = held.organization.pickup_capable if held is not None else None
         logistics_available = bool(logistics.active_providers(db))
+        donor_chose_acceptor_pickup = held is not None and matching.acceptor_pickup_chosen(db, held.id)
     return policy.GuardContext(
         is_priority=donation.is_priority,
         slate_empty=slate_empty,
         recycler_available=recycler_available,
         pickup_capable=pickup_capable,
         logistics_available=logistics_available,
+        donor_chose_acceptor_pickup=donor_chose_acceptor_pickup,
     )
 
 
 def available(db: Session, donation: Donation, actor: Actor) -> frozenset[DonationAction]:
     return policy.available_actions(donation.status, actor, guard_context(db, donation))
+
+
+def handover_options(db: Session, donation: Donation) -> tuple[policy.HandoverOption, ...]:
+    """The donor's chosen-but-not-yet-scheduled path. Empty before any choice (the
+    donor's own allowed_actions are the three choices then) and empty again once a
+    path is actually scheduled (the handover record shows it)."""
+    held = matching.holder(db, donation)
+    if held is None:
+        return ()
+    return policy.handover_options(donation.status, matching.acceptor_pickup_chosen(db, held.id))
 
 
 def ensure_available(db: Session, donation: Donation, action: DonationAction, actor: Actor) -> None:
@@ -134,7 +148,19 @@ def rematch(
 def redirect_to_recycling(db: Session, donation_id: uuid.UUID, donor: User, now: datetime) -> Donation:
     donation = _lock_owned(db, donation_id, donor)
     ensure_available(db, donation, A.REDIRECT_TO_RECYCLING, Actor.DONOR)
-    recycling.redirect(db, donation, Actor.DONOR, donor, now)
+    recycling.redirect(db, donation, Actor.DONOR, donor, now, reason=RedirectReason.DONOR_CHOICE)
+    db.commit()
+    return donation
+
+
+def choose_acceptor_collection(db: Session, donation_id: uuid.UUID, donor: User, now: datetime) -> Donation:
+    """ACCEPTED -> ACCEPTED: records the donor's choice that the organisation collects,
+    without scheduling a time. A self-loop, not a new state (see lifecycle.py) — this
+    unlocks the organisation's own SCHEDULE_PICKUP, which is where a time gets set."""
+    donation = _lock_owned(db, donation_id, donor)
+    ensure_available(db, donation, A.CHOOSE_ACCEPTOR_COLLECTION, Actor.DONOR)
+    held = matching.holder(db, donation)
+    transitions.apply(db, donation, A.CHOOSE_ACCEPTOR_COLLECTION, Actor.DONOR, now, user=donor, match=held)
     db.commit()
     return donation
 

@@ -17,7 +17,7 @@ import { Card, CardTitle, Facts } from '../../ui/Card';
 import { Alert, LoadingBlock } from '../../ui/feedback';
 import { Page, PageHeader, Section } from '../../ui/layout';
 import { Tag } from '../../ui/Tag';
-import { vocabLabel } from '../../vocab/display';
+import { conditionLabel, vocabLabel } from '../../vocab/display';
 
 /**
  * The full record, precise address included. Each load is recorded in the address-access
@@ -89,7 +89,7 @@ export function AdminDonation() {
             <CardTitle>{t('donation.details')}</CardTitle>
             <Facts
               items={[
-                { label: t('fields.condition'), value: vocabLabel('Condition', d.condition) },
+                { label: t('fields.condition'), value: conditionLabel(d.condition) },
                 { label: t('donation.quantity'), value: t('common.items', { count: d.quantity }) },
                 { label: t('fields.pickupAddress'), value: d.pickup_address_text },
                 {

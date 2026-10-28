@@ -116,7 +116,19 @@ def test_nothing_reaches_a_terminal_state_without_a_person():
 def test_only_donor_or_admin_consents_to_recycling():
     into_recycling = {key for key, target in TRANSITIONS.items() if target == S.WASTE_REDIRECTED}
     assert {ACTORS[k] for k in into_recycling} == {Actor.DONOR, Actor.ADMIN}
-    assert {state for state, _ in into_recycling} == {S.ESCALATED, S.NEEDS_ADMIN}
+    # The donor sends a listed donation here at creation, or an escalated one later.
+    assert {state for state, _ in into_recycling} == {S.LISTED, S.ESCALATED, S.NEEDS_ADMIN}
+
+
+def test_a_listed_donation_goes_to_recycling_only_by_the_donor():
+    """The donor's own choice: one edge, never offered to an organisation."""
+    assert ACTORS[(S.LISTED, A.REDIRECT_TO_RECYCLING)] == Actor.DONOR
+    assert TRANSITIONS[(S.LISTED, A.REDIRECT_TO_RECYCLING)] == S.WASTE_REDIRECTED
+    assert {state for state, action in TRANSITIONS if action == A.REDIRECT_TO_RECYCLING} == {
+        S.LISTED,
+        S.ESCALATED,
+        S.NEEDS_ADMIN,
+    }
 
 
 # --- Waiting states and the sweeper -------------------------------------------------------------
@@ -177,6 +189,15 @@ def test_handover_roles_are_fixed():
     assert ACTORS[(S.IN_TRANSIT, A.CONFIRM_RECEIPT)] == Actor.ACCEPTOR
 
 
+def test_choose_acceptor_collection_is_a_self_loop_recording_the_donors_choice():
+    """Data, not a state: the donor's choice is read back from the event log
+    (app.services.matching.acceptor_pickup_chosen), not from where the table sent it."""
+    assert TRANSITIONS[(S.ACCEPTED, A.CHOOSE_ACCEPTOR_COLLECTION)] == S.ACCEPTED
+    assert ACTORS[(S.ACCEPTED, A.CHOOSE_ACCEPTOR_COLLECTION)] == Actor.DONOR
+    # A self-loop does not break reachability: ACCEPTED can still reach COMPLETED.
+    assert S.COMPLETED in reachable_from(S.ACCEPTED)
+
+
 def test_three_handover_paths_all_reach_pickup_scheduled():
     into_pickup_scheduled = {a for (s, a), t in TRANSITIONS.items() if s == S.ACCEPTED and t == S.PICKUP_SCHEDULED}
     assert into_pickup_scheduled == {A.SCHEDULE_PICKUP, A.CHOOSE_DROPOFF, A.BOOK_PICKUP}
@@ -191,7 +212,7 @@ def test_no_withdraw_and_no_auto_offer():
 
 
 def test_allowed_actions_per_actor():
-    assert allowed_actions(S.LISTED, Actor.DONOR) == {A.OFFER, A.CANCEL}
+    assert allowed_actions(S.LISTED, Actor.DONOR) == {A.OFFER, A.CANCEL, A.REDIRECT_TO_RECYCLING}
     assert allowed_actions(S.LISTED, Actor.SYSTEM) == {A.ESCALATE}
     assert allowed_actions(S.MATCHED, Actor.ACCEPTOR) == {A.ACCEPT, A.REJECT}
     assert allowed_actions(S.CANCELLED) == frozenset()

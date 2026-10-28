@@ -68,7 +68,9 @@ def test_acceptance_script(client, db, extra_org):
     assert accepted["address_released"] is True
 
     when = (datetime.now(UTC) + timedelta(days=1)).isoformat()
-    if "SCHEDULE_PICKUP" in accepted["allowed_actions"]:  # the organisation collects
+    holder = h.status(client, donor, a["id"])["holder"]
+    if holder["pickup_capable"]:  # the organisation collects: the donor chooses that path first
+        h.choose_acceptor_collection(client, donor, a["id"])
         path = f"/organisations/me/donations/{a['id']}/schedule-pickup"
         resp = client.post(path, headers=acceptor, json={"scheduled_for": when})
     else:  # it does not: the donor drops off

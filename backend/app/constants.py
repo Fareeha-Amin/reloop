@@ -97,6 +97,7 @@ class DonationAction(StrEnum):
     NO_RECYCLER = "NO_RECYCLER"
     REQUEUE = "REQUEUE"
     BOOK_PICKUP = "BOOK_PICKUP"
+    CHOOSE_ACCEPTOR_COLLECTION = "CHOOSE_ACCEPTOR_COLLECTION"
 
 
 class Actor(StrEnum):
@@ -183,6 +184,21 @@ class RankingTrigger(StrEnum):
 
     DONOR_OFFER = "DONOR_OFFER"
     RE_MATCHING = "RE_MATCHING"
+
+
+class RedirectReason(StrEnum):
+    """The recorded reason on a donation sent to recycling by its donor (the reason on
+    an admin redirect is the admin's own free text)."""
+
+    DONOR_CHOICE = "DONOR_CHOICE"
+
+
+class ImpactOutcome(StrEnum):
+    """Which outcome an impact record counts toward. Reuse and recovery are reported
+    separately; carbon is only ever counted for reuse."""
+
+    REUSED = "REUSED"  # COMPLETED
+    RECYCLED = "RECYCLED"  # RECYCLED
 
 
 class ChatClosure(StrEnum):
@@ -358,6 +374,18 @@ CATEGORY_WEIGHTS_ARE_PLACEHOLDERS = True
 RECYCLER_MAX_RADIUS_KM = 25.0
 RECYCLING_PLATFORM_FEE_PCT = Decimal("10")  # of the gross recovered value
 CURRENCY = "INR"
+
+# --- Impact (estimated) ---------------------------------------------------------------
+# PLACEHOLDER VALUES, NOT SOURCED. Estimated carbon avoided per item by reuse (kg CO2e),
+# the figure a reused donation is credited with. Replace with a cited source before any
+# figure is quoted externally. Shown in every impact response under the same
+# CATEGORY_WEIGHTS_ARE_PLACEHOLDERS flag, which covers every unsourced impact factor.
+# Recycling is credited with mass only: no carbon figure is defined for it.
+CARBON_FACTOR_KG_PER_ITEM = {
+    Category.CLOTHES: Decimal("5.0"),
+    Category.TOYS: Decimal("2.0"),
+    Category.BOOKS: Decimal("1.5"),
+}
 
 # --- Logistics (simulated platform-arranged pickup) ------------------------------------
 # A LogisticsProvider's own pricing (base fee + per-km rate) lives on its record, not

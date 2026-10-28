@@ -11,6 +11,7 @@ import { Candidates } from './pages/donor/Candidates';
 import { DonationDetail } from './pages/donor/DonationDetail';
 import { DonorDashboard } from './pages/donor/DonorDashboard';
 import { NewDonation } from './pages/donor/NewDonation';
+import { SendToRecycling } from './pages/donor/SendToRecycling';
 import { Wallet } from './pages/donor/Wallet';
 import { AcceptorDashboard } from './pages/acceptor/AcceptorDashboard';
 import { HeldDonation } from './pages/acceptor/HeldDonation';
@@ -50,6 +51,10 @@ const router = createBrowserRouter([
       {
         path: '/donor/donations/new',
         element: <RequireRole role={ROLE.donor}><NewDonation /></RequireRole>,
+      },
+      {
+        path: '/donor/donations/recycle',
+        element: <RequireRole role={ROLE.donor}><SendToRecycling /></RequireRole>,
       },
       {
         path: '/donor/donations/:id',

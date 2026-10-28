@@ -80,6 +80,13 @@ const SPECS: Record<Surface, Partial<Record<DonationAction, ActionSpec>>> = {
       confirmKey: 'actions.recycle.confirm',
       run: (id) => unwrap(client.POST('/donations/{donation_id}/redirect-to-recycling', donation(id))),
     },
+    CHOOSE_ACCEPTOR_COLLECTION: {
+      input: 'confirm',
+      emphasis: 'secondary',
+      labelKey: 'actions.chooseAcceptorCollection.label',
+      confirmKey: 'actions.chooseAcceptorCollection.confirm',
+      run: (id) => unwrap(client.POST('/donations/{donation_id}/choose-acceptor-collection', donation(id))),
+    },
     CHOOSE_DROPOFF: {
       input: 'datetime',
       emphasis: 'secondary',

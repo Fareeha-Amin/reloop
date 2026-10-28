@@ -37,6 +37,10 @@ _EDGES: tuple[tuple[DonationStatus, DonationAction, DonationStatus, Actor], ...]
     (S.LISTED,           A.OFFER,                 S.MATCHED,          Actor.DONOR),
     (S.LISTED,           A.ESCALATE,              S.ESCALATED,        Actor.SYSTEM),    # empty slate, or LISTED_STALL
     (S.LISTED,           A.CANCEL,                S.CANCELLED,        Actor.DONOR),
+    # The donor's choice to recycle instead of donating: never offered to an organisation.
+    # Only the "send to recycling" entry point creates a donation straight into this edge
+    # (app.services.donations.create_for_recycling); policy hides it on a listed donation.
+    (S.LISTED,           A.REDIRECT_TO_RECYCLING, S.WASTE_REDIRECTED, Actor.DONOR),
     # One open offer at a time.
     (S.MATCHED,          A.ACCEPT,                S.ACCEPTED,         Actor.ACCEPTOR),
     (S.MATCHED,          A.REJECT,                S.RE_MATCHING,      Actor.ACCEPTOR),
@@ -53,7 +57,15 @@ _EDGES: tuple[tuple[DonationStatus, DonationAction, DonationStatus, Actor], ...]
     (S.ESCALATED,        A.STALL,                 S.NEEDS_ADMIN,      Actor.SYSTEM),    # sweeper, ESCALATION_TTL
     # Accepted: someone sets the handover time; the mode decides who. Three handover
     # paths: the acceptor collects, the donor delivers, or the donor books a simulated
-    # courier (BOOK_PICKUP) — all land in PICKUP_SCHEDULED.
+    # courier (BOOK_PICKUP) — all land in PICKUP_SCHEDULED. The donor picks among the
+    # three first; only once ACCEPTOR_PICKUP is the donor's pick does the acceptor's own
+    # SCHEDULE_PICKUP open up (app.domain.policy), so both sides see one path, never two
+    # competing ones. CHOOSE_ACCEPTOR_COLLECTION is a self-loop, not a new state: it
+    # records the donor's choice as data (a StatusEvent on this acceptance, read back by
+    # app.services.matching.acceptor_pickup_chosen), the same way a decline or an
+    # escalation cause already is, rather than adding a state that every ACCEPTED-aware
+    # rule (held states, chat, the refund hook, the sweeper) would need to also know about.
+    (S.ACCEPTED,         A.CHOOSE_ACCEPTOR_COLLECTION, S.ACCEPTED,    Actor.DONOR),
     (S.ACCEPTED,         A.SCHEDULE_PICKUP,       S.PICKUP_SCHEDULED, Actor.ACCEPTOR),
     (S.ACCEPTED,         A.CHOOSE_DROPOFF,        S.PICKUP_SCHEDULED, Actor.DONOR),
     (S.ACCEPTED,         A.BOOK_PICKUP,           S.PICKUP_SCHEDULED, Actor.DONOR),
@@ -64,8 +76,8 @@ _EDGES: tuple[tuple[DonationStatus, DonationAction, DonationStatus, Actor], ...]
     (S.PICKUP_SCHEDULED, A.STALL,                 S.NEEDS_ADMIN,      Actor.SYSTEM),    # sweeper, scheduled_for + grace
     (S.IN_TRANSIT,       A.CONFIRM_RECEIPT,       S.COMPLETED,        Actor.ACCEPTOR),
     (S.IN_TRANSIT,       A.STALL,                 S.NEEDS_ADMIN,      Actor.SYSTEM),    # sweeper
-    # Recycling: only the donor (at escalation) or an admin (with a reason) sends a
-    # donation here. Confirmation is simulated: an admin acts for the recycler.
+    # Recycling: only the donor (at listing, or at escalation) or an admin (with a reason)
+    # sends a donation here. Confirmation is simulated: an admin acts for the recycler.
     (S.WASTE_REDIRECTED, A.CONFIRM_RECYCLED,      S.RECYCLED,         Actor.ADMIN),
     (S.WASTE_REDIRECTED, A.NO_RECYCLER,           S.NEEDS_ADMIN,      Actor.SYSTEM),    # immediate
     (S.WASTE_REDIRECTED, A.STALL,                 S.NEEDS_ADMIN,      Actor.SYSTEM),    # sweeper

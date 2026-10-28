@@ -9,11 +9,11 @@ from datetime import datetime
 from sqlalchemy import func, select
 from sqlalchemy.orm import Session
 
-from app.constants import IMAGES_PER_DONATION_MAX, AddressAccess, DonationStatus, Role
+from app.constants import IMAGES_PER_DONATION_MAX, Actor, AddressAccess, DonationStatus, RedirectReason, Role
 from app.domain import lifecycle
 from app.models import Donation, DonationImage, User
-from app.schemas.donation import DonationCreate, DonationUpdate, validate_pickup_window
-from app.services import audit, matching, organizations
+from app.schemas.donation import DonationCreate, DonationUpdate, RecycleDonationCreate, validate_pickup_window
+from app.services import audit, matching, organizations, recycling
 from app.services.errors import Conflict, NotFound, Unprocessable
 from app.services.geocoding import Geocoder
 from app.services.images import ImageRejected, process_upload
@@ -41,6 +41,39 @@ def create(db: Session, donor: User, data: DonationCreate, geocoder: Geocoder) -
         status=lifecycle.INITIAL_STATE,
     )
     db.add(donation)
+    db.commit()
+    return donation
+
+
+def create_for_recycling(
+    db: Session,
+    donor: User,
+    data: RecycleDonationCreate,
+    geocoder: Geocoder,
+    now: datetime,
+) -> Donation:
+    """Send to recycling: create the donation and, in the same transaction, apply the
+    donor's LISTED -> WASTE_REDIRECTED edge with reason DONOR_CHOICE. It is never offered
+    to an organisation. With no active recycler the donation goes to the admin queue
+    (NO_RECYCLER, also in this transaction), never silently nowhere."""
+    location = geocoder.resolve(data.pickup_address_text, data.pickup_latitude, data.pickup_longitude)
+    donation = Donation(
+        donor_id=donor.id,
+        category=data.category,
+        quantity=data.quantity,
+        condition=data.condition,
+        note=None,
+        is_priority=False,
+        pickup_address_text=location.address_text,
+        pickup_latitude=location.latitude,
+        pickup_longitude=location.longitude,
+        pickup_window_start=data.pickup_window_start,
+        pickup_window_end=data.pickup_window_end,
+        status=lifecycle.INITIAL_STATE,
+    )
+    db.add(donation)
+    db.flush()
+    recycling.redirect(db, donation, Actor.DONOR, donor, now, reason=RedirectReason.DONOR_CHOICE)
     db.commit()
     return donation
 

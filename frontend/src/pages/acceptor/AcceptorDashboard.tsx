@@ -1,8 +1,9 @@
 import type { OrganizationOut } from '../../api/schema';
 import { paths } from '../../app/paths';
 import { LinkButton } from '../../ui/Button';
-import { useHeldDonations, useMyOrganisation, useOffers } from '../../app/queries';
+import { useHeldDonations, useMyOrganisation, useOffers, useOrganisationImpact } from '../../app/queries';
 import { ApiErrorAlert } from '../../components/ApiErrorAlert';
+import { ImpactCard } from '../../components/impact';
 import { NeedsCard } from '../../components/needs';
 import { RecentActivity } from '../../components/NotificationList';
 import { HeldCard, OfferCard } from '../../components/offer';
@@ -53,6 +54,7 @@ export function AcceptorDashboard() {
   const org = useMyOrganisation();
   const offers = useOffers();
   const held = useHeldDonations();
+  const impact = useOrganisationImpact();
 
   if (org.isPending) return <LoadingBlock label={t('common.loading')} />;
   if (org.error) {
@@ -71,6 +73,12 @@ export function AcceptorDashboard() {
 
   return (
     <Page>
+      {impact.data && (
+        <div className="mb-8">
+          <ImpactCard totals={impact.data} title={t('impact.organisationTitle')} showRecycled={false} />
+        </div>
+      )}
+
       <HeroBanner
         eyebrow={t('acceptor.eyebrow')}
         title={o.name}

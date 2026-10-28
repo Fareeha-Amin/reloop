@@ -3,11 +3,11 @@ from datetime import UTC, datetime
 
 from fastapi import APIRouter
 
-from app.constants import Actor
+from app.constants import Actor, DonationAction, DonationStatus
 from app.schemas.matching import RejectIn, ScheduleIn
 from app.schemas.offer import AcceptedDonationOut, OfferOut
 from app.security.deps import AcceptorUser, DbSession
-from app.services import actions, chat, offers
+from app.services import actions, chat, offers, organizations
 
 router = APIRouter(prefix="/organisations/me", tags=["acceptor: offers & accepted donations"])
 
@@ -18,7 +18,15 @@ def _now() -> datetime:
 
 def _accepted_out(db, view, user) -> AcceptedDonationOut:
     allowed = actions.available(db, view.donation, Actor.ACCEPTOR) if view.address_released else frozenset()
-    return AcceptedDonationOut.build(view, allowed, chat.summary(db, user, view.donation))
+    # True only when this organisation collects and the donor hasn't yet chosen that
+    # path (otherwise SCHEDULE_PICKUP is either moot or already in `allowed`).
+    org = organizations.get_for_user(db, user)
+    awaiting = (
+        view.donation.status == DonationStatus.ACCEPTED
+        and org.pickup_capable
+        and DonationAction.SCHEDULE_PICKUP not in allowed
+    )
+    return AcceptedDonationOut.build(view, allowed, chat.summary(db, user, view.donation), awaiting)
 
 
 @router.get("/offers", response_model=list[OfferOut])

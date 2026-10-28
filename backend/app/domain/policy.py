@@ -25,6 +25,7 @@ from app.constants import (
     DonationAction,
     DonationStatus,
     EscalationCause,
+    HandoverMode,
     OfferResponse,
 )
 from app.domain import lifecycle
@@ -98,10 +99,16 @@ class GuardContext:
     recycler_available: bool | None = None
     pickup_capable: bool | None = None  # of the organisation holding the donation
     logistics_available: bool | None = None  # any active LogisticsProvider
+    donor_chose_acceptor_pickup: bool | None = None  # CHOOSE_ACCEPTOR_COLLECTION recorded
 
 
 def blocked_reason(state: DonationStatus, action: DonationAction, ctx: GuardContext) -> str | None:
     """Why this edge is unavailable for this donation right now, or None."""
+    if (state, action) == (S.LISTED, A.REDIRECT_TO_RECYCLING):
+        return (
+            "A listed donation cannot be sent to recycling. Send it to recycling when you "
+            "create it, or cancel it and create it again."
+        )
     if (state, action) in {(S.ESCALATED, A.REMATCH), (S.ESCALATED, A.UPGRADE_PRIORITY), (S.NEEDS_ADMIN, A.REQUEUE)}:
         if ctx.slate_empty:
             return "No eligible organisation remains for this donation; re-matching would escalate it straight back."
@@ -109,8 +116,18 @@ def blocked_reason(state: DonationStatus, action: DonationAction, ctx: GuardCont
         return "This donation is already a priority donation."
     if (state, action) == (S.NEEDS_ADMIN, A.REDIRECT_TO_RECYCLING) and ctx.recycler_available is False:
         return "No active recycler accepts this category within range; redirecting would return it to this queue."
-    if (state, action) == (S.ACCEPTED, A.SCHEDULE_PICKUP) and ctx.pickup_capable is False:
-        return "This organisation does not collect; the donor must choose drop-off."
+    if (state, action) == (S.ACCEPTED, A.CHOOSE_ACCEPTOR_COLLECTION):
+        if ctx.pickup_capable is False:
+            return "This organisation does not collect; choose drop-off or platform pickup instead."
+        if ctx.donor_chose_acceptor_pickup is True:
+            return "You already chose this path."
+    if (state, action) in {(S.ACCEPTED, A.CHOOSE_DROPOFF), (S.ACCEPTED, A.BOOK_PICKUP)} and ctx.donor_chose_acceptor_pickup is True:
+        return "You already chose for the organisation to collect; it now schedules the pickup."
+    if (state, action) == (S.ACCEPTED, A.SCHEDULE_PICKUP):
+        if ctx.pickup_capable is False:
+            return "This organisation does not collect; the donor must choose drop-off."
+        if ctx.donor_chose_acceptor_pickup is not True:
+            return "The donor hasn't chosen this path yet."
     if (state, action) == (S.ACCEPTED, A.BOOK_PICKUP) and ctx.logistics_available is False:
         return "No active logistics provider is available to book a platform pickup."
     return None
@@ -122,6 +139,36 @@ def available_actions(state: DonationStatus, actor: Actor, ctx: GuardContext) ->
         for action in lifecycle.allowed_actions(state, actor)
         if blocked_reason(state, action, ctx) is None
     )
+
+
+# --- Handover paths (informational for the donor) -------------------------------------------
+
+
+@dataclass(frozen=True)
+class HandoverOption:
+    """One way an accepted donation can reach the organisation. `available` is whether
+    that path can be used now; `you_do_it` is whether the viewer performs it (so has a
+    button) or it is informational (the organisation performs it)."""
+
+    path: HandoverMode
+    available: bool
+    you_do_it: bool
+
+
+def handover_options(state: DonationStatus, donor_chose_acceptor_pickup: bool) -> tuple[HandoverOption, ...]:
+    """Informational only, and only while a chosen path is waiting to be scheduled:
+    once the donor has chosen ACCEPTOR_PICKUP (CHOOSE_ACCEPTOR_COLLECTION, recorded as
+    data, not a state), the donor has no buttons left for this donation until the
+    organisation schedules it, so this names the one path it is waiting on.
+
+    Before any choice this returns nothing: the three choices ARE the donor's own
+    allowed_actions (CHOOSE_ACCEPTOR_COLLECTION, CHOOSE_DROPOFF, BOOK_PICKUP, whichever
+    apply), rendered as buttons, so there is nothing left to show informationally. Once
+    the donor picks drop-off or platform pickup the donation leaves ACCEPTED at once, so
+    this returns nothing then either — the chosen path is in the handover record."""
+    if state == S.ACCEPTED and donor_chose_acceptor_pickup:
+        return (HandoverOption(HandoverMode.ACCEPTOR_PICKUP, available=True, you_do_it=False),)
+    return ()
 
 
 # --- The sweeper ------------------------------------------------------------------------------

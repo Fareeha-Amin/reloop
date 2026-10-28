@@ -82,6 +82,20 @@ def latest_escalation_cause(db: Session, donation_id: uuid.UUID) -> EscalationCa
     )
 
 
+def acceptor_pickup_chosen(db: Session, match_id: uuid.UUID) -> bool:
+    """Whether the donor has recorded CHOOSE_ACCEPTOR_COLLECTION for this acceptance
+    (lifecycle's ACCEPTED -> ACCEPTED self-loop). Derived from the event log, never
+    stored, the same way a decline count or an escalation cause already is."""
+    return (
+        db.scalar(
+            select(StatusEvent.id)
+            .where(StatusEvent.match_id == match_id, StatusEvent.action == DonationAction.CHOOSE_ACCEPTOR_COLLECTION)
+            .limit(1)
+        )
+        is not None
+    )
+
+
 def excluded_organisations(db: Session, donation_id: uuid.UUID) -> frozenset[uuid.UUID]:
     """Every organisation ever offered this donation is excluded from it for good."""
     return frozenset(db.scalars(select(Match.organization_id).where(Match.donation_id == donation_id)))

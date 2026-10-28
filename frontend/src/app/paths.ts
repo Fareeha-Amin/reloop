@@ -16,6 +16,7 @@ export const paths = {
 
   donor: '/donor',
   newDonation: '/donor/donations/new',
+  sendToRecycling: '/donor/donations/recycle',
   donation: (id: string) => `/donor/donations/${id}`,
   candidates: (id: string) => `/donor/donations/${id}/candidates`,
   bookPickup: (id: string) => `/donor/donations/${id}/book-pickup`,

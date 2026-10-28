@@ -7,7 +7,14 @@ from fastapi import APIRouter, Body, File, Response, UploadFile, status
 from app.constants import IMAGE_MAX_BYTES, Actor, Role
 from app.models import Donation, User
 from app.routers.common import GeocoderDep, PageDep, StorageDep
-from app.schemas.donation import DonationCreate, DonationImageOut, DonationOut, DonationUpdate, HolderOut
+from app.schemas.donation import (
+    DonationCreate,
+    DonationImageOut,
+    DonationOut,
+    DonationUpdate,
+    HolderOut,
+    RecycleDonationCreate,
+)
 from app.schemas.logistics import BookPickupIn, PickupQuoteOut, ProviderQuoteOut
 from app.schemas.matching import OfferCreate, ScheduleIn, SlateOut
 from app.schemas.timeline import TimelineOut
@@ -31,12 +38,21 @@ def donation_out(db, donation: Donation, viewer: User) -> DonationOut:
         actions.escalation_cause(db, donation),
         HolderOut.from_match(held) if held is not None else None,
         chat.summary(db, viewer, donation),
+        actions.handover_options(db, donation),
     )
 
 
 @router.post("", response_model=DonationOut, status_code=status.HTTP_201_CREATED)
 def create_donation(data: DonationCreate, user: DonorUser, db: DbSession, geocoder: GeocoderDep):
     return donation_out(db, donations.create(db, user, data, geocoder), user)
+
+
+@router.post("/recycle", response_model=DonationOut, status_code=status.HTTP_201_CREATED)
+def send_to_recycling(data: RecycleDonationCreate, user: DonorUser, db: DbSession, geocoder: GeocoderDep):
+    """Send to recycling: the donor's own choice. Creates the donation and moves it to
+    WASTE_REDIRECTED in one step, with reason DONOR_CHOICE. It is never offered to an
+    organisation. With no active recycler it goes to the admin queue."""
+    return donation_out(db, donations.create_for_recycling(db, user, data, geocoder, _now()), user)
 
 
 @router.get("", response_model=list[DonationOut])
@@ -124,6 +140,14 @@ def redirect_to_recycling(donation_id: uuid.UUID, user: DonorUser, db: DbSession
     """ESCALATED → WASTE_REDIRECTED, routed to the nearest active recycler for the
     category. If there is none, the donation goes to the admin queue (NEEDS_ADMIN)."""
     return donation_out(db, actions.redirect_to_recycling(db, donation_id, user, _now()), user)
+
+
+@router.post("/{donation_id}/choose-acceptor-collection", response_model=DonationOut)
+def choose_acceptor_collection(donation_id: uuid.UUID, user: DonorUser, db: DbSession):
+    """ACCEPTED → ACCEPTED: the donor picks "organisation collects", without a time.
+    Unlocks the organisation's own schedule-pickup action; the donor's other two
+    handover choices disappear once this is recorded."""
+    return donation_out(db, actions.choose_acceptor_collection(db, donation_id, user, _now()), user)
 
 
 @router.post("/{donation_id}/choose-dropoff", response_model=DonationOut)

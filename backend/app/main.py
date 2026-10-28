@@ -8,7 +8,7 @@ from fastapi.responses import JSONResponse
 
 from app.config import get_settings
 from app.constants import SWEEP_INTERVAL
-from app.routers import admin, auth, chat, discovery, donations, notifications, offers, organizations, wallet
+from app.routers import admin, auth, chat, discovery, donations, impact, notifications, offers, organizations, wallet
 from app.services import sweeper
 from app.services.errors import ServiceError
 from app.services.geocoding import GeocodingUnavailable
@@ -74,6 +74,7 @@ app.include_router(notifications.router)
 app.include_router(chat.router)
 app.include_router(discovery.router)
 app.include_router(wallet.router)
+app.include_router(impact.router)
 
 
 def _mark_binary_strings(node) -> None:

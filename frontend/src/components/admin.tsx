@@ -12,7 +12,7 @@ import { Card, LinkCard } from '../ui/Card';
 import { Dialog } from '../ui/Dialog';
 import { Icon } from '../ui/icons';
 import { Marker, Tag } from '../ui/Tag';
-import { vocabLabel } from '../vocab/display';
+import { conditionLabel, vocabLabel } from '../vocab/display';
 import { ActionBar } from './ActionBar';
 import { ApiErrorAlert } from './ApiErrorAlert';
 import { ScoreBreakdown } from './CandidateCard';
@@ -28,7 +28,7 @@ export function AdminDonationRow({ donation }: { donation: DonationSummaryOut })
         <div className="min-w-0 flex-1">
           <p className="truncate font-semibold">{donationTitle(donation)}</p>
           <p className="text-sm text-ink-muted">
-            {vocabLabel('Condition', donation.condition)} · {t('donation.listedOn', { date: formatDate(donation.created_at) })}
+            {conditionLabel(donation.condition)} · {t('donation.listedOn', { date: formatDate(donation.created_at) })}
           </p>
         </div>
         <div className="flex flex-col items-end gap-1.5">

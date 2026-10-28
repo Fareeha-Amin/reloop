@@ -58,13 +58,15 @@ def test_accept_releases_the_address_and_records_the_release(client, db):
     body = h.accept(client, org_headers, donation["id"])
     assert body["status"] == "ACCEPTED" and body["address_released"] is True
     assert body["pickup_address_text"] == "45 Indiranagar 100ft Rd, Bengaluru"
-    assert body["allowed_actions"] == ["SCHEDULE_PICKUP"]
+    # No schedule action yet: the donor hasn't chosen a path.
+    assert body["allowed_actions"] == []
+    assert body["awaiting_donor_handover_choice"] is True
 
     events = list(db.scalars(select(AddressAccessEvent).where(AddressAccessEvent.donation_id == donation["id"])))
     assert [(e.kind, str(e.organization_id)) for e in events] == [("RELEASED_TO_ACCEPTOR", org_id)]
 
-    # The donor now sees only the donor-side handover choice.
-    assert h.status(client, donor, donation["id"])["allowed_actions"] == ["CHOOSE_DROPOFF"]
+    # The donor sees all three handover choices (no provider seeded, so no BOOK_PICKUP).
+    assert h.status(client, donor, donation["id"])["allowed_actions"] == ["CHOOSE_ACCEPTOR_COLLECTION", "CHOOSE_DROPOFF"]
 
 
 def test_answering_twice_is_refused(client, db):
@@ -91,6 +93,15 @@ def test_acceptor_pickup_path_to_completed(client, db):
     h.accept(client, org_headers, donation["id"])
     end = datetime.fromisoformat(donation["pickup_window_end"])
     path = f"/organisations/me/donations/{donation['id']}"
+
+    # Not yet offered to the organisation: the donor hasn't chosen this path.
+    resp = client.post(f"{path}/schedule-pickup", headers=org_headers, json={"scheduled_for": end.isoformat()})
+    assert resp.status_code == 409
+
+    chosen = h.choose_acceptor_collection(client, donor, donation["id"])
+    assert chosen["allowed_actions"] == []  # already chosen; nothing left for the donor to press
+    assert chosen["handover_options"] == [{"path": "ACCEPTOR_PICKUP", "available": True, "you_do_it": False}]
+    assert client.get(path, headers=org_headers).json()["allowed_actions"] == ["SCHEDULE_PICKUP"]
 
     past = datetime.now(UTC) - timedelta(minutes=1)
     resp = client.post(f"{path}/schedule-pickup", headers=org_headers, json={"scheduled_for": past.isoformat()})

@@ -182,6 +182,14 @@ def accept(client: TestClient, headers: dict, donation_id: str) -> dict:
     return resp.json()
 
 
+def choose_acceptor_collection(client: TestClient, donor_headers: dict, donation_id: str) -> dict:
+    """The donor's choice that a pickup-capable organisation collects: unlocks that
+    organisation's own schedule-pickup action."""
+    resp = client.post(f"/donations/{donation_id}/choose-acceptor-collection", headers=donor_headers)
+    assert resp.status_code == 200, resp.text
+    return resp.json()
+
+
 def status(client: TestClient, donor_headers: dict, donation_id: str) -> dict:
     resp = client.get(f"/donations/{donation_id}", headers=donor_headers)
     assert resp.status_code == 200, resp.text

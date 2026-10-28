@@ -118,7 +118,31 @@ def test_admin_queue_guards():
 
 def test_schedule_pickup_hidden_for_an_organisation_that_does_not_collect():
     assert blocked_reason(S.ACCEPTED, A.SCHEDULE_PICKUP, GuardContext(pickup_capable=False))
-    assert blocked_reason(S.ACCEPTED, A.SCHEDULE_PICKUP, GuardContext(pickup_capable=True)) is None
+    # Even a collecting organisation has no schedule action until the donor chooses it.
+    assert blocked_reason(S.ACCEPTED, A.SCHEDULE_PICKUP, GuardContext(pickup_capable=True))
+    assert (
+        blocked_reason(
+            S.ACCEPTED, A.SCHEDULE_PICKUP, GuardContext(pickup_capable=True, donor_chose_acceptor_pickup=True)
+        )
+        is None
+    )
+
+
+def test_choose_acceptor_collection_hidden_once_chosen_or_if_the_organisation_cannot_collect():
+    assert blocked_reason(S.ACCEPTED, A.CHOOSE_ACCEPTOR_COLLECTION, GuardContext(pickup_capable=False))
+    assert blocked_reason(
+        S.ACCEPTED, A.CHOOSE_ACCEPTOR_COLLECTION, GuardContext(pickup_capable=True, donor_chose_acceptor_pickup=True)
+    )
+    assert (
+        blocked_reason(S.ACCEPTED, A.CHOOSE_ACCEPTOR_COLLECTION, GuardContext(pickup_capable=True)) is None
+    )
+
+
+@pytest.mark.parametrize("action", [A.CHOOSE_DROPOFF, A.BOOK_PICKUP])
+def test_the_donors_other_two_paths_are_hidden_once_acceptor_pickup_is_chosen(action):
+    assert blocked_reason(S.ACCEPTED, action, GuardContext(donor_chose_acceptor_pickup=True))
+    assert blocked_reason(S.ACCEPTED, action, GuardContext(donor_chose_acceptor_pickup=False)) is None
+    assert blocked_reason(S.ACCEPTED, action, GuardContext()) is None  # not computed never blocks
 
 
 def test_book_pickup_hidden_with_no_active_logistics_provider():
@@ -195,3 +219,27 @@ def test_every_decision_is_an_edge_of_the_table():
         if d is not None:
             assert lifecycle.ACTORS[(status, d.action)] == Actor.SYSTEM
             assert d.action in SWEEP_RULES[status]
+
+
+def test_a_listed_donation_cannot_be_sent_to_recycling_from_its_page():
+    """The donor's choice is made when the donation is created, not on a listed one."""
+    assert blocked_reason(S.LISTED, A.REDIRECT_TO_RECYCLING, GuardContext()) is not None
+    assert A.REDIRECT_TO_RECYCLING not in available_actions(S.LISTED, Actor.DONOR, GuardContext())
+    assert available_actions(S.LISTED, Actor.DONOR, GuardContext()) == {A.OFFER, A.CANCEL}
+
+
+def test_handover_options_are_empty_until_the_donor_chooses_acceptor_pickup():
+    """Before any choice, the three paths ARE the donor's own allowed_actions
+    (CHOOSE_ACCEPTOR_COLLECTION, CHOOSE_DROPOFF, BOOK_PICKUP) — nothing informational
+    to add. Once chosen, this names the one path waiting to be scheduled."""
+    from app.constants import HandoverMode
+    from app.domain.policy import handover_options
+
+    assert handover_options(S.ACCEPTED, donor_chose_acceptor_pickup=False) == ()
+
+    chosen = handover_options(S.ACCEPTED, donor_chose_acceptor_pickup=True)
+    assert len(chosen) == 1
+    assert (chosen[0].path, chosen[0].available, chosen[0].you_do_it) == (HandoverMode.ACCEPTOR_PICKUP, True, False)
+
+    for state in (S.PICKUP_SCHEDULED, S.IN_TRANSIT, S.COMPLETED, S.LISTED):
+        assert handover_options(state, donor_chose_acceptor_pickup=True) == ()

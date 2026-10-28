@@ -7,7 +7,51 @@ recycling, so every donation ends in reuse or material recovery.
 Background: [docs/ReLoop_Project_Context.pdf](docs/ReLoop_Project_Context.pdf) ·
 Build brief: [PROMPT.md](PROMPT.md) · Decision log: [CLAUDE.md](CLAUDE.md)
 
-## Status: Phase 4 (logistics & money)
+## Status: Phase 4 (logistics & money), plus impact metrics, a recycling choice and a handover-path fix
+
+**What's new since Phase 4**
+
+- **Impact metrics (estimated).** Every donation that reaches `COMPLETED` or
+  `RECYCLED` gets one append-only `ImpactRecord` (`impact_records`, migration `0006`,
+  backfilled for every donation already finished), written in the same transaction as
+  the lifecycle move. It counts items diverted and an estimated mass
+  (`quantity × CATEGORY_WEIGHT_KG`); a completed (reused) donation also gets an
+  estimated carbon **avoided** (`CARBON_FACTOR_KG_PER_ITEM`, a new, **unsourced
+  placeholder** constant — never called "offset"). Reuse and recycling are kept apart
+  throughout: a recycled donation adds to recycled items and mass, never to reused
+  items, and carries no carbon figure. `GET /impact/me` (donor) and `GET
+  /impact/organisation` (acceptor, reuse only — recycling is never credited to an
+  organisation) return the totals, every figure labelled `estimated` and
+  `placeholders`. Shown as a card on the donor and organisation dashboards.
+- **Fix: the donor chooses the handover path, so the two sides never see competing
+  paths.** The original bug was that `DonationOut.allowed_actions` is filtered by actor
+  (`SCHEDULE_PICKUP` is the organisation's action, so it could never appear for the
+  donor) — not by `pickup_capable` as it looked. The fix went through two shapes: an
+  informational list naming all three paths was tried first, then replaced by this one,
+  where the donor picks a path up front. One new donor edge,
+  `(ACCEPTED, CHOOSE_ACCEPTOR_COLLECTION, ACCEPTED, DONOR)` — a **self-loop, not a new
+  state**: the choice is recorded as data (a `StatusEvent` on the acceptance, read back
+  by `app.services.matching.acceptor_pickup_chosen`), the same way a decline or an
+  escalation cause already is. `SCHEDULE_PICKUP` (the organisation's action) is gated
+  on that choice being recorded; `CHOOSE_DROPOFF`, `BOOK_PICKUP` and a repeat
+  `CHOOSE_ACCEPTOR_COLLECTION` are gated on it *not* being recorded, so at most one
+  path is ever live. Before any choice, the donor's three options are exactly
+  `allowed_actions`, rendered as buttons — no separate list. Once
+  `CHOOSE_ACCEPTOR_COLLECTION` is recorded, `DonationOut.handover_options` names that
+  one chosen-but-unscheduled path, and `AcceptedDonationOut.awaiting_donor_handover_choice`
+  tells the organisation it is waiting on the donor (true only when that organisation
+  collects and nothing is chosen yet).
+- **A donor choice to recycle instead of donating.** `POST /donations/recycle`
+  (`RecycleDonationCreate`: category, quantity, condition *optional*, pickup point and
+  window — no note, no priority) creates the donation already in `WASTE_REDIRECTED`,
+  in the same transaction (one new lifecycle edge, `LISTED --REDIRECT_TO_RECYCLING-->
+  WASTE_REDIRECTED`, actor **DONOR**, reason `DONOR_CHOICE`). It is never offered to
+  an organisation; with no active recycler for the category it reaches the admin
+  queue (`NO_RECYCLER`), exactly as an escalated donor's redirect does. This is a
+  **separate entry point** (**Send to recycling** beside **New donation** on the
+  donor dashboard), not an action on an existing listing: a `LISTED` donation's own
+  page still offers only edit and cancel. `Donation.condition` is now nullable, since
+  a donation sent straight to recycling may have none.
 
 **What exists (Phase 4)**
 
@@ -209,6 +253,7 @@ history. Anything not listed above is not built.
 | **Image storage** (`app/services/storage.py`) | Local disk under `backend/uploads/` (git-ignored), behind an `ImageStorage` interface so object storage can replace it. Files are served only through an authorised endpoint. |
 | **Recycling settlement** (`app/domain/recycling.py`) | **SIMULATED.** Mass is **estimated** as quantity × a per-category weight. The settlement (gross value, donor credit, platform fee) credits the donor's wallet and the commission ledger; no real money moves. Labelled `simulated` / `mass_is_estimate` in every API response. |
 | **Per-category weights** (`CATEGORY_WEIGHT_KG`) | **PLACEHOLDERS** (clothes 0.5 kg, toys 0.3 kg, books 0.4 kg per item) pending a cited source. Responses carry `weights_are_placeholders: true`. |
+| **Per-category carbon factors** (`CARBON_FACTOR_KG_PER_ITEM`) | **PLACEHOLDERS, not sourced** (clothes 5.0 kg CO2e, toys 2.0 kg, books 1.5 kg, avoided per item reused). Credited to reuse only, never to recycling. `GET /impact/me` and `GET /impact/organisation` carry `placeholders: true` and `estimated: true`. |
 | **Recycler confirmation** | **SIMULATED.** There is no recycler login. An admin confirms recycling on the recycler's behalf, with a recorded reason. |
 | **Platform-arranged pickup** (`app/services/logistics.py`, `app/domain/logistics.py`) | **SIMULATED.** `LogisticsProvider` rows are fictional (seeded, like `WasteCollector`); there is no real courier API. Cost is distance-based, labelled `simulated` in every response. |
 | **Checkout** (`app/models/logistics.py: Payment`) | **SIMULATED.** A Razorpay-style mock that always succeeds, with a simulated transaction id. No payment gateway is called, and no real money moves. |
@@ -633,3 +678,63 @@ backfills wallet and commission rows for any recycling already confirmed). Re-ru
    unread.
 4. Reload the page: read state is kept. In a different browser it is not (by design,
    it's stored in the browser).
+
+## Acceptance test (impact metrics, the handover-path fix, and recycling choice)
+
+Apply migration `0006` first (`alembic upgrade head` from `backend/`: it adds
+`impact_records`, backfills it for every donation already `COMPLETED` or `RECYCLED`,
+and makes `donations.condition` nullable).
+
+**The donor chooses a handover path before the organisation sees any scheduling action.**
+1. As the donor, list a clothes donation and offer it to a **pickup-capable**
+   organisation (the seed's organisations are pickup-capable by default). Accept it as
+   that organisation.
+2. As the organisation, open the held donation. There is **no Schedule pickup
+   button** — an info panel says **Waiting for the donor to choose**.
+3. As the donor, open the donation. The action bar has three buttons: **They collect
+   it**, **I'll drop it off**, **Book platform pickup**. Click **They collect it** and
+   confirm.
+4. The donor's donation page now shows no handover buttons at all, and a card names
+   the chosen path: *Organisation collects*, marked **They arrange it**. Reload: the
+   same three buttons do not come back.
+5. As the organisation, reload its held-donation page: the waiting panel is gone and
+   **Schedule pickup** now appears. Schedule it; the flow continues exactly as before
+   (mark handed over, confirm receipt).
+6. Repeat from step 1, but this time as the donor click **I'll drop it off** directly,
+   without choosing **They collect it** first: it still works, moving straight to
+   *Pickup scheduled*, same as before this fix.
+7. Repeat once more with **Book platform pickup**: also still works unchanged.
+8. Repeat with an organisation whose **We can collect donations** is off (uncheck it
+   via `PATCH /organisations/me` or the seed data): the donor's action bar has no
+   **They collect it** button at all, and the organisation's held-donation page shows
+   no waiting panel either (it was never going to get a schedule action).
+
+**Send a donation straight to recycling.**
+1. As the donor, on the dashboard click **Send to recycling** (beside **New
+   donation**). Fill category, quantity, condition (try leaving it blank — it's
+   optional), pickup point and window.
+2. The confirmation step states the item will not be offered to any organisation and
+   that it goes to the admin queue if no recycler accepts the category. **Send to
+   recycling**.
+3. The donation page shows status **Recycling** (or **Admin review**, if no recycler
+   accepts clothes within range) immediately — it was never `LISTED` as far as the UI
+   shows, and its allowed actions are empty.
+4. Open an ordinary `LISTED` donation (from **New donation**): its page offers only
+   **Cancel** (and edit, while listed) — no "send to recycling" option there.
+5. As admin, **Confirm recycled** on the redirected donation (if it reached a
+   recycler). The donor's **Impact** card (below) now counts it as recycled mass, not
+   reused items.
+
+**Impact cards.**
+1. Complete a donation (test A in the Phase 2 acceptance test, or the reuse flow
+   above) end to end to **Completed**. As the donor, the dashboard's **Your impact**
+   card shows *Items reused* and *Carbon avoided* up by this donation's quantity and
+   its category's (placeholder) factors — both marked **Estimated mass** and
+   **Placeholder weights**.
+2. As the accepting organisation, its dashboard's **Your impact** card shows the same
+   reused items and carbon (no recycled figures: recycling is never credited to an
+   organisation).
+3. Send a donation to recycling and confirm it (as above). The donor's card shows
+   *Items recycled* and *Mass recycled* up by its quantity — *Items reused* and
+   *Carbon avoided* are unchanged by it.
+4. Cancel a `LISTED` donation: neither card changes.

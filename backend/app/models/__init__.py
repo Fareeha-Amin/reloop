@@ -3,6 +3,7 @@
 from app.models.chat import ChatMessage, ChatRead
 from app.models.donation import Donation, DonationImage
 from app.models.events import AddressAccessEvent, StatusEvent
+from app.models.impact import ImpactRecord
 from app.models.logistics import Booking, LogisticsProvider, Payment
 from app.models.matching import Handover, Match, RankingRun
 from app.models.organization import CurrentNeed, OrganizationProfile
@@ -20,6 +21,7 @@ __all__ = [
     "Donation",
     "DonationImage",
     "Handover",
+    "ImpactRecord",
     "LogisticsProvider",
     "Match",
     "OrganizationProfile",

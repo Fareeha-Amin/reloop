@@ -94,6 +94,7 @@ def test_both_sides_write_while_held_and_after_completion(client, accepted):
     _says(client, donor, thread, "Hi, the bags are by the door.")  # ACCEPTED
     _says(client, a, thread, "Thanks! We can come on Saturday.")
     when = (datetime.now(UTC) + timedelta(days=1)).isoformat()
+    h.choose_acceptor_collection(client, donor, did)
     assert client.post(f"{path}/schedule-pickup", headers=a, json={"scheduled_for": when}).status_code == 200
     _says(client, donor, thread, "Saturday works.")  # PICKUP_SCHEDULED
     assert client.post(f"/donations/{did}/mark-handed-over", headers=donor).status_code == 200

@@ -39,6 +39,7 @@ def test_holder_address_and_contact_shown_while_held_with_acceptor_pickup(client
     assert holder["pickup_capable"] is True
     assert holder["handover"] is None
 
+    h.choose_acceptor_collection(client, donor, donation_id)
     resp = client.post(
         f"/organisations/me/donations/{donation_id}/schedule-pickup",
         headers=org_headers,

@@ -330,6 +330,28 @@ export interface paths {
         patch?: never;
         trace?: never;
     };
+    "/donations/recycle": {
+        parameters: {
+            query?: never;
+            header?: never;
+            path?: never;
+            cookie?: never;
+        };
+        get?: never;
+        put?: never;
+        /**
+         * Send To Recycling
+         * @description Send to recycling: the donor's own choice. Creates the donation and moves it to
+         *     WASTE_REDIRECTED in one step, with reason DONOR_CHOICE. It is never offered to an
+         *     organisation. With no active recycler it goes to the admin queue.
+         */
+        post: operations["send_to_recycling_donations_recycle_post"];
+        delete?: never;
+        options?: never;
+        head?: never;
+        patch?: never;
+        trace?: never;
+    };
     "/donations/{donation_id}": {
         parameters: {
             query?: never;
@@ -496,6 +518,28 @@ export interface paths {
          *     category. If there is none, the donation goes to the admin queue (NEEDS_ADMIN).
          */
         post: operations["redirect_to_recycling_donations__donation_id__redirect_to_recycling_post"];
+        delete?: never;
+        options?: never;
+        head?: never;
+        patch?: never;
+        trace?: never;
+    };
+    "/donations/{donation_id}/choose-acceptor-collection": {
+        parameters: {
+            query?: never;
+            header?: never;
+            path?: never;
+            cookie?: never;
+        };
+        get?: never;
+        put?: never;
+        /**
+         * Choose Acceptor Collection
+         * @description ACCEPTED → ACCEPTED: the donor picks "organisation collects", without a time.
+         *     Unlocks the organisation's own schedule-pickup action; the donor's other two
+         *     handover choices disappear once this is recorded.
+         */
+        post: operations["choose_acceptor_collection_donations__donation_id__choose_acceptor_collection_post"];
         delete?: never;
         options?: never;
         head?: never;
@@ -1067,6 +1111,48 @@ export interface paths {
         patch?: never;
         trace?: never;
     };
+    "/impact/me": {
+        parameters: {
+            query?: never;
+            header?: never;
+            path?: never;
+            cookie?: never;
+        };
+        /**
+         * My Impact
+         * @description The donor's totals over their finished donations: reused and recycled, separately.
+         *     Estimates, labelled as such.
+         */
+        get: operations["my_impact_impact_me_get"];
+        put?: never;
+        post?: never;
+        delete?: never;
+        options?: never;
+        head?: never;
+        patch?: never;
+        trace?: never;
+    };
+    "/impact/organisation": {
+        parameters: {
+            query?: never;
+            header?: never;
+            path?: never;
+            cookie?: never;
+        };
+        /**
+         * Organisation Impact
+         * @description The organisation's reuse totals: donations it accepted and that were completed.
+         *     Recycling is not credited to an organisation. Estimates, labelled as such.
+         */
+        get: operations["organisation_impact_impact_organisation_get"];
+        put?: never;
+        post?: never;
+        delete?: never;
+        options?: never;
+        head?: never;
+        patch?: never;
+        trace?: never;
+    };
     "/health": {
         parameters: {
             query?: never;
@@ -1142,6 +1228,11 @@ export interface components {
             handover: components["schemas"]["HandoverOut"] | null;
             /** Allowed Actions */
             allowed_actions: components["schemas"]["DonationAction"][];
+            /**
+             * Awaiting Donor Handover Choice
+             * @description True only while ACCEPTED, this organisation collects, nothing is scheduled, and the donor hasn't yet chosen this path (so there is no schedule action to show, rather than one the donor hasn't pressed).
+             */
+            awaiting_donor_handover_choice: boolean;
             /** @description This organisation's chat with the donor; null when it can no longer read the thread. */
             chat: components["schemas"]["ChatSummaryOut"] | null;
         };
@@ -1652,7 +1743,7 @@ export interface components {
          *     (state, action) -> next state, and declares who may perform each.
          * @enum {string}
          */
-        DonationAction: "OFFER" | "ESCALATE" | "CANCEL" | "ACCEPT" | "REJECT" | "EXPIRE" | "REOFFER" | "REMATCH" | "UPGRADE_PRIORITY" | "REDIRECT_TO_RECYCLING" | "STALL" | "SCHEDULE_PICKUP" | "CHOOSE_DROPOFF" | "MARK_HANDED_OVER" | "CONFIRM_RECEIPT" | "CONFIRM_RECYCLED" | "NO_RECYCLER" | "REQUEUE" | "BOOK_PICKUP";
+        DonationAction: "OFFER" | "ESCALATE" | "CANCEL" | "ACCEPT" | "REJECT" | "EXPIRE" | "REOFFER" | "REMATCH" | "UPGRADE_PRIORITY" | "REDIRECT_TO_RECYCLING" | "STALL" | "SCHEDULE_PICKUP" | "CHOOSE_DROPOFF" | "MARK_HANDED_OVER" | "CONFIRM_RECEIPT" | "CONFIRM_RECYCLED" | "NO_RECYCLER" | "REQUEUE" | "BOOK_PICKUP" | "CHOOSE_ACCEPTOR_COLLECTION";
         /**
          * DonationCreate
          * @example {
@@ -1735,7 +1826,8 @@ export interface components {
              * @description A count of items.
              */
             quantity: number;
-            condition: components["schemas"]["Condition"];
+            /** @description Null for a donation sent straight to recycling. */
+            condition: components["schemas"]["Condition"] | null;
             /** Note */
             note: string | null;
             /** Is Priority */
@@ -1765,6 +1857,8 @@ export interface components {
             /** Images */
             images: components["schemas"]["DonationImageOut"][];
             holder?: components["schemas"]["HolderOut"] | null;
+            /** Handover Options */
+            handover_options?: components["schemas"]["HandoverOptionOut"][];
             /** @description The donor's chat with the accepting organisation; null until there is a thread, and for admins. */
             chat?: components["schemas"]["ChatSummaryOut"] | null;
             /**
@@ -1806,7 +1900,8 @@ export interface components {
              * @description A count of items.
              */
             quantity: number;
-            condition: components["schemas"]["Condition"];
+            /** @description Null for a donation sent straight to recycling. */
+            condition: components["schemas"]["Condition"] | null;
             /** Is Priority */
             is_priority: boolean;
             /**
@@ -1911,6 +2006,18 @@ export interface components {
          * @enum {string}
          */
         HandoverMode: "ACCEPTOR_PICKUP" | "DONOR_DROPOFF" | "PLATFORM_PICKUP";
+        /**
+         * HandoverOptionOut
+         * @description One handover path for an accepted donation, as the donor sees it. Informational
+         *     when `you_do_it` is false: the organisation performs it, so there is no button.
+         */
+        HandoverOptionOut: {
+            path: components["schemas"]["HandoverMode"];
+            /** Available */
+            available: boolean;
+            /** You Do It */
+            you_do_it: boolean;
+        };
         /** HandoverOut */
         HandoverOut: {
             mode: components["schemas"]["HandoverMode"];
@@ -1948,6 +2055,38 @@ export interface components {
             pickup_capable: boolean;
             /** @description Set once a pickup or drop-off is scheduled. */
             handover: components["schemas"]["HandoverOut"] | null;
+        };
+        /**
+         * ImpactTotalsOut
+         * @description Totals over finished donations. Every figure is an ESTIMATE: mass is modelled from
+         *     item counts, and carbon from a per-item factor. Reuse and recycling are separate.
+         *     `placeholders` is true while the per-item factors are unsourced.
+         */
+        ImpactTotalsOut: {
+            /**
+             * Estimated
+             * @default true
+             */
+            estimated: boolean;
+            /** Placeholders */
+            placeholders: boolean;
+            /** Reused Donations */
+            reused_donations: number;
+            /** Reused Items */
+            reused_items: number;
+            /** Reused Mass Kg */
+            reused_mass_kg: number;
+            /** Recycled Donations */
+            recycled_donations: number;
+            /** Recycled Items */
+            recycled_items: number;
+            /** Recycled Mass Kg */
+            recycled_mass_kg: number;
+            /**
+             * Carbon Avoided Kg
+             * @description Reuse only; recycling is never credited with carbon.
+             */
+            carbon_avoided_kg: number;
         };
         /** NeedCreate */
         NeedCreate: {
@@ -2404,6 +2543,37 @@ export interface components {
             /** Reason */
             reason: string;
         };
+        /**
+         * RecycleDonationCreate
+         * @description Send to recycling: the donor's own choice, not a fallback. The item is never
+         *     offered to an organisation. Condition is optional: the donor may not know it. No
+         *     note or priority, since neither has a meaning without matching.
+         */
+        RecycleDonationCreate: {
+            category: components["schemas"]["Category"];
+            /**
+             * Quantity
+             * @description A count of items.
+             */
+            quantity: number;
+            condition?: components["schemas"]["Condition"] | null;
+            /** Pickup Address Text */
+            pickup_address_text: string;
+            /** Pickup Latitude */
+            pickup_latitude: number;
+            /** Pickup Longitude */
+            pickup_longitude: number;
+            /**
+             * Pickup Window Start
+             * Format: date-time
+             */
+            pickup_window_start: string;
+            /**
+             * Pickup Window End
+             * Format: date-time
+             */
+            pickup_window_end: string;
+        };
         /** RecyclerOut */
         RecyclerOut: {
             /**
@@ -2757,8 +2927,10 @@ export type EventOut = components['schemas']['EventOut'];
 export type FilterReason = components['schemas']['FilterReason'];
 export type HttpValidationError = components['schemas']['HTTPValidationError'];
 export type HandoverMode = components['schemas']['HandoverMode'];
+export type HandoverOptionOut = components['schemas']['HandoverOptionOut'];
 export type HandoverOut = components['schemas']['HandoverOut'];
 export type HolderOut = components['schemas']['HolderOut'];
+export type ImpactTotalsOut = components['schemas']['ImpactTotalsOut'];
 export type NeedCreate = components['schemas']['NeedCreate'];
 export type NeedOut = components['schemas']['NeedOut'];
 export type NeedUpdate = components['schemas']['NeedUpdate'];
@@ -2781,6 +2953,7 @@ export type QueueItemOut = components['schemas']['QueueItemOut'];
 export type RankingRunOut = components['schemas']['RankingRunOut'];
 export type RankingTrigger = components['schemas']['RankingTrigger'];
 export type ReasonIn = components['schemas']['ReasonIn'];
+export type RecycleDonationCreate = components['schemas']['RecycleDonationCreate'];
 export type RecyclerOut = components['schemas']['RecyclerOut'];
 export type RecyclingOut = components['schemas']['RecyclingOut'];
 export type RefreshRequest = components['schemas']['RefreshRequest'];
@@ -3408,6 +3581,39 @@ export interface operations {
             };
         };
     };
+    send_to_recycling_donations_recycle_post: {
+        parameters: {
+            query?: never;
+            header?: never;
+            path?: never;
+            cookie?: never;
+        };
+        requestBody: {
+            content: {
+                "application/json": components["schemas"]["RecycleDonationCreate"];
+            };
+        };
+        responses: {
+            /** @description Successful Response */
+            201: {
+                headers: {
+                    [name: string]: unknown;
+                };
+                content: {
+                    "application/json": components["schemas"]["DonationOut"];
+                };
+            };
+            /** @description Validation Error */
+            422: {
+                headers: {
+                    [name: string]: unknown;
+                };
+                content: {
+                    "application/json": components["schemas"]["HTTPValidationError"];
+                };
+            };
+        };
+    };
     get_donation_donations__donation_id__get: {
         parameters: {
             query?: never;
@@ -3665,6 +3871,37 @@ export interface operations {
         };
     };
     redirect_to_recycling_donations__donation_id__redirect_to_recycling_post: {
+        parameters: {
+            query?: never;
+            header?: never;
+            path: {
+                donation_id: string;
+            };
+            cookie?: never;
+        };
+        requestBody?: never;
+        responses: {
+            /** @description Successful Response */
+            200: {
+                headers: {
+                    [name: string]: unknown;
+                };
+                content: {
+                    "application/json": components["schemas"]["DonationOut"];
+                };
+            };
+            /** @description Validation Error */
+            422: {
+                headers: {
+                    [name: string]: unknown;
+                };
+                content: {
+                    "application/json": components["schemas"]["HTTPValidationError"];
+                };
+            };
+        };
+    };
+    choose_acceptor_collection_donations__donation_id__choose_acceptor_collection_post: {
         parameters: {
             query?: never;
             header?: never;
@@ -4545,6 +4782,46 @@ export interface operations {
             };
         };
     };
+    my_impact_impact_me_get: {
+        parameters: {
+            query?: never;
+            header?: never;
+            path?: never;
+            cookie?: never;
+        };
+        requestBody?: never;
+        responses: {
+            /** @description Successful Response */
+            200: {
+                headers: {
+                    [name: string]: unknown;
+                };
+                content: {
+                    "application/json": components["schemas"]["ImpactTotalsOut"];
+                };
+            };
+        };
+    };
+    organisation_impact_impact_organisation_get: {
+        parameters: {
+            query?: never;
+            header?: never;
+            path?: never;
+            cookie?: never;
+        };
+        requestBody?: never;
+        responses: {
+            /** @description Successful Response */
+            200: {
+                headers: {
+                    [name: string]: unknown;
+                };
+                content: {
+                    "application/json": components["schemas"]["ImpactTotalsOut"];
+                };
+            };
+        };
+    };
     health_health_get: {
         parameters: {
             query?: never;
@@ -4582,7 +4859,7 @@ export const categoryValues: ReadonlyArray<FlattenedDeepRequired<components>["sc
 export const chatClosureValues: ReadonlyArray<FlattenedDeepRequired<components>["schemas"]["ChatClosure"]> = ["NO_LONGER_HELD"];
 export const commissionSourceValues: ReadonlyArray<FlattenedDeepRequired<components>["schemas"]["CommissionSource"]> = ["LOGISTICS", "RECYCLING"];
 export const conditionValues: ReadonlyArray<FlattenedDeepRequired<components>["schemas"]["Condition"]> = ["NEW", "GENTLY_USED", "USED"];
-export const donationActionValues: ReadonlyArray<FlattenedDeepRequired<components>["schemas"]["DonationAction"]> = ["OFFER", "ESCALATE", "CANCEL", "ACCEPT", "REJECT", "EXPIRE", "REOFFER", "REMATCH", "UPGRADE_PRIORITY", "REDIRECT_TO_RECYCLING", "STALL", "SCHEDULE_PICKUP", "CHOOSE_DROPOFF", "MARK_HANDED_OVER", "CONFIRM_RECEIPT", "CONFIRM_RECYCLED", "NO_RECYCLER", "REQUEUE", "BOOK_PICKUP"];
+export const donationActionValues: ReadonlyArray<FlattenedDeepRequired<components>["schemas"]["DonationAction"]> = ["OFFER", "ESCALATE", "CANCEL", "ACCEPT", "REJECT", "EXPIRE", "REOFFER", "REMATCH", "UPGRADE_PRIORITY", "REDIRECT_TO_RECYCLING", "STALL", "SCHEDULE_PICKUP", "CHOOSE_DROPOFF", "MARK_HANDED_OVER", "CONFIRM_RECEIPT", "CONFIRM_RECYCLED", "NO_RECYCLER", "REQUEUE", "BOOK_PICKUP", "CHOOSE_ACCEPTOR_COLLECTION"];
 export const donationStatusValues: ReadonlyArray<FlattenedDeepRequired<components>["schemas"]["DonationStatus"]> = ["LISTED", "MATCHED", "RE_MATCHING", "ESCALATED", "ACCEPTED", "PICKUP_SCHEDULED", "IN_TRANSIT", "COMPLETED", "WASTE_REDIRECTED", "RECYCLED", "NEEDS_ADMIN", "CANCELLED"];
 export const escalationCauseValues: ReadonlyArray<FlattenedDeepRequired<components>["schemas"]["EscalationCause"]> = ["THRESHOLD_REACHED", "NO_CANDIDATES", "NOT_OFFERED"];
 export const filterReasonValues: ReadonlyArray<FlattenedDeepRequired<components>["schemas"]["FilterReason"]> = ["NOT_VERIFIED", "CATEGORY_NOT_ACCEPTED", "EXCLUDED", "OUT_OF_RADIUS", "INSUFFICIENT_CAPACITY"];

@@ -130,6 +130,11 @@ export function vocabLabel(name: VocabName, value: string): string {
   return has(key) ? t(key) : value;
 }
 
+/** A donation's condition, or a note that none was recorded (sent to recycling without one). */
+export function conditionLabel(value: string | null): string {
+  return value === null ? t('common.notRecorded') : vocabLabel('Condition', value);
+}
+
 /**
  * One score component as a reason a donor can read, e.g. "2.1 km away". The API's
  * `raw` is the underlying fact; its meaning depends on the factor (schema: ComponentOut).

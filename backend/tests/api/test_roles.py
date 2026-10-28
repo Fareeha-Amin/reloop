@@ -22,6 +22,7 @@ ROUTES = [
     ("POST", "/organisations/me/needs", {"ACCEPTOR"}),
     ("PATCH", f"/organisations/me/needs/{ANY_ID}", {"ACCEPTOR"}),
     ("POST", "/donations", {"DONOR"}),
+    ("POST", "/donations/recycle", {"DONOR"}),
     ("GET", "/donations", {"DONOR"}),
     ("GET", f"/donations/{ANY_ID}", {"DONOR", "ADMIN"}),
     ("PATCH", f"/donations/{ANY_ID}", {"DONOR"}),
@@ -57,6 +58,8 @@ ROUTES = [
     ("POST", f"/admin/donations/{ANY_ID}/confirm-recycled", {"ADMIN"}),
     ("POST", "/admin/sweep", {"ADMIN"}),
     ("GET", "/admin/recyclers", {"ADMIN"}),
+    ("GET", "/impact/me", {"DONOR"}),
+    ("GET", "/impact/organisation", {"ACCEPTOR"}),
 ]
 
 

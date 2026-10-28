@@ -81,13 +81,22 @@ class AcceptedDonationOut(OutputModel):
     image_ids: list[uuid.UUID]
     handover: HandoverOut | None
     allowed_actions: list[DonationAction]
+    awaiting_donor_handover_choice: bool = Field(
+        description="True only while ACCEPTED, this organisation collects, nothing is "
+        "scheduled, and the donor hasn't yet chosen this path (so there is no schedule "
+        "action to show, rather than one the donor hasn't pressed)."
+    )
     chat: ChatSummaryOut | None = Field(
         description="This organisation's chat with the donor; null when it can no longer read the thread."
     )
 
     @classmethod
     def build(
-        cls, view, allowed_actions: frozenset[DonationAction], chat: ChatSummaryOut | None
+        cls,
+        view,
+        allowed_actions: frozenset[DonationAction],
+        chat: ChatSummaryOut | None,
+        awaiting_donor_handover_choice: bool,
     ) -> "AcceptedDonationOut":
         d, m = view.donation, view.match
         released = view.address_released
@@ -109,5 +118,6 @@ class AcceptedDonationOut(OutputModel):
             image_ids=[i.id for i in d.images],
             handover=HandoverOut.model_validate(m.handover) if m.handover else None,
             allowed_actions=sorted(allowed_actions) if released else [],
+            awaiting_donor_handover_choice=released and awaiting_donor_handover_choice,
             chat=chat,
         )

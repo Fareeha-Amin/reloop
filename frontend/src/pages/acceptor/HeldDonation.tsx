@@ -59,6 +59,11 @@ export function HeldDonation() {
       />
 
       <div className="space-y-6">
+        {d.awaiting_donor_handover_choice && (
+          <Alert kind="info" title={t('held.awaitingChoiceTitle')}>
+            {t('held.awaitingChoiceText')}
+          </Alert>
+        )}
         {released ? (
           <Card>
             <CardTitle aside={<Tag tone="active" icon="check">{t('held.released')}</Tag>}>{t('held.addressTitle')}</CardTitle>

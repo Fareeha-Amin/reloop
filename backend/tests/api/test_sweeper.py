@@ -113,6 +113,7 @@ def test_pickup_scheduled_stalls_after_the_handover_time_and_in_transit_after_it
     donation = h.create_donation(client, donor, **h.window())
     h.offer(client, donor, donation["id"])
     h.accept(client, org_headers, donation["id"])
+    h.choose_acceptor_collection(client, donor, donation["id"])
     at = datetime.fromisoformat(donation["pickup_window_start"]) + timedelta(hours=1)
     client.post(
         f"/organisations/me/donations/{donation['id']}/schedule-pickup",

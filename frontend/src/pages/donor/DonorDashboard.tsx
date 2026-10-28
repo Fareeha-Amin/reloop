@@ -1,8 +1,9 @@
 import { paths } from '../../app/paths';
-import { useMyDonations, useWallet } from '../../app/queries';
+import { useImpact, useMyDonations, useWallet } from '../../app/queries';
 import { useSession } from '../../app/session';
 import { ApiErrorAlert } from '../../components/ApiErrorAlert';
 import { DonationCard } from '../../components/donation';
+import { ImpactCard } from '../../components/impact';
 import { RecentActivity } from '../../components/NotificationList';
 import { formatMoney } from '../../i18n/format';
 import { t } from '../../i18n';
@@ -16,18 +17,30 @@ export function DonorDashboard() {
   const { user } = useSession();
   const donations = useMyDonations();
   const wallet = useWallet();
+  const impact = useImpact();
   const firstName = user?.full_name.split(' ')[0] ?? '';
 
   return (
     <Page>
+      {impact.data && (
+        <div className="mb-8">
+          <ImpactCard totals={impact.data} title={t('impact.donorTitle')} />
+        </div>
+      )}
+
       <HeroBanner
         eyebrow={t('donor.eyebrow')}
         title={t('donor.greeting', { name: firstName })}
         intro={t('donor.intro')}
         actions={
-          <LinkButton to={paths.newDonation} variant="inverse" size="lg" icon="plus">
-            {t('donor.newDonation')}
-          </LinkButton>
+          <div className="flex flex-wrap gap-2">
+            <LinkButton to={paths.newDonation} variant="inverse" size="lg" icon="plus">
+              {t('donor.newDonation')}
+            </LinkButton>
+            <LinkButton to={paths.sendToRecycling} variant="outlineInverse" size="lg" icon="recycle">
+              {t('donor.sendToRecycling')}
+            </LinkButton>
+          </div>
         }
       />
 
