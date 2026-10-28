@@ -7,6 +7,7 @@
     python -m app.cli train-model [--include-synthetic]
     python -m app.cli show-model
     python -m app.cli purge-synthetic [--tag NAME]
+    python -m app.cli copy-dev-to-test
 
 Admins cannot self-register; create-admin is the only way to create one. Passwords are
 prompted for (twice) and never passed on the command line, where they would end up in
@@ -27,7 +28,11 @@ from datetime import UTC, datetime
 from pathlib import Path
 
 from pydantic import ValidationError
+from sqlalchemy import create_engine
+from sqlalchemy.engine import make_url
 from sqlalchemy.orm import Session
+
+from app.config import get_settings
 
 from app.db import get_engine
 from app.models import User
@@ -35,7 +40,7 @@ from app.schemas.user import AdminCreate
 from app.services import seed as seed_service
 from app.constants import ScoreFactor
 from app.domain import learning
-from app.services import sweeper, training, users
+from app.services import dev_copy, sweeper, training, users
 from app.services.errors import ServiceError
 
 
@@ -184,6 +189,28 @@ def _purge_synthetic(args) -> int:
     return 0
 
 
+def _copy_dev_to_test(args) -> int:
+    settings = get_settings()
+    if not settings.test_database_url:
+        print("TEST_DATABASE_URL is not set.", file=sys.stderr)
+        return 1
+    target = create_engine(settings.test_database_url)
+    try:
+        report = dev_copy.copy_rows(get_engine(), target)
+    except dev_copy.CopyRefused as exc:
+        print(f"Refused: {exc}", file=sys.stderr)
+        return 1
+    finally:
+        target.dispose()
+    print(f"Copied from {make_url(settings.database_url).database} (read-only) "
+          f"into {make_url(settings.test_database_url).database}:")
+    print(f"  {'table':<24}{'source':>8}{'copied':>8}")
+    for name, (source_rows, copied) in report.items():
+        print(f"  {name:<24}{source_rows:>8}{copied:>8}")
+    print(f"Not copied: {', '.join(sorted(dev_copy.EXCLUDED))}. Uploaded images are shared files, not rows.")
+    return 0
+
+
 FRONTEND_OPENAPI = Path(__file__).resolve().parents[2] / "frontend" / "src" / "api" / "openapi.json"
 
 
@@ -221,6 +248,10 @@ def main(argv: list[str] | None = None) -> int:
     purge = sub.add_parser("purge-synthetic", help="Delete synthetic outcomes (never real ones).")
     purge.add_argument("--tag", default=None, help="Only this run's outcomes. Omit for all synthetic outcomes.")
     purge.set_defaults(handler=_purge_synthetic)
+    sub.add_parser(
+        "copy-dev-to-test",
+        help="Copy dev rows into the EMPTY test database for demos. Dev is only read.",
+    ).set_defaults(handler=_copy_dev_to_test)
     args = parser.parse_args(argv)
     return args.handler(args)
 

@@ -368,6 +368,8 @@ training sample split.
   candidates (`--offer-pool`) rather than always the top one, because otherwise need match
   barely varies in the offered set and the fit cannot recover its effect. Re-running pytest
   drops every table in the test database, which removes the demo; run it afterwards.
+  To demo on your own data without touching dev, `python -m app.cli copy-dev-to-test`
+  copies dev's rows into the (empty) test database first. Dev is opened read-only.
 - **Known limitations.** The fit scores each offer on its own; a choice model over each
   donation's candidates would match the decision more closely, and is the next thing to
   try once real data exists. Offers go to top-ranked candidates, so training data covers
