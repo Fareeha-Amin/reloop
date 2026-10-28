@@ -23,6 +23,7 @@ from app.db import AppendOnly, Base, StrEnumType, UUIDPrimaryKey
 
 if TYPE_CHECKING:
     from app.models.organization import OrganizationProfile
+    from app.models.recycling import Recycling
 
 
 class RankingRun(UUIDPrimaryKey, AppendOnly, Base):
@@ -115,15 +116,30 @@ class Match(UUIDPrimaryKey, AppendOnly, Base):
 
 
 class Handover(UUIDPrimaryKey, AppendOnly, Base):
-    """The agreed handover for an accepted offer. The mode decides who set the time;
-    rescheduling is not supported yet (Phase 4 logistics)."""
+    """The agreed handover for an accepted offer, or (added for the recycling handover
+    step) for a donation routed to a recycler. The mode decides who set the time;
+    rescheduling is not supported yet (Phase 4 logistics).
+
+    Exactly one of match_id / recycling_id is set — a handover is either to the
+    organisation that accepted the donation, or to the recycler it was redirected to,
+    never both. Enforced by a DB CHECK constraint (migration 0007): this protects an
+    invariant across two nullable foreign keys, not a vocabulary value, so it is the
+    one place a CHECK repeats a rule the app also enforces."""
 
     __tablename__ = "handovers"
+    __table_args__ = (
+        CheckConstraint(
+            "(match_id IS NULL) != (recycling_id IS NULL)",
+            name="handover_exactly_one_of_match_or_recycling",
+        ),
+    )
 
-    match_id: Mapped[uuid.UUID] = mapped_column(ForeignKey("matches.id"), unique=True)
+    match_id: Mapped[uuid.UUID | None] = mapped_column(ForeignKey("matches.id"), unique=True)
+    recycling_id: Mapped[uuid.UUID | None] = mapped_column(ForeignKey("recyclings.id"), unique=True)
     mode: Mapped[HandoverMode] = mapped_column(StrEnumType(HandoverMode))
     scheduled_for: Mapped[datetime] = mapped_column(DateTime(timezone=True))
     arranged_by_id: Mapped[uuid.UUID] = mapped_column(ForeignKey("users.id"))
     created_at: Mapped[datetime] = mapped_column(DateTime(timezone=True), server_default=func.now())
 
-    match: Mapped[Match] = relationship(back_populates="handover")
+    match: Mapped["Match | None"] = relationship(back_populates="handover")
+    recycling: Mapped["Recycling | None"] = relationship(back_populates="handover")

@@ -130,6 +130,8 @@ def blocked_reason(state: DonationStatus, action: DonationAction, ctx: GuardCont
             return "The donor hasn't chosen this path yet."
     if (state, action) == (S.ACCEPTED, A.BOOK_PICKUP) and ctx.logistics_available is False:
         return "No active logistics provider is available to book a platform pickup."
+    if (state, action) == (S.WASTE_REDIRECTED, A.BOOK_RECYCLER_PICKUP) and ctx.logistics_available is False:
+        return "No active logistics provider is available to book a platform pickup."
     return None
 
 
@@ -185,6 +187,7 @@ SWEEP_RULES: Mapping[DonationStatus, frozenset[DonationAction]] = MappingProxyTy
         S.PICKUP_SCHEDULED: frozenset({A.STALL}),
         S.IN_TRANSIT: frozenset({A.STALL}),
         S.WASTE_REDIRECTED: frozenset({A.STALL}),
+        S.RECYCLING_IN_TRANSIT: frozenset({A.STALL}),
     }
 )
 
@@ -211,7 +214,7 @@ def _deadline(facts: SweepFacts) -> tuple[datetime, Decision] | None:
             return base + HANDOVER_GRACE, Decision(A.STALL)
         case S.ESCALATED:
             return facts.entered_at + ESCALATION_TTL, Decision(A.STALL)
-        case S.ACCEPTED | S.IN_TRANSIT | S.WASTE_REDIRECTED:
+        case S.ACCEPTED | S.IN_TRANSIT | S.WASTE_REDIRECTED | S.RECYCLING_IN_TRANSIT:
             return facts.entered_at + STALL_TIMEOUTS[facts.status], Decision(A.STALL)
     return None
 

@@ -9,6 +9,7 @@ from app.constants import Actor, DonationAction, DonationStatus
 from app.domain import lifecycle, policy
 from app.domain.lifecycle import (
     ACTORS,
+    BOOKED_STATES,
     EDITABLE_STATES,
     HELD_STATES,
     INITIAL_STATE,
@@ -129,6 +130,22 @@ def test_a_listed_donation_goes_to_recycling_only_by_the_donor():
         S.ESCALATED,
         S.NEEDS_ADMIN,
     }
+
+
+def test_recycler_handover_is_donor_only_and_confirm_requires_it():
+    """The donor is the only one who can move goods to the recycler (no recycler login,
+    no admin edge on the donor's behalf). Confirmation only becomes available once that
+    handover is recorded — never straight from WASTE_REDIRECTED, a deliberate change
+    from the earlier direct WASTE_REDIRECTED -> RECYCLED edge."""
+    assert ACTORS[(S.WASTE_REDIRECTED, A.DELIVER_TO_RECYCLER)] == Actor.DONOR
+    assert ACTORS[(S.WASTE_REDIRECTED, A.BOOK_RECYCLER_PICKUP)] == Actor.DONOR
+    assert TRANSITIONS[(S.WASTE_REDIRECTED, A.DELIVER_TO_RECYCLER)] == S.RECYCLING_IN_TRANSIT
+    assert TRANSITIONS[(S.WASTE_REDIRECTED, A.BOOK_RECYCLER_PICKUP)] == S.RECYCLING_IN_TRANSIT
+    assert (S.WASTE_REDIRECTED, A.CONFIRM_RECYCLED) not in TRANSITIONS
+    assert TRANSITIONS[(S.RECYCLING_IN_TRANSIT, A.CONFIRM_RECYCLED)] == S.RECYCLED
+    assert ACTORS[(S.RECYCLING_IN_TRANSIT, A.CONFIRM_RECYCLED)] == Actor.ADMIN
+    # No loop back to WASTE_REDIRECTED.
+    assert successors(S.RECYCLING_IN_TRANSIT) == {S.RECYCLED, S.NEEDS_ADMIN}
 
 
 # --- Waiting states and the sweeper -------------------------------------------------------------
@@ -255,18 +272,28 @@ def test_held_states_follow_acceptance_and_precede_completion():
     assert HELD_STATES <= NON_TERMINAL - TRANSIENT_STATES
 
 
-def test_only_stall_leaves_held_states_without_completing():
+def test_only_stall_leaves_booked_states_without_completing():
     """Phase 4: a platform-pickup booking exists only while a donation holds
-    lifecycle.HELD_STATES, and app.services.sweeper cancels and refunds it at exactly
-    one edge, STALL. Driven off the table (not a hand-written list of states), so a
-    future edge that bypasses STALL — e.g. a direct admin CANCEL from ACCEPTED — fails
-    this test instead of silently leaving a paid, undelivered booking unrefunded."""
+    lifecycle.BOOKED_STATES (an organisation's HELD_STATES, or RECYCLING_IN_TRANSIT to a
+    recycler), and app.services.sweeper cancels and refunds it at exactly one edge,
+    STALL. Driven off the table (not a hand-written list of states), so a future edge
+    that bypasses STALL — e.g. a direct admin CANCEL from ACCEPTED, or CONFIRM_RECYCLED
+    reaching anything but an outcome — fails this test instead of silently leaving a
+    paid, undelivered booking unrefunded."""
     for (state, action), target in TRANSITIONS.items():
-        if state in HELD_STATES and target not in HELD_STATES and target != S.COMPLETED:
-            assert action == A.STALL, f"{state} --{action}--> {target} leaves a held donation unrefunded"
+        if state in BOOKED_STATES and target not in BOOKED_STATES and target not in OUTCOME_STATES:
+            assert action == A.STALL, f"{state} --{action}--> {target} leaves a booking unrefunded"
+
+
+def test_booked_states_are_held_states_plus_recycling_in_transit():
+    assert BOOKED_STATES == HELD_STATES | {S.RECYCLING_IN_TRANSIT}
+    assert BOOKED_STATES <= NON_TERMINAL - TRANSIENT_STATES
 
 
 def test_states_awaiting_an_admin_are_the_queue_and_recycling_confirmation():
     """The admin's notification feed is derived from this."""
-    assert lifecycle.states_awaiting(Actor.ADMIN) == {DonationStatus.NEEDS_ADMIN, DonationStatus.WASTE_REDIRECTED}
+    assert lifecycle.states_awaiting(Actor.ADMIN) == {
+        DonationStatus.NEEDS_ADMIN,
+        DonationStatus.RECYCLING_IN_TRANSIT,
+    }
     assert not lifecycle.states_awaiting(Actor.ADMIN) & TERMINAL_STATES

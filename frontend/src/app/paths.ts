@@ -20,6 +20,7 @@ export const paths = {
   donation: (id: string) => `/donor/donations/${id}`,
   candidates: (id: string) => `/donor/donations/${id}/candidates`,
   bookPickup: (id: string) => `/donor/donations/${id}/book-pickup`,
+  bookRecyclerPickup: (id: string) => `/donor/donations/${id}/book-recycler-pickup`,
   wallet: '/donor/wallet',
 
   acceptor: '/acceptor',

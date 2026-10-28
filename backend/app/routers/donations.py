@@ -142,6 +142,43 @@ def redirect_to_recycling(donation_id: uuid.UUID, user: DonorUser, db: DbSession
     return donation_out(db, actions.redirect_to_recycling(db, donation_id, user, _now()), user)
 
 
+@router.post("/{donation_id}/deliver-to-recycler", response_model=DonationOut)
+def deliver_to_recycler(donation_id: uuid.UUID, user: DonorUser, db: DbSession):
+    """WASTE_REDIRECTED → RECYCLING_IN_TRANSIT: the donor reports they dropped the
+    goods at the assigned recycler. There is no recycler login, so this report is the
+    only evidence of the handover, and is what makes an admin's confirm-recycled
+    available."""
+    return donation_out(db, actions.deliver_to_recycler(db, donation_id, user, _now()), user)
+
+
+@router.get("/{donation_id}/recycler-pickup-quote", response_model=PickupQuoteOut)
+def get_recycler_pickup_quote(donation_id: uuid.UUID, user: DonorUser, db: DbSession):
+    """WASTE_REDIRECTED only: a SIMULATED quote per active logistics provider for a
+    platform pickup to the assigned recycler, and the donor's current wallet balance.
+    A preview: nothing is stored. Booking re-quotes."""
+    donation = donations.get_visible(db, donation_id, user)
+    q = logistics.quote_recycler_pickup(db, donation, user.id)
+    return PickupQuoteOut(
+        distance_km=q.distance_km,
+        wallet_balance=q.wallet_balance,
+        providers=[
+            ProviderQuoteOut(provider_id=pq.provider.id, provider_name=pq.provider.name, cost=pq.cost)
+            for pq in q.quotes
+        ],
+    )
+
+
+@router.post("/{donation_id}/book-recycler-pickup", response_model=DonationOut)
+def book_recycler_pickup(donation_id: uuid.UUID, data: BookPickupIn, user: DonorUser, db: DbSession):
+    """WASTE_REDIRECTED → RECYCLING_IN_TRANSIT: a SIMULATED platform-arranged pickup to
+    the assigned recycler, paid for by the donor (wallet credit first, then a simulated
+    checkout for the rest). The time only has to be in the future."""
+    donation = actions.book_recycler_pickup(
+        db, donation_id, user, data.provider_id, data.scheduled_for, data.wallet_amount, _now()
+    )
+    return donation_out(db, donation, user)
+
+
 @router.post("/{donation_id}/choose-acceptor-collection", response_model=DonationOut)
 def choose_acceptor_collection(donation_id: uuid.UUID, user: DonorUser, db: DbSession):
     """ACCEPTED → ACCEPTED: the donor picks "organisation collects", without a time.

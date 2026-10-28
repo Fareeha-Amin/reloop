@@ -201,3 +201,99 @@ def test_downgrade_refuses_while_a_donation_has_no_condition(test_engine):
                 command.downgrade(alembic_config(conn), "0005")
     finally:
         _reset(test_engine)
+
+
+# --- 0007: the recycling handover step -----------------------------------------------------
+
+
+def _donor_and_recycling(engine):
+    """A donor, a waste collector and an open Recycling assignment, for the tests below."""
+    from datetime import UTC, datetime, timedelta
+    from decimal import Decimal
+
+    from sqlalchemy.orm import Session
+
+    from app.constants import Category, DonationStatus, Role
+    from app.models import Donation, Recycling, User, WasteCollector
+
+    now = datetime.now(UTC)
+    with Session(engine) as s:
+        donor = User(email="recycler-mig@example.org", password_hash="x", role=Role.DONOR, full_name="Donor")
+        s.add(donor)
+        s.flush()
+        collector = WasteCollector(
+            name="Mig Recycler", address_text="A", latitude=12.97, longitude=77.59,
+            categories_accepted=[Category.BOOKS], rate_per_kg=Decimal("5.00"),
+        )
+        s.add(collector)
+        s.flush()
+        donation = Donation(
+            donor_id=donor.id, category=Category.BOOKS, quantity=1, condition=None,
+            pickup_address_text="A", pickup_latitude=12.97, pickup_longitude=77.59,
+            pickup_window_start=now + timedelta(days=1), pickup_window_end=now + timedelta(days=2),
+            status=DonationStatus.WASTE_REDIRECTED,
+        )
+        s.add(donation)
+        s.flush()
+        recycling = Recycling(
+            donation_id=donation.id, collector_id=collector.id, distance_km=1.0,
+            rate_per_kg=collector.rate_per_kg, assigned_by_id=donor.id,
+        )
+        s.add(recycling)
+        s.commit()
+        return donor.id, donation.id, recycling.id
+
+
+def test_handovers_require_exactly_one_of_match_or_recycling(test_engine):
+    """The CHECK constraint added in 0007, not just app code: a row with both set, or
+    neither, is rejected by the database itself."""
+    from datetime import UTC, datetime, timedelta
+
+    from sqlalchemy.exc import IntegrityError
+    from sqlalchemy.orm import Session
+
+    from app.constants import HandoverMode
+    from app.models import Handover
+
+    donor_id, _, _ = _donor_and_recycling(test_engine)
+    try:
+        now = datetime.now(UTC)
+        with Session(test_engine) as s:
+            s.add(
+                Handover(
+                    recycling_id=None, mode=HandoverMode.DONOR_DROPOFF,
+                    scheduled_for=now + timedelta(days=1), arranged_by_id=donor_id,
+                )
+            )
+            with pytest.raises(IntegrityError, match="handover_exactly_one_of_match_or_recycling"):
+                s.commit()
+    finally:
+        _reset(test_engine)
+
+
+def test_downgrade_refuses_while_a_handover_is_recorded_against_a_recycling(test_engine):
+    """A handover against a recycling has no match_id the old schema can hold. The
+    downgrade refuses rather than invent one or delete the record."""
+    from datetime import UTC, datetime, timedelta
+
+    from sqlalchemy.orm import Session
+
+    from app.constants import HandoverMode
+    from app.models import Handover
+
+    donor_id, _, recycling_id = _donor_and_recycling(test_engine)
+    now = datetime.now(UTC)
+    with Session(test_engine) as s:
+        s.add(
+            Handover(
+                recycling_id=recycling_id, mode=HandoverMode.DONOR_DROPOFF,
+                scheduled_for=now, arranged_by_id=donor_id,
+            )
+        )
+        s.commit()
+    try:
+        with pytest.raises(RuntimeError, match="cannot represent"):
+            with test_engine.begin() as conn:
+                command.downgrade(alembic_config(conn), "0006")
+    finally:
+        _reset(test_engine)

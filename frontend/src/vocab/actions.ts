@@ -80,6 +80,19 @@ const SPECS: Record<Surface, Partial<Record<DonationAction, ActionSpec>>> = {
       confirmKey: 'actions.recycle.confirm',
       run: (id) => unwrap(client.POST('/donations/{donation_id}/redirect-to-recycling', donation(id))),
     },
+    DELIVER_TO_RECYCLER: {
+      input: 'confirm',
+      emphasis: 'primary',
+      labelKey: 'actions.deliverToRecycler.label',
+      confirmKey: 'actions.deliverToRecycler.confirm',
+      run: (id) => unwrap(client.POST('/donations/{donation_id}/deliver-to-recycler', donation(id))),
+    },
+    BOOK_RECYCLER_PICKUP: {
+      input: 'navigate',
+      emphasis: 'secondary',
+      labelKey: 'actions.bookRecyclerPickup.label',
+      to: paths.bookRecyclerPickup,
+    },
     CHOOSE_ACCEPTOR_COLLECTION: {
       input: 'confirm',
       emphasis: 'secondary',
@@ -237,6 +250,16 @@ export function offerTo(donationId: string, organizationId: string | null) {
 export function bookPickup(donationId: string, providerId: string, scheduledFor: string, walletAmount: string) {
   return unwrap(
     client.POST('/donations/{donation_id}/book-pickup', {
+      ...donation(donationId),
+      body: { provider_id: providerId, scheduled_for: scheduledFor, wallet_amount: walletAmount },
+    }),
+  );
+}
+
+/** As bookPickup, but to the recycler a WASTE_REDIRECTED donation was assigned to. */
+export function bookRecyclerPickup(donationId: string, providerId: string, scheduledFor: string, walletAmount: string) {
+  return unwrap(
+    client.POST('/donations/{donation_id}/book-recycler-pickup', {
       ...donation(donationId),
       body: { provider_id: providerId, scheduled_for: scheduledFor, wallet_amount: walletAmount },
     }),

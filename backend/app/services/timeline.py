@@ -28,7 +28,7 @@ def build(db: Session, donation: Donation, for_admin: bool) -> TimelineOut:
     recyclings = db.scalars(
         select(Recycling)
         .where(Recycling.donation_id == donation.id)
-        .options(selectinload(Recycling.collector))
+        .options(selectinload(Recycling.collector), selectinload(Recycling.handover))
         .order_by(Recycling.created_at)
     )
     bookings = db.scalars(
@@ -88,8 +88,12 @@ def recycling_out(r: Recycling) -> RecyclingOut:
     return RecyclingOut(
         collector_id=r.collector_id,
         collector_name=r.collector.name,
+        collector_address_text=r.collector.address_text,
+        collector_latitude=r.collector.latitude,
+        collector_longitude=r.collector.longitude,
         distance_km=r.distance_km,
         rate_per_kg=r.rate_per_kg,
         assigned_at=r.created_at,
+        handover=HandoverOut.model_validate(r.handover) if r.handover else None,
         settlement=settlement,
     )

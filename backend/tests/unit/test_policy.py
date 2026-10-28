@@ -152,6 +152,14 @@ def test_book_pickup_hidden_with_no_active_logistics_provider():
     assert blocked_reason(S.ACCEPTED, A.BOOK_PICKUP, GuardContext()) is None
 
 
+def test_book_recycler_pickup_hidden_with_no_active_logistics_provider():
+    assert blocked_reason(S.WASTE_REDIRECTED, A.BOOK_RECYCLER_PICKUP, GuardContext(logistics_available=False))
+    assert (
+        blocked_reason(S.WASTE_REDIRECTED, A.BOOK_RECYCLER_PICKUP, GuardContext(logistics_available=True)) is None
+    )
+    assert blocked_reason(S.WASTE_REDIRECTED, A.BOOK_RECYCLER_PICKUP, GuardContext()) is None
+
+
 def test_guards_never_add_actions_the_table_does_not_allow():
     ctx = GuardContext(slate_empty=False, recycler_available=True, pickup_capable=True)
     for state in DonationStatus:
@@ -198,6 +206,7 @@ def test_pickup_scheduled_stalls_relative_to_the_handover_time():
         (S.ACCEPTED, STALL_TIMEOUTS[S.ACCEPTED]),
         (S.IN_TRANSIT, STALL_TIMEOUTS[S.IN_TRANSIT]),
         (S.WASTE_REDIRECTED, STALL_TIMEOUTS[S.WASTE_REDIRECTED]),
+        (S.RECYCLING_IN_TRANSIT, STALL_TIMEOUTS[S.RECYCLING_IN_TRANSIT]),
     ],
 )
 def test_stall_timeouts(status, timeout):

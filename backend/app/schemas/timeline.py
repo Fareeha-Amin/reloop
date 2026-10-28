@@ -65,13 +65,25 @@ class SettlementOut(OutputModel):
 
 
 class RecyclingOut(OutputModel):
-    """SIMULATED settlement over ESTIMATED mass. No money moves; Phase 4 adds wallets."""
+    """SIMULATED settlement over ESTIMATED mass. No money moves; Phase 4 adds wallets.
+
+    The collector's address and coordinates are a business address, not donor-sensitive
+    information, so they are shown plainly (unlike an organisation's address, which is
+    released only on acceptance). `handover` is the donor's own record of moving the
+    goods there (drop-off or a platform pickup) — null until they do, which is what
+    admin confirm-recycled is waiting on. Nobody confirms the recycler actually
+    received the goods: there is no recycler login, so the donor's record of delivery
+    is the only evidence."""
 
     collector_id: uuid.UUID
     collector_name: str
+    collector_address_text: str
+    collector_latitude: float
+    collector_longitude: float
     distance_km: float
     rate_per_kg: Decimal
     assigned_at: datetime
+    handover: HandoverOut | None = Field(description="The donor's record of delivery to this recycler.")
     settlement: SettlementOut | None = Field(description="Set once the recycling is confirmed.")
     currency: str = CURRENCY
     simulated: Literal[True] = True

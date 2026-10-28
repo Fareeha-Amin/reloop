@@ -77,10 +77,20 @@ _EDGES: tuple[tuple[DonationStatus, DonationAction, DonationStatus, Actor], ...]
     (S.IN_TRANSIT,       A.CONFIRM_RECEIPT,       S.COMPLETED,        Actor.ACCEPTOR),
     (S.IN_TRANSIT,       A.STALL,                 S.NEEDS_ADMIN,      Actor.SYSTEM),    # sweeper
     # Recycling: only the donor (at listing, or at escalation) or an admin (with a reason)
-    # sends a donation here. Confirmation is simulated: an admin acts for the recycler.
-    (S.WASTE_REDIRECTED, A.CONFIRM_RECYCLED,      S.RECYCLED,         Actor.ADMIN),
+    # sends a donation here. NO_RECYCLER is immediate, in the same transaction as the
+    # redirect. Otherwise the donor moves the goods to the assigned recycler themself
+    # (drop-off, or a simulated platform pickup to the recycler's address) before an
+    # admin can confirm on the recycler's behalf — there is no recycler login, so
+    # nobody else can attest that the goods arrived.
     (S.WASTE_REDIRECTED, A.NO_RECYCLER,           S.NEEDS_ADMIN,      Actor.SYSTEM),    # immediate
     (S.WASTE_REDIRECTED, A.STALL,                 S.NEEDS_ADMIN,      Actor.SYSTEM),    # sweeper
+    (S.WASTE_REDIRECTED, A.DELIVER_TO_RECYCLER,   S.RECYCLING_IN_TRANSIT, Actor.DONOR),
+    (S.WASTE_REDIRECTED, A.BOOK_RECYCLER_PICKUP,  S.RECYCLING_IN_TRANSIT, Actor.DONOR),
+    # Confirmation is simulated: an admin acts for the recycler, but only once the
+    # donor's own handover to the recycler is recorded (never straight from
+    # WASTE_REDIRECTED — a deliberate change; see CLAUDE.md Decisions).
+    (S.RECYCLING_IN_TRANSIT, A.CONFIRM_RECYCLED,  S.RECYCLED,         Actor.ADMIN),
+    (S.RECYCLING_IN_TRANSIT, A.STALL,             S.NEEDS_ADMIN,      Actor.SYSTEM),    # sweeper
     # The admin queue. Every admin action requires a recorded reason.
     (S.NEEDS_ADMIN,      A.REQUEUE,               S.RE_MATCHING,      Actor.ADMIN),
     (S.NEEDS_ADMIN,      A.REDIRECT_TO_RECYCLING, S.WASTE_REDIRECTED, Actor.ADMIN),
@@ -113,6 +123,13 @@ EDITABLE_STATES: frozenset[DonationStatus] = frozenset({S.LISTED})
 # States in which the accepting organisation holds the donation: it counts against that
 # organisation's capacity, and that organisation may see the precise pickup address.
 HELD_STATES: frozenset[DonationStatus] = frozenset({S.ACCEPTED, S.PICKUP_SCHEDULED, S.IN_TRANSIT})
+
+# States in which a platform-arranged pickup booking can exist and be paid for but not
+# yet delivered: HELD_STATES (to an organisation) plus RECYCLING_IN_TRANSIT (to a
+# recycler). Read only by the sweeper's refund hook — WASTE_REDIRECTED is deliberately
+# excluded: address release, capacity, chat and the notification feed all key on
+# HELD_STATES alone, and recycling never holds an organisation's slot or address.
+BOOKED_STATES: frozenset[DonationStatus] = HELD_STATES | {S.RECYCLING_IN_TRANSIT}
 
 
 class InvalidTransition(Exception):

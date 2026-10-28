@@ -7,6 +7,7 @@ import { RegisterChoice } from './pages/auth/RegisterChoice';
 import { RegisterDonor } from './pages/auth/RegisterDonor';
 import { RegisterOrganisation } from './pages/auth/RegisterOrganisation';
 import { BookPickup } from './pages/donor/BookPickup';
+import { BookRecyclerPickup } from './pages/donor/BookRecyclerPickup';
 import { Candidates } from './pages/donor/Candidates';
 import { DonationDetail } from './pages/donor/DonationDetail';
 import { DonorDashboard } from './pages/donor/DonorDashboard';
@@ -67,6 +68,10 @@ const router = createBrowserRouter([
       {
         path: '/donor/donations/:id/book-pickup',
         element: <RequireRole role={ROLE.donor}><BookPickup /></RequireRole>,
+      },
+      {
+        path: '/donor/donations/:id/book-recycler-pickup',
+        element: <RequireRole role={ROLE.donor}><BookRecyclerPickup /></RequireRole>,
       },
       {
         path: '/donor/wallet',

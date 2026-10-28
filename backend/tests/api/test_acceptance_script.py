@@ -91,6 +91,8 @@ def test_acceptance_script(client, db, extra_org):
     assert (body["status"], body["escalation_cause"]) == ("ESCALATED", "NO_CANDIDATES")
     assert body["allowed_actions"] == ["CANCEL", "REDIRECT_TO_RECYCLING"]
     assert client.post(f"/donations/{b['id']}/redirect-to-recycling", headers=donor).json()["status"] == "WASTE_REDIRECTED"
+    deliver = client.post(f"/donations/{b['id']}/deliver-to-recycler", headers=donor)
+    assert deliver.json()["status"] == "RECYCLING_IN_TRANSIT"
     assert client.post(f"/admin/donations/{b['id']}/confirm-recycled", headers=admin, json={}).status_code == 422
     resp = client.post(f"/admin/donations/{b['id']}/confirm-recycled", headers=admin, json={"reason": "Recycler confirmed"})
     assert resp.json()["status"] == "RECYCLED"

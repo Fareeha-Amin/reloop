@@ -150,9 +150,11 @@ def cancel(donation_id: uuid.UUID, data: ReasonIn, admin: AdminUser, db: DbSessi
 
 @router.post("/donations/{donation_id}/confirm-recycled", response_model=DonationOut)
 def confirm_recycled(donation_id: uuid.UUID, data: ReasonIn, admin: AdminUser, db: DbSession):
-    """WASTE_REDIRECTED → RECYCLED. SIMULATED: the admin confirms on the recycler's
-    behalf, and a simulated settlement over estimated mass is recorded (see the
-    donation's timeline). No money moves."""
+    """RECYCLING_IN_TRANSIT → RECYCLED, once the donor's own handover to the recycler
+    is recorded (drop-off or a platform pickup) — never straight from
+    WASTE_REDIRECTED; there is no recycler login to confirm receipt any other way.
+    SIMULATED: the admin confirms on the recycler's behalf, and a simulated settlement
+    over estimated mass is recorded (see the donation's timeline). No money moves."""
     return donation_out(
         db, actions.admin_confirm_recycled(db, donation_id, admin, data.reason, _now()), admin
     )

@@ -32,8 +32,14 @@ def test_recycling_path_to_recycled_with_a_simulated_settlement(client, db):
     assert resp.status_code == 200, resp.text
     assert resp.json()["status"] == "WASTE_REDIRECTED"
 
+    # Confirmation is unavailable until the donor's own handover to the recycler is
+    # recorded — there is no recycler login to confirm receipt any other way.
     admin = h.admin(client, db)
     path = f"/admin/donations/{donation['id']}/confirm-recycled"
+    assert client.post(path, headers=admin, json={"reason": "too soon"}).status_code == 409
+    deliver = client.post(f"/donations/{donation['id']}/deliver-to-recycler", headers=donor)
+    assert deliver.status_code == 200, deliver.text
+    assert deliver.json()["status"] == "RECYCLING_IN_TRANSIT"
     assert client.post(path, headers=admin, json={}).status_code == 422  # a reason is required
     assert client.post(path, headers=admin, json={"reason": "  "}).status_code == 422
     resp = client.post(path, headers=admin, json={"reason": "Recycler confirmed collection by phone"})
@@ -176,19 +182,25 @@ def test_awaiting_lists_the_admin_queue_and_recycling_to_confirm(client, db):
     for headers, donation in ((clothes_donor, clothes), (toys_donor, toys)):
         resp = client.post(f"/donations/{donation['id']}/redirect-to-recycling", headers=headers)
         assert resp.status_code == 200, resp.text
+    # The clothes donation is not awaiting an admin yet: it needs its own handover
+    # to the recycler first.
     admin = h.admin(client, db)
+    assert clothes["id"] not in {i["donation"]["id"] for i in client.get("/admin/awaiting", headers=admin).json()}
+    resp = client.post(f"/donations/{clothes['id']}/deliver-to-recycler", headers=clothes_donor)
+    assert resp.status_code == 200, resp.text
 
     resp = client.get("/admin/awaiting", headers=admin)
     assert resp.status_code == 200, resp.text
     items = {i["donation"]["id"]: i for i in resp.json()}
-    assert items[clothes["id"]]["donation"]["status"] == "WASTE_REDIRECTED"
-    assert items[clothes["id"]]["via"] == "REDIRECT_TO_RECYCLING"
+    assert items[clothes["id"]]["donation"]["status"] == "RECYCLING_IN_TRANSIT"
+    assert items[clothes["id"]]["via"] == "DELIVER_TO_RECYCLER"
     assert items[clothes["id"]]["allowed_actions"] == ["CONFIRM_RECYCLED"]
     assert items[toys["id"]]["donation"]["status"] == "NEEDS_ADMIN"
     assert items[toys["id"]]["via"] == "NO_RECYCLER"
     assert "pickup_address_text" not in items[toys["id"]]["donation"]
-    # Longest-waiting first; the narrower queue still holds NEEDS_ADMIN only.
-    assert list(items) == [clothes["id"], toys["id"]]
+    # Longest-waiting first: toys entered NEEDS_ADMIN before clothes' handover was
+    # recorded. The narrower queue still holds NEEDS_ADMIN only.
+    assert list(items) == [toys["id"], clothes["id"]]
     queue = client.get("/admin/queue", headers=admin).json()
     assert [i["donation"]["id"] for i in queue] == [toys["id"]]
     assert client.get("/admin/awaiting", headers=clothes_donor).status_code == 403

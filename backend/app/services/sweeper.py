@@ -83,8 +83,9 @@ def apply_due(db: Session, donation: Donation, now: datetime) -> SweepItem | Non
         matching.resolve_re_matching(db, donation, now)
     else:
         transitions.apply(db, donation, action, Actor.SYSTEM, now, cause=decision.cause)
-    if action == DonationAction.STALL and before in lifecycle.HELD_STATES:
-        # The only path out of HELD_STATES that does not complete: a platform-pickup
+    if action == DonationAction.STALL and before in lifecycle.BOOKED_STATES:
+        # The only path out of BOOKED_STATES (an organisation's HELD_STATES, or
+        # RECYCLING_IN_TRANSIT to a recycler) that does not complete: a platform-pickup
         # booking paid for but not yet delivered must be cancelled and refunded now,
         # whatever the admin does with the donation next (tests/unit/test_lifecycle.py
         # asserts, from the table, that STALL is the only such exit).

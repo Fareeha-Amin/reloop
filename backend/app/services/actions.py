@@ -47,6 +47,8 @@ def guard_context(db: Session, donation: Donation) -> policy.GuardContext:
         pickup_capable = held.organization.pickup_capable if held is not None else None
         logistics_available = bool(logistics.active_providers(db))
         donor_chose_acceptor_pickup = held is not None and matching.acceptor_pickup_chosen(db, held.id)
+    if donation.status == S.WASTE_REDIRECTED:
+        logistics_available = bool(logistics.active_providers(db))
     return policy.GuardContext(
         is_priority=donation.is_priority,
         slate_empty=slate_empty,
@@ -153,6 +155,52 @@ def redirect_to_recycling(db: Session, donation_id: uuid.UUID, donor: User, now:
     return donation
 
 
+def deliver_to_recycler(db: Session, donation_id: uuid.UUID, donor: User, now: datetime) -> Donation:
+    """WASTE_REDIRECTED -> RECYCLING_IN_TRANSIT: the donor reports they have dropped the
+    goods at the assigned recycler. There is no recycler login, so this self-report —
+    timestamped now, not scheduled ahead — is the only record of the handover, and is
+    what makes CONFIRM_RECYCLED available."""
+    donation = _lock_owned(db, donation_id, donor)
+    ensure_available(db, donation, A.DELIVER_TO_RECYCLER, Actor.DONOR)
+    assignment = recycling.current(db, donation.id)
+    if assignment is None:
+        raise Conflict("This donation has no open recycling assignment.")
+    db.add(
+        Handover(
+            recycling_id=assignment.id,
+            mode=HandoverMode.DONOR_DROPOFF,
+            scheduled_for=now,
+            arranged_by_id=donor.id,
+            created_at=now,
+        )
+    )
+    transitions.apply(db, donation, A.DELIVER_TO_RECYCLER, Actor.DONOR, now, user=donor)
+    db.commit()
+    return donation
+
+
+def book_recycler_pickup(
+    db: Session,
+    donation_id: uuid.UUID,
+    donor: User,
+    provider_id: uuid.UUID,
+    scheduled_for: datetime,
+    wallet_amount: Decimal,
+    now: datetime,
+) -> Donation:
+    """WASTE_REDIRECTED -> RECYCLING_IN_TRANSIT: a simulated courier booking to the
+    assigned recycler's address, paid for by the donor exactly as a donation pickup is
+    (wallet credit first, then a simulated checkout for the rest). It only has to be in
+    the future."""
+    donation = _lock_owned(db, donation_id, donor)
+    ensure_available(db, donation, A.BOOK_RECYCLER_PICKUP, Actor.DONOR)
+    if scheduled_for <= now:
+        raise Unprocessable("A pickup time must be in the future.")
+    logistics.book_recycler_pickup(db, donation, donor, provider_id, scheduled_for, wallet_amount, now)
+    db.commit()
+    return donation
+
+
 def choose_acceptor_collection(db: Session, donation_id: uuid.UUID, donor: User, now: datetime) -> Donation:
     """ACCEPTED -> ACCEPTED: records the donor's choice that the organisation collects,
     without scheduling a time. A self-loop, not a new state (see lifecycle.py) — this
@@ -255,8 +303,12 @@ def admin_cancel(db: Session, donation_id: uuid.UUID, admin: User, reason: str, 
 def admin_confirm_recycled(
     db: Session, donation_id: uuid.UUID, admin: User, reason: str, now: datetime
 ) -> Donation:
-    """SIMULATED: the admin confirms on the recycler's behalf. Writes the settlement."""
+    """SIMULATED: the admin confirms on the recycler's behalf, once the donor's own
+    handover is recorded (RECYCLING_IN_TRANSIT). Writes the settlement, and — if the
+    handover was a platform pickup — marks that booking delivered: the admin's
+    confirmation stands in for the recycler's own receipt."""
     donation = transitions.lock_donation(db, donation_id)
     recycling.confirm(db, donation, admin, reason, now)
+    logistics.mark_recycler_delivered(db, donation, now)
     db.commit()
     return donation

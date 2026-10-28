@@ -87,14 +87,23 @@ export function RecyclingCard({ recycling }: { recycling: RecyclingOut }) {
       </div>
       <Facts
         items={[
+          { label: t('recycling.address'), value: recycling.collector_address_text },
           { label: t('recycling.distance'), value: t('common.km', { km: formatNumber(recycling.distance_km) }) },
           { label: t('recycling.rate'), value: t('recycling.perKg', { amount: money(recycling.rate_per_kg) }) },
           { label: t('recycling.assigned'), value: formatDateTime(recycling.assigned_at) },
+          recycling.handover && {
+            label: t('recycling.handover'),
+            value: t('timeline.handover', {
+              mode: vocabLabel('HandoverMode', recycling.handover.mode),
+              at: formatDateTime(recycling.handover.scheduled_for),
+            }),
+          },
           s && { label: t('recycling.mass'), value: t('recycling.massValue', { kg: formatNumber(s.estimated_mass_kg), per: formatNumber(s.weight_per_item_kg) }) },
           s && { label: t('recycling.gross'), value: money(s.gross_value) },
           s && { label: t('recycling.fee'), value: t('recycling.feeValue', { amount: money(s.platform_fee), pct: formatNumber(s.platform_fee_pct) }) },
           s && { label: t('recycling.credit'), value: <span className="font-semibold text-brand-700">{money(s.donor_credit)}</span> },
-          !s && { label: t('recycling.settlement'), value: t('recycling.awaitingConfirmation') },
+          !s && !recycling.handover && { label: t('recycling.settlement'), value: t('recycling.awaitingHandover') },
+          !s && recycling.handover && { label: t('recycling.settlement'), value: t('recycling.awaitingConfirmation') },
         ]}
       />
       {recycling.simulated && <p className="mt-3 text-xs text-ink-muted">{t('recycling.simulatedNote')}</p>}

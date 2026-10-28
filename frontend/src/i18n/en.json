@@ -320,7 +320,7 @@
     "whenText": "When it can be collected for recycling.",
     "reviewTitle": "Review",
     "confirmTitle": "This item will not be offered to any organisation",
-    "confirmText": "It goes straight to recycling. If no recycler accepts this category nearby, it goes to ReLoop's admin queue instead.",
+    "confirmText": "It goes straight to recycling. You'll then need to drop it off yourself, or book a simulated courier, before ReLoop can confirm it recycled — there's no recycler login, so your own record of delivery is the only evidence. If no recycler accepts this category nearby, it goes to ReLoop's admin queue instead.",
     "submit": "Send to recycling"
   },
 
@@ -382,6 +382,8 @@
     "rematch": { "label": "Re-match", "confirm": "Offer it to the next best organisation." },
     "upgradePriority": { "label": "Upgrade to priority", "confirm": "Mark it as priority and offer it to the next best organisation. Priority donations rise in organisations' inboxes." },
     "recycle": { "label": "Send to recycling", "confirm": "Route it to the nearest recycling partner for this category. If none is in range, it goes to the admin queue." },
+    "deliverToRecycler": { "label": "I've dropped it off", "confirm": "Confirm you've taken the items to the recycler. There's no recycler login, so this is the only record of delivery." },
+    "bookRecyclerPickup": { "label": "Book platform pickup to the recycler" },
     "chooseAcceptorCollection": { "label": "They collect it", "confirm": "The organisation will arrange when to collect it." },
     "dropoff": { "label": "I'll drop it off", "confirm": "Choose when you'll take it to the organisation." },
     "handedOver": { "label": "I've handed it over", "confirm": "Confirm that the organisation now has your items." },
@@ -415,10 +417,13 @@
   },
 
   "recycling": {
+    "address": "Recycler address",
     "distance": "Distance",
     "rate": "Rate",
     "perKg": "{amount} per kg",
     "assigned": "Assigned",
+    "handover": "Handover",
+    "awaitingHandover": "Waiting for you to drop the items off or book a pickup.",
     "mass": "Mass (estimated)",
     "massValue": "{kg} kg ({per} kg per item)",
     "gross": "Recovered value",
@@ -426,8 +431,8 @@
     "feeValue": "{amount} ({pct}%)",
     "credit": "Your credit",
     "settlement": "Settlement",
-    "awaitingConfirmation": "Calculated once the recycler confirms.",
-    "simulatedNote": "Simulated: no money moves yet. Wallet credit arrives in a later phase."
+    "awaitingConfirmation": "Calculated once an admin confirms recycled. Nobody confirms the recycler received it; your own handover record is the only evidence.",
+    "simulatedNote": "Simulated: no real money moves."
   },
 
   "booking": {
@@ -458,6 +463,26 @@
     "when": "When should they collect it?",
     "whenHint": "Any time in the future — the pickup window is only a preference.",
     "wallet": "Your wallet balance",
+    "walletAmount": "Use from your wallet",
+    "walletHint": "Up to {amount}, and never more than the cost. Optional — you can pay the full cost without it.",
+    "summaryCost": "Total cost",
+    "summaryWallet": "From your wallet",
+    "summaryGateway": "By simulated checkout",
+    "submit": "Book and pay",
+    "simulatedNote": "SIMULATED: no real courier, and the checkout always succeeds."
+  },
+
+  "recyclerPickup": {
+    "eyebrow": "Platform pickup to the recycler",
+    "title": "Book a simulated courier to the recycler",
+    "subtitle": "ReLoop arranges and bills a simulated pickup from you and delivery to the recycler. Nobody confirms the recycler received it — an admin confirms recycled on the strength of this booking.",
+    "backToDonation": "Donation",
+    "loading": "Getting a quote…",
+    "distance": "About {km} km from you to the recycler.",
+    "chooseCourier": "Choose a courier",
+    "noProviders": "No courier is available right now. Drop the items off yourself from the donation page.",
+    "when": "When should they collect it?",
+    "whenHint": "Any time in the future.",
     "walletAmount": "Use from your wallet",
     "walletHint": "Up to {amount}, and never more than the cost. Optional — you can pay the full cost without it.",
     "summaryCost": "Total cost",
@@ -503,6 +528,8 @@
     "REMATCH": "{item} is being re-matched",
     "UPGRADE_PRIORITY": "{item} upgraded to priority",
     "REDIRECT_TO_RECYCLING": "{item} sent to recycling",
+    "DELIVER_TO_RECYCLER": "{item} dropped off at the recycler",
+    "BOOK_RECYCLER_PICKUP": "A platform pickup to the recycler was booked for {item}",
     "STALL": "{item} moved to the admin queue after no progress",
     "CHOOSE_ACCEPTOR_COLLECTION": "{item}: the organisation will collect it",
     "SCHEDULE_PICKUP": "Pickup scheduled for {item}",
@@ -756,7 +783,9 @@
       "CONFIRM_RECYCLED": "Recycling confirmed",
       "NO_RECYCLER": "No recycler in range",
       "REQUEUE": "Re-queued by admin",
-      "BOOK_PICKUP": "Platform pickup booked"
+      "BOOK_PICKUP": "Platform pickup booked",
+      "DELIVER_TO_RECYCLER": "Dropped off at the recycler",
+      "BOOK_RECYCLER_PICKUP": "Platform pickup to the recycler booked"
     },
     "DonationStatus": {
       "LISTED": "Listed",
@@ -768,6 +797,7 @@
       "IN_TRANSIT": "In transit",
       "COMPLETED": "Completed · reused",
       "WASTE_REDIRECTED": "Going to recycling",
+      "RECYCLING_IN_TRANSIT": "On its way to the recycler",
       "RECYCLED": "Recycled",
       "NEEDS_ADMIN": "Admin review",
       "CANCELLED": "Cancelled"

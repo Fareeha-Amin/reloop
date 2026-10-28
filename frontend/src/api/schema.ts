@@ -524,6 +524,73 @@ export interface paths {
         patch?: never;
         trace?: never;
     };
+    "/donations/{donation_id}/deliver-to-recycler": {
+        parameters: {
+            query?: never;
+            header?: never;
+            path?: never;
+            cookie?: never;
+        };
+        get?: never;
+        put?: never;
+        /**
+         * Deliver To Recycler
+         * @description WASTE_REDIRECTED → RECYCLING_IN_TRANSIT: the donor reports they dropped the
+         *     goods at the assigned recycler. There is no recycler login, so this report is the
+         *     only evidence of the handover, and is what makes an admin's confirm-recycled
+         *     available.
+         */
+        post: operations["deliver_to_recycler_donations__donation_id__deliver_to_recycler_post"];
+        delete?: never;
+        options?: never;
+        head?: never;
+        patch?: never;
+        trace?: never;
+    };
+    "/donations/{donation_id}/recycler-pickup-quote": {
+        parameters: {
+            query?: never;
+            header?: never;
+            path?: never;
+            cookie?: never;
+        };
+        /**
+         * Get Recycler Pickup Quote
+         * @description WASTE_REDIRECTED only: a SIMULATED quote per active logistics provider for a
+         *     platform pickup to the assigned recycler, and the donor's current wallet balance.
+         *     A preview: nothing is stored. Booking re-quotes.
+         */
+        get: operations["get_recycler_pickup_quote_donations__donation_id__recycler_pickup_quote_get"];
+        put?: never;
+        post?: never;
+        delete?: never;
+        options?: never;
+        head?: never;
+        patch?: never;
+        trace?: never;
+    };
+    "/donations/{donation_id}/book-recycler-pickup": {
+        parameters: {
+            query?: never;
+            header?: never;
+            path?: never;
+            cookie?: never;
+        };
+        get?: never;
+        put?: never;
+        /**
+         * Book Recycler Pickup
+         * @description WASTE_REDIRECTED → RECYCLING_IN_TRANSIT: a SIMULATED platform-arranged pickup to
+         *     the assigned recycler, paid for by the donor (wallet credit first, then a simulated
+         *     checkout for the rest). The time only has to be in the future.
+         */
+        post: operations["book_recycler_pickup_donations__donation_id__book_recycler_pickup_post"];
+        delete?: never;
+        options?: never;
+        head?: never;
+        patch?: never;
+        trace?: never;
+    };
     "/donations/{donation_id}/choose-acceptor-collection": {
         parameters: {
             query?: never;
@@ -904,9 +971,11 @@ export interface paths {
         put?: never;
         /**
          * Confirm Recycled
-         * @description WASTE_REDIRECTED → RECYCLED. SIMULATED: the admin confirms on the recycler's
-         *     behalf, and a simulated settlement over estimated mass is recorded (see the
-         *     donation's timeline). No money moves.
+         * @description RECYCLING_IN_TRANSIT → RECYCLED, once the donor's own handover to the recycler
+         *     is recorded (drop-off or a platform pickup) — never straight from
+         *     WASTE_REDIRECTED; there is no recycler login to confirm receipt any other way.
+         *     SIMULATED: the admin confirms on the recycler's behalf, and a simulated settlement
+         *     over estimated mass is recorded (see the donation's timeline). No money moves.
          */
         post: operations["confirm_recycled_admin_donations__donation_id__confirm_recycled_post"];
         delete?: never;
@@ -1743,7 +1812,7 @@ export interface components {
          *     (state, action) -> next state, and declares who may perform each.
          * @enum {string}
          */
-        DonationAction: "OFFER" | "ESCALATE" | "CANCEL" | "ACCEPT" | "REJECT" | "EXPIRE" | "REOFFER" | "REMATCH" | "UPGRADE_PRIORITY" | "REDIRECT_TO_RECYCLING" | "STALL" | "SCHEDULE_PICKUP" | "CHOOSE_DROPOFF" | "MARK_HANDED_OVER" | "CONFIRM_RECEIPT" | "CONFIRM_RECYCLED" | "NO_RECYCLER" | "REQUEUE" | "BOOK_PICKUP" | "CHOOSE_ACCEPTOR_COLLECTION";
+        DonationAction: "OFFER" | "ESCALATE" | "CANCEL" | "ACCEPT" | "REJECT" | "EXPIRE" | "REOFFER" | "REMATCH" | "UPGRADE_PRIORITY" | "REDIRECT_TO_RECYCLING" | "STALL" | "SCHEDULE_PICKUP" | "CHOOSE_DROPOFF" | "MARK_HANDED_OVER" | "CONFIRM_RECEIPT" | "CONFIRM_RECYCLED" | "NO_RECYCLER" | "REQUEUE" | "BOOK_PICKUP" | "CHOOSE_ACCEPTOR_COLLECTION" | "DELIVER_TO_RECYCLER" | "BOOK_RECYCLER_PICKUP";
         /**
          * DonationCreate
          * @example {
@@ -1878,7 +1947,7 @@ export interface components {
          *     `app.domain.lifecycle`.
          * @enum {string}
          */
-        DonationStatus: "LISTED" | "MATCHED" | "RE_MATCHING" | "ESCALATED" | "ACCEPTED" | "PICKUP_SCHEDULED" | "IN_TRANSIT" | "COMPLETED" | "WASTE_REDIRECTED" | "RECYCLED" | "NEEDS_ADMIN" | "CANCELLED";
+        DonationStatus: "LISTED" | "MATCHED" | "RE_MATCHING" | "ESCALATED" | "ACCEPTED" | "PICKUP_SCHEDULED" | "IN_TRANSIT" | "COMPLETED" | "WASTE_REDIRECTED" | "RECYCLING_IN_TRANSIT" | "RECYCLED" | "NEEDS_ADMIN" | "CANCELLED";
         /**
          * DonationSummaryOut
          * @description A donation without its precise address or coordinates (admin lists and queue).
@@ -2604,6 +2673,14 @@ export interface components {
         /**
          * RecyclingOut
          * @description SIMULATED settlement over ESTIMATED mass. No money moves; Phase 4 adds wallets.
+         *
+         *     The collector's address and coordinates are a business address, not donor-sensitive
+         *     information, so they are shown plainly (unlike an organisation's address, which is
+         *     released only on acceptance). `handover` is the donor's own record of moving the
+         *     goods there (drop-off or a platform pickup) — null until they do, which is what
+         *     admin confirm-recycled is waiting on. Nobody confirms the recycler actually
+         *     received the goods: there is no recycler login, so the donor's record of delivery
+         *     is the only evidence.
          */
         RecyclingOut: {
             /**
@@ -2613,6 +2690,12 @@ export interface components {
             collector_id: string;
             /** Collector Name */
             collector_name: string;
+            /** Collector Address Text */
+            collector_address_text: string;
+            /** Collector Latitude */
+            collector_latitude: number;
+            /** Collector Longitude */
+            collector_longitude: number;
             /** Distance Km */
             distance_km: number;
             /** Rate Per Kg */
@@ -2622,6 +2705,8 @@ export interface components {
              * Format: date-time
              */
             assigned_at: string;
+            /** @description The donor's record of delivery to this recycler. */
+            handover: components["schemas"]["HandoverOut"] | null;
             /** @description Set once the recycling is confirmed. */
             settlement: components["schemas"]["SettlementOut"] | null;
             /**
@@ -3901,6 +3986,103 @@ export interface operations {
             };
         };
     };
+    deliver_to_recycler_donations__donation_id__deliver_to_recycler_post: {
+        parameters: {
+            query?: never;
+            header?: never;
+            path: {
+                donation_id: string;
+            };
+            cookie?: never;
+        };
+        requestBody?: never;
+        responses: {
+            /** @description Successful Response */
+            200: {
+                headers: {
+                    [name: string]: unknown;
+                };
+                content: {
+                    "application/json": components["schemas"]["DonationOut"];
+                };
+            };
+            /** @description Validation Error */
+            422: {
+                headers: {
+                    [name: string]: unknown;
+                };
+                content: {
+                    "application/json": components["schemas"]["HTTPValidationError"];
+                };
+            };
+        };
+    };
+    get_recycler_pickup_quote_donations__donation_id__recycler_pickup_quote_get: {
+        parameters: {
+            query?: never;
+            header?: never;
+            path: {
+                donation_id: string;
+            };
+            cookie?: never;
+        };
+        requestBody?: never;
+        responses: {
+            /** @description Successful Response */
+            200: {
+                headers: {
+                    [name: string]: unknown;
+                };
+                content: {
+                    "application/json": components["schemas"]["PickupQuoteOut"];
+                };
+            };
+            /** @description Validation Error */
+            422: {
+                headers: {
+                    [name: string]: unknown;
+                };
+                content: {
+                    "application/json": components["schemas"]["HTTPValidationError"];
+                };
+            };
+        };
+    };
+    book_recycler_pickup_donations__donation_id__book_recycler_pickup_post: {
+        parameters: {
+            query?: never;
+            header?: never;
+            path: {
+                donation_id: string;
+            };
+            cookie?: never;
+        };
+        requestBody: {
+            content: {
+                "application/json": components["schemas"]["BookPickupIn"];
+            };
+        };
+        responses: {
+            /** @description Successful Response */
+            200: {
+                headers: {
+                    [name: string]: unknown;
+                };
+                content: {
+                    "application/json": components["schemas"]["DonationOut"];
+                };
+            };
+            /** @description Validation Error */
+            422: {
+                headers: {
+                    [name: string]: unknown;
+                };
+                content: {
+                    "application/json": components["schemas"]["HTTPValidationError"];
+                };
+            };
+        };
+    };
     choose_acceptor_collection_donations__donation_id__choose_acceptor_collection_post: {
         parameters: {
             query?: never;
@@ -4859,8 +5041,8 @@ export const categoryValues: ReadonlyArray<FlattenedDeepRequired<components>["sc
 export const chatClosureValues: ReadonlyArray<FlattenedDeepRequired<components>["schemas"]["ChatClosure"]> = ["NO_LONGER_HELD"];
 export const commissionSourceValues: ReadonlyArray<FlattenedDeepRequired<components>["schemas"]["CommissionSource"]> = ["LOGISTICS", "RECYCLING"];
 export const conditionValues: ReadonlyArray<FlattenedDeepRequired<components>["schemas"]["Condition"]> = ["NEW", "GENTLY_USED", "USED"];
-export const donationActionValues: ReadonlyArray<FlattenedDeepRequired<components>["schemas"]["DonationAction"]> = ["OFFER", "ESCALATE", "CANCEL", "ACCEPT", "REJECT", "EXPIRE", "REOFFER", "REMATCH", "UPGRADE_PRIORITY", "REDIRECT_TO_RECYCLING", "STALL", "SCHEDULE_PICKUP", "CHOOSE_DROPOFF", "MARK_HANDED_OVER", "CONFIRM_RECEIPT", "CONFIRM_RECYCLED", "NO_RECYCLER", "REQUEUE", "BOOK_PICKUP", "CHOOSE_ACCEPTOR_COLLECTION"];
-export const donationStatusValues: ReadonlyArray<FlattenedDeepRequired<components>["schemas"]["DonationStatus"]> = ["LISTED", "MATCHED", "RE_MATCHING", "ESCALATED", "ACCEPTED", "PICKUP_SCHEDULED", "IN_TRANSIT", "COMPLETED", "WASTE_REDIRECTED", "RECYCLED", "NEEDS_ADMIN", "CANCELLED"];
+export const donationActionValues: ReadonlyArray<FlattenedDeepRequired<components>["schemas"]["DonationAction"]> = ["OFFER", "ESCALATE", "CANCEL", "ACCEPT", "REJECT", "EXPIRE", "REOFFER", "REMATCH", "UPGRADE_PRIORITY", "REDIRECT_TO_RECYCLING", "STALL", "SCHEDULE_PICKUP", "CHOOSE_DROPOFF", "MARK_HANDED_OVER", "CONFIRM_RECEIPT", "CONFIRM_RECYCLED", "NO_RECYCLER", "REQUEUE", "BOOK_PICKUP", "CHOOSE_ACCEPTOR_COLLECTION", "DELIVER_TO_RECYCLER", "BOOK_RECYCLER_PICKUP"];
+export const donationStatusValues: ReadonlyArray<FlattenedDeepRequired<components>["schemas"]["DonationStatus"]> = ["LISTED", "MATCHED", "RE_MATCHING", "ESCALATED", "ACCEPTED", "PICKUP_SCHEDULED", "IN_TRANSIT", "COMPLETED", "WASTE_REDIRECTED", "RECYCLING_IN_TRANSIT", "RECYCLED", "NEEDS_ADMIN", "CANCELLED"];
 export const escalationCauseValues: ReadonlyArray<FlattenedDeepRequired<components>["schemas"]["EscalationCause"]> = ["THRESHOLD_REACHED", "NO_CANDIDATES", "NOT_OFFERED"];
 export const filterReasonValues: ReadonlyArray<FlattenedDeepRequired<components>["schemas"]["FilterReason"]> = ["NOT_VERIFIED", "CATEGORY_NOT_ACCEPTED", "EXCLUDED", "OUT_OF_RADIUS", "INSUFFICIENT_CAPACITY"];
 export const handoverModeValues: ReadonlyArray<FlattenedDeepRequired<components>["schemas"]["HandoverMode"]> = ["ACCEPTOR_PICKUP", "DONOR_DROPOFF", "PLATFORM_PICKUP"];

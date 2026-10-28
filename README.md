@@ -7,10 +7,25 @@ recycling, so every donation ends in reuse or material recovery.
 Background: [docs/ReLoop_Project_Context.pdf](docs/ReLoop_Project_Context.pdf) ·
 Build brief: [PROMPT.md](PROMPT.md) · Decision log: [CLAUDE.md](CLAUDE.md)
 
-## Status: Phase 4 (logistics & money), plus impact metrics, a recycling choice and a handover-path fix
+## Status: Phase 4 (logistics & money), plus impact metrics, a recycling choice, a handover-path fix and the recycling handover step
 
 **What's new since Phase 4**
 
+- **The recycling handover step.** A `WASTE_REDIRECTED` donation no longer goes
+  straight to `RECYCLED` on an admin's say-so. There is no recycler login, so the
+  donor now moves the goods there first — drop them off (`POST
+  .../deliver-to-recycler`, a self-report, timestamped when you click it) or book a
+  **simulated** platform pickup to the recycler's address (`POST
+  .../book-recycler-pickup`, the same booking/payment/wallet machinery as a pickup to
+  an organisation) — landing in a new state, `RECYCLING_IN_TRANSIT`. Only from there
+  can an admin `confirm-recycled`. **Nobody confirms the recycler actually received
+  the goods**: there is no recycler login, so the donor's own record of delivery (a
+  drop-off report, or a completed courier booking) is the only evidence; an admin's
+  confirmation stands in for the recycler's receipt. A silent donor stalls after 48h
+  to the admin queue, same as `IN_TRANSIT` — there is no admin edge that performs the
+  handover on the donor's behalf. `RecyclingOut` now also carries the recycler's
+  address and coordinates (a business address, shown plainly, unlike an
+  organisation's) and the donor's handover record.
 - **Impact metrics (estimated).** Every donation that reaches `COMPLETED` or
   `RECYCLED` gets one append-only `ImpactRecord` (`impact_records`, migration `0006`,
   backfilled for every donation already finished), written in the same transaction as
@@ -207,7 +222,10 @@ Build brief: [PROMPT.md](PROMPT.md) · Decision log: [CLAUDE.md](CLAUDE.md)
   acceptor confirms receipt.
 - **Recycling fallback.** Only the donor (at escalation) or an admin (with a reason)
   can send a donation to recycling. The donation goes to the nearest active recycler
-  that accepts the category. If there is none, it goes to the admin queue.
+  that accepts the category. If there is none, it goes to the admin queue. Otherwise
+  the donor must still move the goods there — drop them off or book a simulated
+  pickup — before an admin can confirm recycled (see the recycling handover step,
+  above).
 - **Deadline sweeper**, `sweep(now)`. It runs inside the API process every 15 minutes
   (`SWEEP_INTERVAL`; off with `SWEEPER_ENABLED=false`). `POST /admin/sweep` and
   `python -m app.cli sweep` run it on demand. It expires unanswered offers, escalates
@@ -254,7 +272,7 @@ history. Anything not listed above is not built.
 | **Recycling settlement** (`app/domain/recycling.py`) | **SIMULATED.** Mass is **estimated** as quantity × a per-category weight. The settlement (gross value, donor credit, platform fee) credits the donor's wallet and the commission ledger; no real money moves. Labelled `simulated` / `mass_is_estimate` in every API response. |
 | **Per-category weights** (`CATEGORY_WEIGHT_KG`) | **PLACEHOLDERS** (clothes 0.5 kg, toys 0.3 kg, books 0.4 kg per item) pending a cited source. Responses carry `weights_are_placeholders: true`. |
 | **Per-category carbon factors** (`CARBON_FACTOR_KG_PER_ITEM`) | **PLACEHOLDERS, not sourced** (clothes 5.0 kg CO2e, toys 2.0 kg, books 1.5 kg, avoided per item reused). Credited to reuse only, never to recycling. `GET /impact/me` and `GET /impact/organisation` carry `placeholders: true` and `estimated: true`. |
-| **Recycler confirmation** | **SIMULATED.** There is no recycler login. An admin confirms recycling on the recycler's behalf, with a recorded reason. |
+| **Recycler confirmation** | **SIMULATED.** There is no recycler login, so **nobody confirms the recycler actually received the goods**: the donor's own record of the handover (a drop-off report, or a completed courier booking) is the only evidence, and an admin confirms recycled on the recycler's behalf, with a recorded reason. |
 | **Platform-arranged pickup** (`app/services/logistics.py`, `app/domain/logistics.py`) | **SIMULATED.** `LogisticsProvider` rows are fictional (seeded, like `WasteCollector`); there is no real courier API. Cost is distance-based, labelled `simulated` in every response. |
 | **Checkout** (`app/models/logistics.py: Payment`) | **SIMULATED.** A Razorpay-style mock that always succeeds, with a simulated transaction id. No payment gateway is called, and no real money moves. |
 | **Distances** | Haversine in Python over every organisation that accepts the category. No PostGIS. Fine at seed scale; revisit when the instant-pickup module needs fast geo-queries. |
@@ -327,6 +345,14 @@ history. Anything not listed above is not built.
   own admin tab (same decision as recyclers).
 - **Dark mode needs a 2024-or-later browser** (Chrome 123, Safari 17.5, Firefox 120):
   the colour tokens use CSS `light-dark()`. Older browsers get the light theme.
+- **Nobody confirms the recycler actually received the goods.** There is no recycler
+  login. The donor's own handover record — a drop-off report, or a completed courier
+  booking — is the only evidence that the goods reached the recycler; an admin's
+  `confirm-recycled` stands in for the recycler's own receipt.
+- **A simulated courier's address release to a recycler (or to an organisation) is not
+  logged.** `address_access_events` records only when an organisation's own acceptance
+  releases the donor's address; a platform-pickup booking hands the same address to a
+  simulated courier without a matching audit row. Deferred to a separate change.
 
 ### Units
 
@@ -485,13 +511,18 @@ the radius in effect. That admin read is itself recorded as an address access.
 2. `POST /donations/{id}/offer` → `ESCALATED`, cause `NO_CANDIDATES`, allowed
    `[CANCEL, REDIRECT_TO_RECYCLING]`.
 3. `POST /donations/{id}/redirect-to-recycling` → `WASTE_REDIRECTED`.
-4. As admin, `POST /admin/donations/{id}/confirm-recycled` with `{}` → 422. Then with
+4. As admin, `POST /admin/donations/{id}/confirm-recycled` with
+   `{"reason": "Recycler confirmed"}` → 409: the donor's own handover isn't recorded
+   yet.
+5. As the donor, `POST /donations/{id}/deliver-to-recycler` → `RECYCLING_IN_TRANSIT`.
+6. As admin, `POST /admin/donations/{id}/confirm-recycled` with `{}` → 422. Then with
    `{"reason": "Recycler confirmed"}` → `RECYCLED`.
-5. As the donor, `GET /donations/{id}/timeline`. `recyclings[0]` names the nearest
-   active CLOTHES recycler (with the seed data, GreenCycle Textile Recovery, 15.9 km).
-   The settlement for 12 items at 0.5 kg and INR 12/kg is 6.000 kg, gross 72.00, fee
-   7.20 and donor credit 64.80, with `simulated`, `mass_is_estimate` and
-   `weights_are_placeholders` all `true`.
+7. As the donor, `GET /donations/{id}/timeline`. `recyclings[0]` names the nearest
+   active CLOTHES recycler (with the seed data, GreenCycle Textile Recovery, 15.9 km),
+   and its `address_text`/`latitude`/`longitude`; `handover.mode` is
+   `DONOR_DROPOFF`. The settlement for 12 items at 0.5 kg and INR 12/kg is 6.000 kg,
+   gross 72.00, fee 7.20 and donor credit 64.80, with `simulated`, `mass_is_estimate`
+   and `weights_are_placeholders` all `true`.
 
 **C. Toys → no recycler → NEEDS_ADMIN**
 1. As B, but with `"category": "TOYS"`: offer → `ESCALATED`, then
@@ -548,10 +579,15 @@ them. No address or phone appears anywhere on the page.
    is beyond the 15 km radius).
 2. The ranked list says **No organisation in range right now** → **Continue**. The
    donation page offers only **Send to recycling** and **Cancel donation**.
-3. **Send to recycling** → confirm → *Going to recycling*.
-4. As admin, **Waiting on you** lists it under *Going to recycling* with one button,
-   **Confirm recycled**. It stays disabled until a reason is typed; confirm.
-5. As the donor, the page shows *Recycled* and a recycling card (GreenCycle Textile
+3. **Send to recycling** → confirm → *Going to recycling*. As admin, **Waiting on
+   you** does not list it yet: the donor's handover isn't recorded.
+4. As the donor, the recycling card shows the recycler's address (GreenCycle Textile
+   Recovery, 15.9 km) and **I've dropped it off** → confirm → *On its way to the
+   recycler*.
+5. As admin, **Waiting on you** now lists it under *On its way to the recycler* with
+   one button, **Confirm recycled**. It stays disabled until a reason is typed;
+   confirm.
+6. As the donor, the page shows *Recycled* and a recycling card (GreenCycle Textile
    Recovery, 15.9 km): 6 kg, ₹72.00, fee ₹7.20, your credit ₹64.80, marked
    **Simulated**, **Estimated mass** and **Placeholder weights**.
 

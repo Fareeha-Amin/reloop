@@ -69,6 +69,7 @@ class DonationStatus(StrEnum):
     IN_TRANSIT = "IN_TRANSIT"
     COMPLETED = "COMPLETED"
     WASTE_REDIRECTED = "WASTE_REDIRECTED"
+    RECYCLING_IN_TRANSIT = "RECYCLING_IN_TRANSIT"
     RECYCLED = "RECYCLED"
     NEEDS_ADMIN = "NEEDS_ADMIN"
     CANCELLED = "CANCELLED"
@@ -98,6 +99,8 @@ class DonationAction(StrEnum):
     REQUEUE = "REQUEUE"
     BOOK_PICKUP = "BOOK_PICKUP"
     CHOOSE_ACCEPTOR_COLLECTION = "CHOOSE_ACCEPTOR_COLLECTION"
+    DELIVER_TO_RECYCLER = "DELIVER_TO_RECYCLER"
+    BOOK_RECYCLER_PICKUP = "BOOK_RECYCLER_PICKUP"
 
 
 class Actor(StrEnum):
@@ -348,6 +351,7 @@ STALL_TIMEOUTS = {
     DonationStatus.ACCEPTED: timedelta(hours=72),
     DonationStatus.IN_TRANSIT: timedelta(hours=48),
     DonationStatus.WASTE_REDIRECTED: timedelta(days=7),
+    DonationStatus.RECYCLING_IN_TRANSIT: timedelta(hours=48),  # same as IN_TRANSIT
 }
 HANDOVER_GRACE = timedelta(hours=48)  # after scheduled_for, before PICKUP_SCHEDULED stalls
 # How often the in-process sweeper runs (app.main lifespan; off when SWEEPER_ENABLED=false).

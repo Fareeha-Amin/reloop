@@ -86,6 +86,9 @@ def test_holder_sees_a_stall_to_the_admin_queue_but_not_what_follows(client, db)
 
 
 def test_admin_sees_donations_that_need_an_admin(client, db):
+    """WASTE_REDIRECTED itself needs no admin action (the donor hands the goods to the
+    recycler first), so it is not in the admin's feed; RECYCLING_IN_TRANSIT is, once
+    the donor records that handover."""
     donor = h.donor(client)
     admin = h.admin(client, db)
     donation = h.create_donation(client, donor, pickup_latitude=h.NELAMANGALA[0], pickup_longitude=h.NELAMANGALA[1])
@@ -93,9 +96,12 @@ def test_admin_sees_donations_that_need_an_admin(client, db):
     h.add_recycler(db, "GreenCycle")
     resp = client.post(f"/donations/{donation['id']}/redirect-to-recycling", headers=donor)
     assert resp.status_code == 200, resp.text
+    assert [i for i in _feed(client, admin) if i["donation_id"] == donation["id"]] == []
 
+    resp = client.post(f"/donations/{donation['id']}/deliver-to-recycler", headers=donor)
+    assert resp.status_code == 200, resp.text
     items = [i for i in _feed(client, admin) if i["donation_id"] == donation["id"]]
-    assert [(i["action"], i["to_state"]) for i in items] == [("REDIRECT_TO_RECYCLING", "WASTE_REDIRECTED")]
+    assert [(i["action"], i["to_state"]) for i in items] == [("DELIVER_TO_RECYCLER", "RECYCLING_IN_TRANSIT")]
 
 
 def test_reasons_and_notes_never_appear(client, db):
@@ -218,6 +224,7 @@ def test_paging_across_sources(client, db):
     h.offer(client, donor, donation["id"])
     h.add_recycler(db, "GreenCycle")
     client.post(f"/donations/{donation['id']}/redirect-to-recycling", headers=donor)
+    client.post(f"/donations/{donation['id']}/deliver-to-recycler", headers=donor)
 
     everything = _feed(client, admin, limit=100)
     assert len({i["kind"] for i in everything}) == 2

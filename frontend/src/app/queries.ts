@@ -57,6 +57,15 @@ export function usePickupQuote(id: string) {
   });
 }
 
+/** A preview of a platform pickup to the recycler a WASTE_REDIRECTED donation was
+ * assigned to. The API stores nothing for it. Booking re-quotes. */
+export function useRecyclerPickupQuote(id: string) {
+  return useQuery({
+    queryKey: ['recycler-pickup-quote', id],
+    queryFn: () => unwrap(client.GET('/donations/{donation_id}/recycler-pickup-quote', path(id))),
+  });
+}
+
 export function useWallet() {
   return useQuery({ queryKey: ['wallet'], queryFn: () => unwrap(client.GET('/wallet')) });
 }

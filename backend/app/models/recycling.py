@@ -1,6 +1,7 @@
 import uuid
 from datetime import datetime
 from decimal import Decimal
+from typing import TYPE_CHECKING
 
 from sqlalchemy import (
     Boolean,
@@ -19,6 +20,9 @@ from sqlalchemy.orm import Mapped, mapped_column, relationship
 
 from app.constants import Category
 from app.db import AppendOnly, Base, StrEnumType, Timestamps, UUIDPrimaryKey
+
+if TYPE_CHECKING:
+    from app.models.matching import Handover
 
 
 class WasteCollector(UUIDPrimaryKey, Timestamps, Base):
@@ -92,3 +96,8 @@ class Recycling(UUIDPrimaryKey, AppendOnly, Base):
     confirmed_by_id: Mapped[uuid.UUID | None] = mapped_column(ForeignKey("users.id"))
 
     collector: Mapped[WasteCollector] = relationship()
+    # The donor's handover to this collector (drop-off or a simulated platform pickup),
+    # if the donor has recorded one yet. passive_deletes: nothing ever deletes a
+    # Recycling row (AppendOnly); if it were attempted, Handover's own before_delete
+    # guard should refuse it directly rather than this relationship nulling it out.
+    handover: Mapped["Handover | None"] = relationship(back_populates="recycling", passive_deletes=True)

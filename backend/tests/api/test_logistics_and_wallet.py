@@ -27,6 +27,8 @@ def _credit_wallet(client, db, donor_headers, admin_headers, suffix: str) -> Dec
     h.offer(client, donor_headers, donation["id"])  # no candidates there: ESCALATED at once
     resp = client.post(f"/donations/{donation['id']}/redirect-to-recycling", headers=donor_headers)
     assert resp.status_code == 200, resp.text
+    resp = client.post(f"/donations/{donation['id']}/deliver-to-recycler", headers=donor_headers)
+    assert resp.status_code == 200, resp.text
     resp = client.post(
         f"/admin/donations/{donation['id']}/confirm-recycled", headers=admin_headers, json={"reason": "test"}
     )

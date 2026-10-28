@@ -1419,6 +1419,163 @@
         }
       }
     },
+    "/donations/{donation_id}/deliver-to-recycler": {
+      "post": {
+        "tags": [
+          "donor: donations"
+        ],
+        "summary": "Deliver To Recycler",
+        "description": "WASTE_REDIRECTED → RECYCLING_IN_TRANSIT: the donor reports they dropped the\ngoods at the assigned recycler. There is no recycler login, so this report is the\nonly evidence of the handover, and is what makes an admin's confirm-recycled\navailable.",
+        "operationId": "deliver_to_recycler_donations__donation_id__deliver_to_recycler_post",
+        "security": [
+          {
+            "OAuth2PasswordBearer": []
+          }
+        ],
+        "parameters": [
+          {
+            "name": "donation_id",
+            "in": "path",
+            "required": true,
+            "schema": {
+              "type": "string",
+              "format": "uuid",
+              "title": "Donation Id"
+            }
+          }
+        ],
+        "responses": {
+          "200": {
+            "description": "Successful Response",
+            "content": {
+              "application/json": {
+                "schema": {
+                  "$ref": "#/components/schemas/DonationOut"
+                }
+              }
+            }
+          },
+          "422": {
+            "description": "Validation Error",
+            "content": {
+              "application/json": {
+                "schema": {
+                  "$ref": "#/components/schemas/HTTPValidationError"
+                }
+              }
+            }
+          }
+        }
+      }
+    },
+    "/donations/{donation_id}/recycler-pickup-quote": {
+      "get": {
+        "tags": [
+          "donor: donations"
+        ],
+        "summary": "Get Recycler Pickup Quote",
+        "description": "WASTE_REDIRECTED only: a SIMULATED quote per active logistics provider for a\nplatform pickup to the assigned recycler, and the donor's current wallet balance.\nA preview: nothing is stored. Booking re-quotes.",
+        "operationId": "get_recycler_pickup_quote_donations__donation_id__recycler_pickup_quote_get",
+        "security": [
+          {
+            "OAuth2PasswordBearer": []
+          }
+        ],
+        "parameters": [
+          {
+            "name": "donation_id",
+            "in": "path",
+            "required": true,
+            "schema": {
+              "type": "string",
+              "format": "uuid",
+              "title": "Donation Id"
+            }
+          }
+        ],
+        "responses": {
+          "200": {
+            "description": "Successful Response",
+            "content": {
+              "application/json": {
+                "schema": {
+                  "$ref": "#/components/schemas/PickupQuoteOut"
+                }
+              }
+            }
+          },
+          "422": {
+            "description": "Validation Error",
+            "content": {
+              "application/json": {
+                "schema": {
+                  "$ref": "#/components/schemas/HTTPValidationError"
+                }
+              }
+            }
+          }
+        }
+      }
+    },
+    "/donations/{donation_id}/book-recycler-pickup": {
+      "post": {
+        "tags": [
+          "donor: donations"
+        ],
+        "summary": "Book Recycler Pickup",
+        "description": "WASTE_REDIRECTED → RECYCLING_IN_TRANSIT: a SIMULATED platform-arranged pickup to\nthe assigned recycler, paid for by the donor (wallet credit first, then a simulated\ncheckout for the rest). The time only has to be in the future.",
+        "operationId": "book_recycler_pickup_donations__donation_id__book_recycler_pickup_post",
+        "security": [
+          {
+            "OAuth2PasswordBearer": []
+          }
+        ],
+        "parameters": [
+          {
+            "name": "donation_id",
+            "in": "path",
+            "required": true,
+            "schema": {
+              "type": "string",
+              "format": "uuid",
+              "title": "Donation Id"
+            }
+          }
+        ],
+        "requestBody": {
+          "required": true,
+          "content": {
+            "application/json": {
+              "schema": {
+                "$ref": "#/components/schemas/BookPickupIn"
+              }
+            }
+          }
+        },
+        "responses": {
+          "200": {
+            "description": "Successful Response",
+            "content": {
+              "application/json": {
+                "schema": {
+                  "$ref": "#/components/schemas/DonationOut"
+                }
+              }
+            }
+          },
+          "422": {
+            "description": "Validation Error",
+            "content": {
+              "application/json": {
+                "schema": {
+                  "$ref": "#/components/schemas/HTTPValidationError"
+                }
+              }
+            }
+          }
+        }
+      }
+    },
     "/donations/{donation_id}/choose-acceptor-collection": {
       "post": {
         "tags": [
@@ -2444,7 +2601,7 @@
           "admin"
         ],
         "summary": "Confirm Recycled",
-        "description": "WASTE_REDIRECTED → RECYCLED. SIMULATED: the admin confirms on the recycler's\nbehalf, and a simulated settlement over estimated mass is recorded (see the\ndonation's timeline). No money moves.",
+        "description": "RECYCLING_IN_TRANSIT → RECYCLED, once the donor's own handover to the recycler\nis recorded (drop-off or a platform pickup) — never straight from\nWASTE_REDIRECTED; there is no recycler login to confirm receipt any other way.\nSIMULATED: the admin confirms on the recycler's behalf, and a simulated settlement\nover estimated mass is recorded (see the donation's timeline). No money moves.",
         "operationId": "confirm_recycled_admin_donations__donation_id__confirm_recycled_post",
         "security": [
           {
@@ -4178,7 +4335,9 @@
           "NO_RECYCLER",
           "REQUEUE",
           "BOOK_PICKUP",
-          "CHOOSE_ACCEPTOR_COLLECTION"
+          "CHOOSE_ACCEPTOR_COLLECTION",
+          "DELIVER_TO_RECYCLER",
+          "BOOK_RECYCLER_PICKUP"
         ],
         "title": "DonationAction",
         "description": "Things that can happen to a donation. The lifecycle table maps\n(state, action) -> next state, and declares who may perform each."
@@ -4475,6 +4634,7 @@
           "IN_TRANSIT",
           "COMPLETED",
           "WASTE_REDIRECTED",
+          "RECYCLING_IN_TRANSIT",
           "RECYCLED",
           "NEEDS_ADMIN",
           "CANCELLED"
@@ -6222,6 +6382,18 @@
             "type": "string",
             "title": "Collector Name"
           },
+          "collector_address_text": {
+            "type": "string",
+            "title": "Collector Address Text"
+          },
+          "collector_latitude": {
+            "type": "number",
+            "title": "Collector Latitude"
+          },
+          "collector_longitude": {
+            "type": "number",
+            "title": "Collector Longitude"
+          },
           "distance_km": {
             "type": "number",
             "title": "Distance Km"
@@ -6234,6 +6406,17 @@
             "type": "string",
             "format": "date-time",
             "title": "Assigned At"
+          },
+          "handover": {
+            "anyOf": [
+              {
+                "$ref": "#/components/schemas/HandoverOut"
+              },
+              {
+                "type": "null"
+              }
+            ],
+            "description": "The donor's record of delivery to this recycler."
           },
           "settlement": {
             "anyOf": [
@@ -6274,13 +6457,17 @@
         "required": [
           "collector_id",
           "collector_name",
+          "collector_address_text",
+          "collector_latitude",
+          "collector_longitude",
           "distance_km",
           "rate_per_kg",
           "assigned_at",
+          "handover",
           "settlement"
         ],
         "title": "RecyclingOut",
-        "description": "SIMULATED settlement over ESTIMATED mass. No money moves; Phase 4 adds wallets."
+        "description": "SIMULATED settlement over ESTIMATED mass. No money moves; Phase 4 adds wallets.\n\nThe collector's address and coordinates are a business address, not donor-sensitive\ninformation, so they are shown plainly (unlike an organisation's address, which is\nreleased only on acceptance). `handover` is the donor's own record of moving the\ngoods there (drop-off or a platform pickup) — null until they do, which is what\nadmin confirm-recycled is waiting on. Nobody confirms the recycler actually\nreceived the goods: there is no recycler login, so the donor's record of delivery\nis the only evidence."
       },
       "RefreshRequest": {
         "properties": {

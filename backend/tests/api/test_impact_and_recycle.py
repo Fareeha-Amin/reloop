@@ -45,7 +45,8 @@ def test_send_to_recycling_creates_the_donation_already_redirected_with_donor_ch
 
     assert body["status"] == "WASTE_REDIRECTED"
     assert body["condition"] is None
-    assert body["allowed_actions"] == []  # nothing left for the donor to press
+    # No logistics provider seeded in this test, so only the drop-off path is offered.
+    assert body["allowed_actions"] == ["DELIVER_TO_RECYCLER"]
 
     donation_id = body["id"]
     event = db.scalar(select(StatusEvent).where(StatusEvent.donation_id == donation_id))
@@ -214,6 +215,7 @@ def test_a_recycled_donation_counts_as_recycled_mass_and_never_as_reuse_or_carbo
     admin = h.admin(client, db)
     h.add_recycler(db, "Loop Two", categories=("TOYS",))
     body = _send_to_recycling(client, donor, quantity=3)
+    assert client.post(f"/donations/{body['id']}/deliver-to-recycler", headers=donor).status_code == 200
     resp = client.post(f"/admin/donations/{body['id']}/confirm-recycled", headers=admin, json={"reason": "test"})
     assert resp.status_code == 200, resp.text
 
