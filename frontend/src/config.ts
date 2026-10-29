@@ -6,6 +6,15 @@
 /** API base path. In development Vite proxies it to the backend (vite.config.ts). */
 export const API_BASE_URL = '/api';
 
+/**
+ * Whether pages show where a breakdown's weights came from: the version, whether they are
+ * the assigned prior or a fit, what a fit was trained on, and the "demo fit" marker. OFF for
+ * the college demo, which discloses the demo fit verbally instead. This hides the display
+ * only: the API still returns every field (ModelOut) and the admin JSON still has it. Turn it
+ * back on for anything beyond that demo, so a viewer is never left to assume learned weights.
+ */
+export const SHOW_MODEL_NOTE = false;
+
 /** How often open pages re-read the API (TanStack Query; paused while the tab is hidden). */
 export const POLL_MS = {
   notifications: 30_000,

@@ -16,6 +16,7 @@ import { conditionLabel, vocabLabel } from '../vocab/display';
 import { ActionBar } from './ActionBar';
 import { ApiErrorAlert } from './ApiErrorAlert';
 import { ScoreBreakdown } from './CandidateCard';
+import { SHOW_MODEL_NOTE } from '../config';
 import { ModelNote } from './ModelNote';
 import { CategoryBadge, donationTitle } from './donation';
 import { StatusTag } from './StatusTag';
@@ -150,7 +151,7 @@ export function RankingRuns({ runs }: { runs: RankingRunOut[] }) {
               {filtered.length > 0 &&
                 ` · ${t('candidates.filteredOut')} ${filtered.map(([reason, n]) => `${vocabLabel('FilterReason', reason)} (${n})`).join(', ')}`}
             </p>
-            {run.model && (
+            {SHOW_MODEL_NOTE && run.model && (
               <p className="mt-2">
                 <ModelNote model={run.model} />
               </p>

@@ -204,8 +204,8 @@ Build brief: [PROMPT.md](PROMPT.md) · Decision log: [CLAUDE.md](CLAUDE.md)
   (factor, raw value, value, weight, contribution). The weights start as **assigned**
   values and can be refitted from real outcomes, but only past a data floor and only if
   the fit beats the assigned weights on held-out offers (see *Ranking weights* below).
-  Every breakdown states which weights it used. Donor rating is not a factor until
-  reviews exist.
+  Every breakdown in the API states which weights it used (the page shows it unless
+  `SHOW_MODEL_NOTE` is off). Donor rating is not a factor until reviews exist.
 - **The full lifecycle** in one transition table (`app/domain/lifecycle.py`), with the
   actor allowed for each edge declared beside it. Two outcomes, `COMPLETED` (reuse)
   and `RECYCLED` (material recovery). `CANCELLED` is a withdrawal. `NEEDS_ADMIN` is
@@ -322,7 +322,10 @@ history. Anything not listed above is not built.
 The five ranking weights can be refitted from real outcomes. Until a fit is activated,
 the assigned prior (`SCORE_WEIGHTS`) is used, and every breakdown says so: the response
 carries `model` with the configuration version, `is_prior`, `is_synthetic_demo` and the
-training sample split.
+training sample split. The UI shows that as a note on the candidates page and on each admin
+ranking run, controlled by `SHOW_MODEL_NOTE` in `frontend/src/config.ts`. **It is currently
+off** so the college demo can disclose the demo fit verbally; turn it back on for anything
+beyond that demo. The API fields are unaffected.
 
 - **What the live scorer is.** The live scorer is the logistic model of P(accept) in its
   **cold-start state**: its coefficients are the assigned weights (`SCORE_WEIGHTS`), so
@@ -361,8 +364,9 @@ training sample split.
 - **College demo (test database only).** `python -m sim demo` is the one place a fit on
   synthetic data is activated, so a demonstration can show a fitted model before any real
   outcome exists. It connects only to `TEST_DATABASE_URL` and refuses to run against the
-  development database. Every breakdown labels the result "Demo fit: trained on simulated
-  data, not real outcomes". It is a demonstration of the pipeline: the weights it produces
+  development database. The API labels the result (`is_synthetic_demo`), and the UI shows
+  "Demo fit: trained on simulated data, not real outcomes" whenever `SHOW_MODEL_NOTE` is on
+  (it is off for the demo; you present that disclosure yourself). It is a demonstration of the pipeline: the weights it produces
   are what the rules *we wrote* imply, and say nothing about how real organisations behave.
   The production gate is unchanged. The demo's simulated donors choose among the top few
   candidates (`--offer-pool`) rather than always the top one, because otherwise need match

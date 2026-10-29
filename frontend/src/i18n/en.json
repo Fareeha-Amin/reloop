@@ -351,7 +351,7 @@
     "emptyTitle": "No organisation in range right now",
     "emptyText": "Continuing will bring the decision back to you: you can redirect it to recycling or cancel.",
     "continueEmpty": "Continue",
-    "howScored": "Each score is a weighted sum of the factors shown. The weights and where they came from are stated above; a fit is used only once enough real outcomes exist and it beats the assigned weights on held-out offers."
+    "howScored": "Each score is a weighted sum of the factors shown."
   },
 
   "model": {

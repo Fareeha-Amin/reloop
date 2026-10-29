@@ -1,4 +1,5 @@
 import type { ModelOut } from '../api/schema';
+import { SHOW_MODEL_NOTE } from '../config';
 import { formatNumber } from '../i18n/format';
 import { t } from '../i18n';
 import { Marker } from '../ui/Tag';
@@ -9,6 +10,7 @@ import { Marker } from '../ui/Tag';
  * the labels are the only thing this component decides.
  */
 export function ModelNote({ model }: { model: ModelOut }) {
+  if (!SHOW_MODEL_NOTE) return null;
   const sample = model.training_sample;
   return (
     <span className="inline-flex flex-wrap items-center gap-x-3 gap-y-1.5 text-xs text-ink-muted">
